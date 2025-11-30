@@ -2,7 +2,7 @@
 
 **Master DAX, Excel, and SQL through interactive, step-by-step visual stories.**
 
-### [🔴 Live Demo](https://kannan.github.io/visual-data-guide/)
+### [🔴 Live Demo](https://creator-12-academy.github.io/visual-data-guide/)
 
 ## 🚀 About The Project
 
