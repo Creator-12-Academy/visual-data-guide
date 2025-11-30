@@ -6,7 +6,7 @@
 
 ## 🚀 About The Project
 
-**Visual Data Guide** (by Creator 12 Academy) transforms abstract data formulas into interactive animations. Instead of just reading documentation, you can **watch** how the engine calculates results row-by-row.
+**Visual Data Guide** (by [Creator 12 Academy](https://www.linkedin.com/company/109928041)  - [Kannan N](https://www.linkedin.com/in/iamnkannan/)) transforms abstract data formulas into interactive animations. Instead of just reading documentation, you can **watch** how the engine calculates results row-by-row.
 
 **Current Modules:**
 * ✅ **DAX:** Context Transition, Iterators (SUMX), Filter Context.
