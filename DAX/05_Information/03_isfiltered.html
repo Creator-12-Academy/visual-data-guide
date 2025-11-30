@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: ISFILTERED</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Styles: Simulated Slicer */
+  .slicer-box {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    padding: 0.8rem;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .slicer-label { font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; }
+  
+  .slicer-btn {
+    background: #334155; border: 1px solid var(--border); color: var(--text-dim);
+    padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: 0.2s;
+  }
+  .slicer-btn.active {
+    background: var(--accent); color: #000; border-color: var(--accent); font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📊 Report Page</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Detect if the user has selected a specific City.<br>
+      <strong>ISFILTERED</strong> returns TRUE only if a direct filter is applied.
+    </p>
+
+    <div class="slicer-box">
+      <div class="slicer-label">Filter City:</div>
+      <div style="display:flex; gap:0.5rem;">
+        <div id="slice-london" class="slicer-btn">London</div>
+        <div id="slice-paris" class="slicer-btn">Paris</div>
+        <div id="slice-all" class="slicer-btn active">All (Clear)</div>
+      </div>
+    </div>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnCheck">🔍 Check ISFILTERED</button>
+        <button class="action primary" id="btnTitle">🏷️ Dynamic Title</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Basic Check</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Is_Filtered = <span class="fn">ISFILTERED</span>( Sales[City] )</div>
+      <br>
+      <div class="codeLine" id="line3"><span class="cmt">-- Scenario 2: Dynamic Chart Title</span></div>
+      <div class="codeLine" id="line4"><span class="kwd">MEASURE</span> Title = </div>
+      <div class="codeLine" id="line5">    <span class="fn">IF</span>( </div>
+      <div class="codeLine" id="line6">        <span class="fn">ISFILTERED</span>( Sales[City] ),</div>
+      <div class="codeLine" id="line7">        <span class="str">"Sales for "</span> & <span class="fn">VALUES</span>(Sales[City]),</div>
+      <div class="codeLine" id="line8">        <span class="str">"All Global Sales"</span></div>
+      <div class="codeLine" id="line9">    )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Return Value:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("ISFILTERED", "../../");
+
+  // Data
+  const data = [
+    { city: "London", amt: 100 },
+    { city: "Paris", amt: 200 },
+    { city: "NY", amt: 150 }
+  ];
+
+  let currentFilter = "All"; // 'All', 'London', 'Paris'
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  // Slicer Elements
+  const btnLondon = document.getElementById('slice-london');
+  const btnParis = document.getElementById('slice-paris');
+  const btnAll = document.getElementById('slice-all');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>City</div> <div>Sales</div> <div>Visible?</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      // Logic for visibility based on slicer
+      let isVisible = (currentFilter === "All") || (currentFilter === d.city);
+      let opacity = isVisible ? "1" : "0.3";
+      let status = isVisible ? "Yes" : "Hidden";
+      
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="opacity:${opacity}; transition:0.3s">
+          <div>${d.city}</div>
+          <div class="cell-num">$${d.amt}</div>
+          <div class="cell-num" style="font-size:0.8rem; color:var(--text-dim)">${status}</div>
+        </div>
+      `;
+    });
+  }
+
+  // Handle Slicer Clicks
+  function setFilter(city) {
+    if(isRunning) return; // Block while running
+    currentFilter = city;
+    
+    // Update Buttons
+    [btnLondon, btnParis, btnAll].forEach(b => b.classList.remove('active'));
+    if(city === 'London') btnLondon.classList.add('active');
+    else if(city === 'Paris') btnParis.classList.add('active');
+    else btnAll.classList.add('active');
+
+    initTable(); // Refresh view
+    totalBubble.classList.remove('show');
+  }
+
+  btnLondon.onclick = () => setFilter('London');
+  btnParis.onclick = () => setFilter('Paris');
+  btnAll.onclick = () => setFilter('All');
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      setFilter('All');
+      App.updateText("Ready...");
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: CHECK ISFILTERED ---
+  document.getElementById('btnCheck').addEventListener('click', async () => {
+    if(isRunning) return;
+    isRunning = true;
+    
+    highlight('line2');
+    
+    if (currentFilter === "All") {
+        App.updateText("Checking Slicer... No filter selected.");
+        await App.speak("I am checking the City column. No filter is applied.");
+        
+        totalBubble.textContent = "FALSE";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        
+        App.updateText("Result: FALSE (The column is unfiltered).");
+        await App.speak("Result is False. The column is showing all data.");
+    } else {
+        App.updateText(`Checking Slicer... Filter found: '${currentFilter}'`);
+        await App.speak(`I check the City column. I see a filter for ${currentFilter}.`);
+        
+        totalBubble.textContent = "TRUE";
+        totalBubble.style.background = "#4ade80";
+        totalBubble.classList.add('show');
+        
+        App.updateText("Result: TRUE (Direct filter detected).");
+        await App.speak("Result is True. The column is being filtered directly.");
+    }
+
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: DYNAMIC TITLE ---
+  document.getElementById('btnTitle').addEventListener('click', async () => {
+    if(isRunning) return;
+    isRunning = true;
+    
+    highlight('line6');
+    App.updateText("Evaluating IF( ISFILTERED(City) )...");
+    
+    if (currentFilter === "All") {
+        await App.speak("ISFILTERED is False. So I go to the Else condition.");
+        
+        highlight('line8');
+        App.updateText("Result: All Global Sales");
+        totalBubble.textContent = '"All Global Sales"';
+        totalBubble.style.background = "var(--accent)";
+        totalBubble.classList.add('show');
+        
+        await App.speak("Returning default title: All Global Sales.");
+    } else {
+        await App.speak("ISFILTERED is True. So I execute the dynamic text.");
+        
+        highlight('line7');
+        const title = `Sales for ${currentFilter}`;
+        App.updateText(`Concatenating: "Sales for " & "${currentFilter}"`);
+        
+        totalBubble.textContent = `"${title}"`;
+        totalBubble.style.background = "var(--accent)";
+        totalBubble.classList.add('show');
+        
+        await App.speak(`Returning dynamic title: ${title}.`);
+    }
+
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

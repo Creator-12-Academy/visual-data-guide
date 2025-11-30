@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: UNION</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Layout for Source Tables */
+  .source-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .mini-table {
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+  .mini-header {
+    padding: 0.3rem;
+    font-size: 0.7rem;
+    text-align: center;
+    font-weight: bold;
+    border-bottom: 1px solid var(--border);
+    color: #fff;
+  }
+  
+  /* Distinct Styles for Sources */
+  .header-a { background: rgba(14, 165, 233, 0.15); color: var(--accent); }
+  .header-b { background: rgba(34, 197, 94, 0.15); color: var(--accent-excel); }
+
+  .row-a { border-left: 3px solid var(--accent); }
+  .row-b { border-left: 3px solid var(--accent-excel); }
+
+  /* Animation Class */
+  .slide-in { animation: slideDown 0.5s ease-out; }
+  @keyframes slideDown {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📦 Appending Data</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Combine two tables into one list.<br>
+      <strong>Rule:</strong> Tables must have the same number of columns.
+    </p>
+
+    <div class="source-container">
+      <div class="mini-table">
+        <div class="mini-header header-a">Jan Sales (Table 1)</div>
+        <div id="tableA"></div>
+      </div>
+      <div class="mini-table">
+        <div class="mini-header header-b">Feb Sales (Table 2)</div>
+        <div id="tableB"></div>
+      </div>
+    </div>
+
+    <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.5rem;">Result: Master Table</div>
+    <div id="resultTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnUnion">📦 UNION Tables</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Combine historical and current data</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">EVALUATE</span> All_Sales = </div>
+      <div class="codeLine" id="line3">    <span class="fn">UNION</span>( </div>
+      <div class="codeLine" id="line4">        Sales_Jan,    <span class="cmt">-- 1. Top Table</span></div>
+      <div class="codeLine" id="line5">        Sales_Feb     <span class="cmt">-- 2. Bottom Table</span></div>
+      <div class="codeLine" id="line6">    )</div>
+      <br>
+      <div class="codeLine" id="line7"><span class="cmt">-- Note: Duplicates are KEPT (unlike SQL Union)</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Total Rows:</span>
+      <div class="total-bubble" id="totalBubble">0</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("UNION", "../../");
+
+  const dataJan = [ { id: 101, amt: 10 }, { id: 102, amt: 20 } ];
+  const dataFeb = [ { id: 201, amt: 50 }, { id: 202, amt: 60 }, { id: 203, amt: 70 } ];
+
+  const tableA = document.getElementById('tableA');
+  const tableB = document.getElementById('tableB');
+  const resultTable = document.getElementById('resultTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTables() {
+    // Table A (Jan)
+    tableA.innerHTML = ``;
+    dataJan.forEach((d, i) => {
+      tableA.innerHTML += `
+        <div class="table-row row-a" id="a-${i}" style="padding:0.4rem; grid-template-columns:1fr 1fr;">
+          <div>${d.id}</div> <div style="text-align:right">$${d.amt}</div>
+        </div>
+      `;
+    });
+
+    // Table B (Feb)
+    tableB.innerHTML = ``;
+    dataFeb.forEach((d, i) => {
+      tableB.innerHTML += `
+        <div class="table-row row-b" id="b-${i}" style="padding:0.4rem; grid-template-columns:1fr 1fr;">
+          <div>${d.id}</div> <div style="text-align:right">$${d.amt}</div>
+        </div>
+      `;
+    });
+
+    // Result Header
+    resultTable.innerHTML = `<div class="table-row header" style="grid-template-columns:1fr 1fr;"><div>ID</div><div>Amt</div></div>`;
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTables();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO: UNION ---
+  document.getElementById('btnUnion').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let rowCount = 0;
+
+    highlight('line3');
+    await App.speak("Starting UNION. I will stack the tables vertically.");
+
+    // 1. Process Table A
+    highlight('line4');
+    App.updateText("Reading Table 1 (Jan Sales)...");
+    await App.speak("First, I take all rows from the first table.");
+
+    for (let i = 0; i < dataJan.length; i++) {
+      if(shouldStop) return;
+      
+      const srcRow = document.getElementById(`a-${i}`);
+      srcRow.style.backgroundColor = "rgba(14, 165, 233, 0.2)"; // Blue
+      
+      // Add to Result
+      resultTable.innerHTML += `
+        <div class="table-row row-a slide-in" style="grid-template-columns:1fr 1fr;">
+          <div>${dataJan[i].id}</div> <div style="text-align:right">$${dataJan[i].amt}</div>
+        </div>
+      `;
+      
+      rowCount++;
+      totalBubble.textContent = rowCount;
+      totalBubble.classList.add('show');
+
+      await new Promise(r => setTimeout(r, 300));
+      srcRow.style.backgroundColor = "transparent";
+    }
+
+    // 2. Process Table B
+    highlight('line5');
+    App.updateText("Appending Table 2 (Feb Sales)...");
+    await App.speak("Next, I append the rows from the second table to the bottom.");
+
+    for (let i = 0; i < dataFeb.length; i++) {
+      if(shouldStop) return;
+      
+      const srcRow = document.getElementById(`b-${i}`);
+      srcRow.style.backgroundColor = "rgba(34, 197, 94, 0.2)"; // Green
+      
+      // Add to Result
+      resultTable.innerHTML += `
+        <div class="table-row row-b slide-in" style="grid-template-columns:1fr 1fr;">
+          <div>${dataFeb[i].id}</div> <div style="text-align:right">$${dataFeb[i].amt}</div>
+        </div>
+      `;
+      
+      rowCount++;
+      totalBubble.textContent = rowCount;
+
+      await new Promise(r => setTimeout(r, 300));
+      srcRow.style.backgroundColor = "transparent";
+    }
+
+    App.updateText("Done! Tables combined.");
+    await App.speak("Union complete. We now have a single table with all rows.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTables();
+
+</script>
+</body>
+</html>

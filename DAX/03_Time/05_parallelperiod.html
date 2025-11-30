@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: PARALLELPERIOD</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Visual styling for the "Full Period" expansion */
+  .expand-bracket {
+    position: absolute;
+    left: -15px;
+    width: 10px;
+    border: 2px solid var(--accent-m); /* Yellow/Orange */
+    border-right: none;
+    transition: all 0.5s;
+    opacity: 0;
+  }
+  .expand-label {
+    position: absolute;
+    left: -90px;
+    top: 50%; transform: translateY(-50%);
+    background: var(--accent-m);
+    color: #000;
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    opacity: 0; transition: opacity 0.3s;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📅 Partial vs Full Period</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Context:</strong> We are looking at the <strong>First Half</strong> of Feb (Feb 1-14).<br>
+      <strong>Goal:</strong> Compare it to the previous month.
+    </p>
+
+    <div id="dataTable" style="position:relative;"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnDateAdd">📅 DATEADD (Exact)</button>
+        <button class="action primary" id="btnParallel">🌕 PARALLELPERIOD (Full)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Exact Match (Jan 1-14)</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> PrevMonth_Strict = </div>
+      <div class="codeLine" id="line3"><span class="fn">CALCULATE</span>( <span class="fn">SUM</span>(Sales[Amt]), <span class="fn">DATEADD</span>(Dates, <span class="val">-1</span>, <span class="kwd">MONTH</span>) )</div>
+      <br>
+      <div class="codeLine" id="line4"><span class="cmt">-- Scenario 2: Full Period (Jan 1-31)</span></div>
+      <div class="codeLine" id="line5"><span class="kwd">MEASURE</span> PrevMonth_Full = </div>
+      <div class="codeLine" id="line6"><span class="fn">CALCULATE</span>( <span class="fn">SUM</span>(Sales[Amt]), </div>
+      <div class="codeLine" id="line7">    <span class="fn">PARALLELPERIOD</span>( Dates, <span class="val">-1</span>, <span class="kwd">MONTH</span> ) </div>
+      <div class="codeLine" id="line8">) <span class="cmt">-- Ignores that we selected only half of Feb</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Comparison Basis:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<div id="bracket" class="expand-bracket"><span class="expand-label">Full Month</span></div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("PARALLELPERIOD", "../../");
+
+  // Data: Split into halves to show the difference
+  const data = [
+    { period: "Jan 1-14",  amt: 100, month: "Jan" },
+    { period: "Jan 15-31", amt: 150, month: "Jan" },
+    { period: "Feb 1-14",  amt: 120, month: "Feb" } // Current Context
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+  const bracket = document.getElementById('bracket');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1.5fr 1fr 1fr;">
+        <div>Date Range</div> <div>Sales</div> <div>Status</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      // Highlight current context (Feb 1-14) visually
+      const style = i === 2 ? "background:rgba(255,255,255,0.05); border:1px solid var(--accent);" : "";
+      
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1.5fr 1fr 1fr; ${style}">
+          <div>${d.period}</div>
+          <div class="cell-num">$${d.amt}</div>
+          <div class="cell-num" id="status-${i}" style="color:var(--text-dim); font-size:0.8rem;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function showBracket(startRowId, endRowId) {
+    const r1 = document.getElementById(startRowId);
+    const r2 = document.getElementById(endRowId);
+    if(!r1 || !r2) return;
+
+    const top = r1.offsetTop;
+    const height = (r2.offsetTop + r2.offsetHeight) - top;
+    
+    bracket.style.top = top + "px";
+    bracket.style.height = height + "px";
+    bracket.style.opacity = "1";
+    bracket.querySelector('.expand-label').style.opacity = "1";
+  }
+
+  function hideBracket() {
+    bracket.style.opacity = "0";
+    bracket.querySelector('.expand-label').style.opacity = "0";
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    hideBracket();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: DATEADD (Strict - Partial Month) ---
+  document.getElementById('btnDateAdd').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    
+    // 1. Context
+    App.updateText("Current Context: Feb 1-14.");
+    await App.speak("We are analyzing the first half of February.");
+    if(shouldStop) return;
+
+    // 2. Execution
+    highlight('line3');
+    App.updateText("DATEADD shifts back exactly 1 month: Jan 1-14.");
+    await App.speak("DATEADD shifts the dates exactly. So it looks for January 1st to 14th.");
+    
+    if(shouldStop) return;
+
+    // 3. Highlight
+    const row0 = document.getElementById('row-0'); // Jan 1-14
+    const row1 = document.getElementById('row-1'); // Jan 15-31
+    const stat0 = document.getElementById('status-0');
+    const stat1 = document.getElementById('status-1');
+
+    row0.classList.add('row-highlight');
+    stat0.textContent = "✅ Matched";
+    stat0.style.color = "#4ade80";
+    
+    row1.style.opacity = "0.3"; // Dim unmatched
+    stat1.textContent = "❌ Ignored";
+    
+    await App.speak("It matches only the first row. The rest of January is ignored.");
+    
+    // 4. Result
+    totalBubble.textContent = "$100";
+    totalBubble.classList.add('show');
+    App.updateText("Result: $100 (Comparing partial month vs partial month).");
+    await App.speak("The result is 100. This is an apples-to-apples comparison of dates.");
+
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: PARALLELPERIOD (Full Month) ---
+  document.getElementById('btnParallel').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+
+    // 1. Context
+    App.updateText("Current Context: Feb 1-14.");
+    await App.speak("Again, we start with the first half of February.");
+    if(shouldStop) return;
+
+    // 2. Execution
+    highlight('line7');
+    App.updateText("PARALLELPERIOD expands selection to the FULL Previous Month.");
+    await App.speak("But PARALLELPERIOD is different. It looks at the interval, which is Month, and grabs the WHOLE month.");
+    
+    if(shouldStop) return;
+
+    // 3. Highlight
+    const row0 = document.getElementById('row-0');
+    const row1 = document.getElementById('row-1');
+    const stat0 = document.getElementById('status-0');
+    const stat1 = document.getElementById('status-1');
+
+    row0.classList.add('row-highlight');
+    row1.classList.add('row-highlight');
+    
+    stat0.textContent = "✅ Included";
+    stat1.textContent = "✅ Included";
+    stat0.style.color = "#facc15"; // Yellow/Orange for expanded scope
+    stat1.style.color = "#facc15";
+
+    // Visual Bracket
+    showBracket('row-0', 'row-1');
+
+    await App.speak("It ignores the specific days and includes ALL of January.");
+
+    // 4. Result
+    const sum = 100 + 150;
+    totalBubble.textContent = `$${sum}`;
+    totalBubble.classList.add('show');
+    App.updateText(`Result: $${sum} (Comparing partial month vs FULL month).`);
+    await App.speak(`The result is 250. This compares a partial period against a full period total.`);
+
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: RANKX</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Styles for Comparison Animation */
+  .comp-line {
+    position: absolute;
+    height: 2px;
+    background: var(--accent-m); /* Yellow */
+    transform-origin: left center;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .comp-bubble {
+    position: absolute;
+    background: var(--bg-card);
+    border: 1px solid var(--accent);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    z-index: 21;
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🏆 Sales Leaderboard</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Rank products by Sales Amount.<br>
+      <strong>Logic:</strong> For every product, count how many others have <em>higher</em> sales.
+    </p>
+
+    <div id="dataTable" style="position:relative;"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRank">🏆 Calculate Rank</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Rank Products by Sales Amount</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Rank = </div>
+      <div class="codeLine" id="line3">    <span class="fn">RANKX</span>( </div>
+      <div class="codeLine" id="line4">        <span class="fn">ALL</span>( Products ),    <span class="cmt">-- 1. Table to rank against</span></div>
+      <div class="codeLine" id="line5">        [Total Sales],     <span class="cmt">-- 2. Expression to measure</span></div>
+      <div class="codeLine" id="line6">        ,                  <span class="cmt">-- 3. Value (Optional)</span></div>
+      <div class="codeLine" id="line7">        <span class="kwd">DESC</span>,              <span class="cmt">-- 4. Order (High to Low)</span></div>
+      <div class="codeLine" id="line8">        <span class="kwd">Skip</span>               <span class="cmt">-- 5. Ties (Skip or Dense)</span></div>
+      <div class="codeLine" id="line9">    )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Comparison Counter:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<div id="connector" class="comp-line"></div>
+<div id="compLabel" class="comp-bubble">Higher</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("RANKX", "../../");
+
+  // Data: Unordered to show sorting logic
+  const data = [
+    { prod: "A", sales: 500 },  // Rank 2
+    { prod: "B", sales: 200 },  // Rank 3
+    { prod: "C", sales: 1000 }, // Rank 1
+    { prod: "D", sales: 50 }    // Rank 4
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+  const connector = document.getElementById('connector');
+  const label = document.getElementById('compLabel');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Product</div> <div>Sales</div> <div>Better?</div> <div>Rank</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>${d.prod}</div>
+          <div class="cell-num" id="val-${i}">$${d.sales}</div>
+          <div class="cell-num" id="stat-${i}" style="font-size:0.7rem; color:var(--text-dim)">-</div>
+          <div class="cell-num" id="rank-${i}" style="font-weight:bold;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function drawLine(fromRow, toRow) {
+    const rect1 = fromRow.getBoundingClientRect();
+    const rect2 = toRow.getBoundingClientRect();
+    
+    // Draw from right of Val col to right of Val col
+    const x1 = rect1.left + (rect1.width * 0.4); 
+    const y1 = rect1.top + (rect1.height / 2);
+    
+    const x2 = rect2.left + (rect2.width * 0.4);
+    const y2 = rect2.top + (rect2.height / 2);
+
+    const height = Math.abs(y2 - y1);
+    const isDown = y2 > y1;
+
+    // We will use a simple overlay logic: Just highlight row, no complex SVG line for speed
+    // But we can move the label
+    
+    label.style.top = (y2 + window.scrollY - 10) + "px";
+    label.style.left = (x2 + window.scrollX + 50) + "px";
+    label.style.opacity = "1";
+  }
+
+  function hideVisuals() {
+    label.style.opacity = "0";
+    document.querySelectorAll('.table-row').forEach(r => {
+        r.style.borderColor = "var(--border)";
+        r.style.background = "transparent";
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    hideVisuals();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO: RANKX ---
+  document.getElementById('btnRank').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line3');
+    await App.speak("Starting RANKX. For each row, I will scan the ENTIRE table to see how many products have higher sales.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const currentRow = document.getElementById(`row-${i}`);
+      const currentVal = data[i].sales;
+      currentRow.classList.add('row-highlight');
+      
+      // Reset Stats
+      for(let k=0; k<data.length; k++) document.getElementById(`stat-${k}`).textContent = "-";
+
+      App.updateText(`Ranking Product ${data[i].prod} ($${currentVal}). Scanning others...`);
+      await App.speak(`Ranking Product ${data[i].prod}. Value is ${currentVal}.`);
+      
+      // Internal Loop: Compare against ALL (Line 4)
+      let betterCount = 0;
+      highlight('line4');
+      
+      for(let j = 0; j < data.length; j++) {
+        if (i === j) continue; // Skip self
+
+        const compareRow = document.getElementById(`row-${j}`);
+        const compareVal = data[j].sales;
+        const statCell = document.getElementById(`stat-${j}`);
+
+        // Highlight comparison
+        compareRow.style.backgroundColor = "rgba(255,255,255,0.05)";
+        
+        if (compareVal > currentVal) {
+            // Found a better one
+            betterCount++;
+            statCell.textContent = "Higher";
+            statCell.style.color = "#facc15"; // Yellow
+            totalBubble.textContent = betterCount;
+            totalBubble.classList.add('show');
+            
+            label.textContent = "Higher";
+            drawLine(currentRow, compareRow);
+            
+            await new Promise(r => setTimeout(r, 400));
+        } else {
+            statCell.textContent = "Lower";
+            statCell.style.color = "var(--text-dim)";
+        }
+        
+        compareRow.style.backgroundColor = "transparent";
+        hideVisuals();
+      }
+      
+      // Calc Rank
+      // Rank = (Number of items better) + 1
+      const rank = betterCount + 1;
+      
+      document.getElementById(`rank-${i}`).textContent = `#${rank}`;
+      document.getElementById(`rank-${i}`).style.color = "#4ade80"; // Green
+      
+      App.updateText(`Found ${betterCount} products with higher sales. Rank is ${rank}.`);
+      await App.speak(`I found ${betterCount} items higher. So the rank is ${rank}.`);
+      
+      if(shouldStop) return;
+      currentRow.classList.remove('row-highlight');
+      totalBubble.classList.remove('show');
+    }
+
+    App.updateText("Ranking Complete.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

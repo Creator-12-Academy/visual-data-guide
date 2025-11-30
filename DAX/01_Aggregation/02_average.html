@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: AVERAGE vs AVERAGEA</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+      <h2>📊 Student Scores</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Scenario:</strong> Calculate the average score.<br>
+      Notice how they handle the "Absent" student differently.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnAvg">📊 AVERAGE</button>
+        <button class="action primary" id="btnAvga">🅰️ AVERAGEA</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Standard Average</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Avg Score = <span class="fn">AVERAGE</span>( Scores[Points] )</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- Ignores text. Denominator = 2</span></div>
+      <br>
+      <div class="codeLine" id="line4"><span class="cmt">-- Scenario 2: Average All (Includes Text)</span></div>
+      <div class="codeLine" id="line5"><span class="kwd">MEASURE</span> AvgA Score = <span class="fn">AVERAGEA</span>( Scores[Points] )</div>
+      <div class="codeLine" id="line6"><span class="cmt">-- Text counts as 0. Denominator = 3</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Final Result:</span>
+      <div class="total-bubble" id="totalBubble">0</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  
+  App.initLayout("AVERAGE vs AVERAGEA", "../../");
+
+  // Data: One student has text "Absent" instead of a number
+  const data = [
+    { name: "Student A", score: 100 },
+    { name: "Student B", score: "Absent" },
+    { name: "Student C", score: 50 },
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Student</div> <div>Score</div> <div>Action</div> <div>Running Total</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      // Style "Absent" differently
+      const valStyle = typeof d.score === 'string' ? 'color:#ef4444; font-style:italic;' : '';
+      
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>${d.name}</div>
+          <div class="cell-num" style="${valStyle}">${d.score}</div>
+          <div class="cell-num" id="act-${i}" style="font-size:0.8rem; color:var(--text-dim)">-</div>
+          <div class="cell-num" id="mem-${i}">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready to calculate...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: AVERAGE (Ignores Text) ---
+  document.getElementById('btnAvg').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let sum = 0;
+    let count = 0;
+
+    highlight('line2');
+    await App.speak("Starting AVERAGE. I will iterate through the column. Important: I only count numbers.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const actCell = document.getElementById(`act-${i}`);
+      const memCell = document.getElementById(`mem-${i}`);
+      row.classList.add('row-highlight');
+
+      const val = data[i].score;
+
+      if (typeof val === 'number') {
+        // Is a number
+        sum += val;
+        count++;
+        actCell.textContent = "✅ Include";
+        actCell.style.color = "#4ade80";
+        await App.speak(`Row ${i+1} is ${val}. It is a number, so I include it.`);
+      } else {
+        // Is text
+        actCell.textContent = "🚫 Ignore";
+        actCell.style.color = "#ef4444"; // Red
+        await App.speak(`Row ${i+1} is text. AVERAGE ignores this completely.`);
+      }
+      
+      memCell.textContent = `Sum: ${sum} | Count: ${count}`;
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    // Final Calculation
+    const result = sum / count;
+    App.updateText(`Math: ${sum} ÷ ${count} = <b>${result}</b>`);
+    await App.speak(`Calculation done. The sum is ${sum}, and we counted ${count} numeric rows. The result is ${result}.`);
+    
+    totalBubble.textContent = result;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: AVERAGEA (Counts Text as 0) ---
+  document.getElementById('btnAvga').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let sum = 0;
+    let count = 0;
+
+    highlight('line5');
+    await App.speak("Starting AVERAGE-A. The 'A' stands for All. I count text as zero.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const actCell = document.getElementById(`act-${i}`);
+      const memCell = document.getElementById(`mem-${i}`);
+      row.classList.add('row-highlight');
+
+      const val = data[i].score;
+
+      if (typeof val === 'number') {
+        sum += val;
+        actCell.textContent = "✅ Include";
+        actCell.style.color = "#4ade80";
+        await App.speak(`Row ${i+1} is ${val}. Adding it.`);
+      } else {
+        // Text becomes 0
+        actCell.textContent = "⚠️ Add 0";
+        actCell.style.color = "#facc15"; // Yellow
+        await App.speak(`Row ${i+1} is text. AVERAGE-A converts text to zero, but still counts the row.`);
+      }
+      
+      count++; // Always increment count
+      memCell.textContent = `Sum: ${sum} | Count: ${count}`;
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    // Final Calculation
+    const result = sum / count;
+    App.updateText(`Math: ${sum} ÷ ${count} = <b>${result}</b>`);
+    await App.speak(`Calculation done. The sum is ${sum}, but we counted ${count} total rows. The result is ${result}.`);
+    
+    totalBubble.textContent = result;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

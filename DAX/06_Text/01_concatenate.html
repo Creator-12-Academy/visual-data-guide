@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: CONCATENATE & X</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📋 Customer Orders</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Join text together.<br>
+      <strong>CONCATENATE:</strong> Joins two specific strings.<br>
+      <strong>CONCATENATEX:</strong> Iterates a table to list all values.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnConcat">🔗 Join Name</button>
+        <button class="action primary" id="btnConcatX">XH Join Orders</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Join First & Last Name</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">COLUMN</span> FullName = </div>
+      <div class="codeLine" id="line3">    <span class="fn">CONCATENATE</span>( First, <span class="fn">CONCATENATE</span>(" ", Last) )</div>
+      <div class="codeLine" id="line4"><span class="cmt">-- Alternative: First & " " & Last</span></div>
+      <br>
+      <div class="codeLine" id="line5"><span class="cmt">-- Scenario 2: List All Products Bought</span></div>
+      <div class="codeLine" id="line6"><span class="kwd">MEASURE</span> Product_List = </div>
+      <div class="codeLine" id="line7">    <span class="fn">CONCATENATEX</span>( </div>
+      <div class="codeLine" id="line8">        Sales, Sales[Product], ", " </div>
+      <div class="codeLine" id="line9">    )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Result String:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("CONCATENATE & X", "../../");
+
+  const data = [
+    { first: "John", last: "Doe", prod: "Laptop" },
+    { first: "John", last: "Doe", prod: "Mouse" },
+    { first: "Jane", last: "Smith", prod: "Phone" }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>First</div> <div>Last</div> <div>Product</div> <div>Result</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div id="f-${i}">${d.first}</div>
+          <div id="l-${i}">${d.last}</div>
+          <div id="p-${i}">${d.prod}</div>
+          <div class="cell-num" id="res-${i}" style="color:var(--text-dim); font-size:0.8rem;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: CONCATENATE ---
+  document.getElementById('btnConcat').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line3');
+    await App.speak("Starting CONCATENATE. I will join the First Name and Last Name with a space.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      const f = data[i].first;
+      const l = data[i].last;
+      
+      document.getElementById(`f-${i}`).style.color = "var(--accent)";
+      document.getElementById(`l-${i}`).style.color = "var(--accent)";
+
+      App.updateText(`Joining: "${f}" + " " + "${l}"`);
+      await App.speak(`Joining ${f} and ${l}.`);
+      
+      const full = `${f} ${l}`;
+      resCell.textContent = full;
+      resCell.style.color = "#4ade80";
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+      document.getElementById(`f-${i}`).style.color = "inherit";
+      document.getElementById(`l-${i}`).style.color = "inherit";
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: CONCATENATEX ---
+  document.getElementById('btnConcatX').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line7');
+    await App.speak("Starting CONCATENATE-X. I am an iterator. I will go through the table and build a single list string.");
+
+    let list = "";
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      row.classList.add('row-highlight');
+      
+      const prod = data[i].prod;
+      document.getElementById(`p-${i}`).style.color = "#facc15"; // Yellow highlight
+
+      if (i > 0) list += ", ";
+      list += prod;
+
+      App.updateText(`Found: ${prod}. Appending to list.`);
+      await App.speak(`Found ${prod}. Adding it.`);
+      
+      totalBubble.textContent = list;
+      totalBubble.classList.add('show');
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+      document.getElementById(`p-${i}`).style.color = "inherit";
+    }
+
+    highlight('line8');
+    App.updateText(`Final List: ${list}`);
+    await App.speak(`Finished. The final string is a comma separated list of all products.`);
+    
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

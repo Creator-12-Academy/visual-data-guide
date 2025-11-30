@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: DISTINCTCOUNT</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📊 Customer List</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Count how many <em>unique</em> customers bought something.<br>
+      Watch how <strong>DISTINCTCOUNT</strong> remembers duplicates.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnCount">🔢 COUNT (All)</button>
+        <button class="action primary" id="btnDistinct">✨ DISTINCTCOUNT</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Count Every Transaction</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Total_Txns = <span class="fn">COUNT</span>( Sales[Customer] )</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- Counts Alice 3 times if she bought 3 times.</span></div>
+      <br>
+      <div class="codeLine" id="line4"><span class="cmt">-- Scenario 2: Count Unique Customers</span></div>
+      <div class="codeLine" id="line5"><span class="kwd">MEASURE</span> Unique_Cust = <span class="fn">DISTINCTCOUNT</span>( Sales[Customer] )</div>
+      <div class="codeLine" id="line6"><span class="cmt">-- Ignores duplicates. Alice is counted once.</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Final Count:</span>
+      <div class="total-bubble" id="totalBubble">0</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  
+  App.initLayout("DISTINCTCOUNT", "../../");
+
+  // Data: Alice and Bob appear multiple times
+  const data = [
+    { id: 1, cust: "Alice" },
+    { id: 2, cust: "Bob" },
+    { id: 3, cust: "Alice" }, // Duplicate
+    { id: 4, cust: "Charlie" },
+    { id: 5, cust: "Bob" }    // Duplicate
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>ID</div> <div>Customer</div> <div>Status</div> <div>Total</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>${d.id}</div>
+          <div class="cell-num" style="color:#fff;">${d.cust}</div>
+          <div class="cell-num" id="status-${i}" style="font-size:0.8rem; color:var(--text-dim)">-</div>
+          <div class="cell-num" id="mem-${i}">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready to calculate...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: COUNT (Counts Everything) ---
+  document.getElementById('btnCount').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let count = 0;
+
+    highlight('line2');
+    await App.speak("Starting COUNT. I will count every single row where the customer name is not blank.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      const memCell = document.getElementById(`mem-${i}`);
+      row.classList.add('row-highlight');
+
+      const name = data[i].cust;
+      count++;
+      
+      statusCell.textContent = "✅ Counted";
+      statusCell.style.color = "#4ade80";
+      memCell.textContent = count;
+      
+      App.updateText(`Row ${i+1}: Found "${name}". Count +1.`);
+      await App.speak(`Found ${name}. Adding to count.`);
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText(`Final Count: <b>${count}</b>`);
+    await App.speak(`Done. COUNT found ${count} items, including duplicates.`);
+    
+    totalBubble.textContent = count;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: DISTINCTCOUNT (No Duplicates) ---
+  document.getElementById('btnDistinct').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let count = 0;
+    let seenList = new Set(); // Use a Set to track uniqueness
+
+    highlight('line5');
+    await App.speak("Starting DISTINCT-COUNT. I will keep a list of names I have seen. I only count new ones.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      const memCell = document.getElementById(`mem-${i}`);
+      row.classList.add('row-highlight');
+
+      const name = data[i].cust;
+
+      if (seenList.has(name)) {
+        // DUPLICATE
+        statusCell.textContent = "🚫 Duplicate";
+        statusCell.style.color = "#ef4444"; // Red
+        statusCell.style.fontStyle = "italic";
+        
+        App.updateText(`Row ${i+1}: "${name}" is already on my list. Skipping.`);
+        await App.speak(`I have already seen ${name}. Skipping duplicate.`);
+      } else {
+        // NEW UNIQUE
+        seenList.add(name);
+        count++;
+        statusCell.textContent = "✨ Unique";
+        statusCell.style.color = "#facc15"; // Yellow/Gold
+        statusCell.style.fontWeight = "bold";
+        
+        App.updateText(`Row ${i+1}: "${name}" is new! Adding to list.`);
+        await App.speak(`Found ${name}. This is a new customer. Count +1.`);
+      }
+      
+      memCell.textContent = count;
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText(`Final Count: <b>${count}</b>`);
+    await App.speak(`Finished. There are only ${count} unique customers.`);
+    
+    totalBubble.textContent = count;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

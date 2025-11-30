@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: SAMEPERIODLASTYEAR</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Custom Arrow for Time Shift Animation */
+  .time-arrow {
+    position: absolute;
+    width: 2px;
+    background: var(--accent-m); /* Orange/Yellow for distinction */
+    opacity: 0;
+    transition: all 0.5s;
+    pointer-events: none;
+    z-index: 20;
+  }
+  .time-arrow::after {
+    content: '◀ 1 Year';
+    position: absolute;
+    top: 50%; left: 5px;
+    transform: translateY(-50%);
+    background: var(--bg-card);
+    border: 1px solid var(--accent-m);
+    color: var(--accent-m);
+    font-size: 0.7rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    white-space: nowrap;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📅 Yearly Comparison</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Compare 2024 sales against 2023 sales.<br>
+      Watch how the formula "looks back" 1 year to fetch the old value.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnSales">∑ Current Sales</button>
+        <button class="action primary" id="btnPY">⏮ Last Year (PY)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario: Compare This Year vs Last Year</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Sales PY = </div>
+      <div class="codeLine" id="line3"><span class="fn">CALCULATE</span> (</div>
+      <div class="codeLine" id="line4">    <span class="fn">SUM</span>( Sales[Amount] ),</div>
+      <div class="codeLine" id="line5">    <span class="fn">SAMEPERIODLASTYEAR</span>( 'Date'[Date] )</div>
+      <div class="codeLine" id="line6">)</div>
+      <div class="codeLine" id="line7"><span class="cmt">-- Shifts the current date context back by 1 year.</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Comparison:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<div id="connector" class="time-arrow"></div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  
+  App.initLayout("SAMEPERIODLASTYEAR", "../../");
+
+  // Data: 2023 (History) and 2024 (Current)
+  const data = [
+    { period: "Q1 2023", year: 2023, q: 1, amt: 100 },
+    { period: "Q2 2023", year: 2023, q: 2, amt: 150 },
+    { period: "Q1 2024", year: 2024, q: 1, amt: 120 },
+    { period: "Q2 2024", year: 2024, q: 2, amt: 200 },
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+  const connector = document.getElementById('connector');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1.2fr 1fr 1fr;">
+        <div>Period</div> <div>Sales</div> <div>Sales PY</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      // Style 2023 darker to look like history
+      const opacity = d.year === 2023 ? "0.6" : "1";
+      
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1.2fr 1fr 1fr; opacity:${opacity}">
+          <div style="font-weight:bold;">${d.period}</div>
+          <div class="cell-num" id="sales-${i}">-</div>
+          <div class="cell-num" id="py-${i}" style="color:var(--accent-m); font-weight:bold;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function drawArrow(fromEl, toEl) {
+    const rectFrom = fromEl.getBoundingClientRect();
+    const rectTo = toEl.getBoundingClientRect();
+    
+    // Draw line from right of "To" (older) to left of "From" (newer)
+    // Actually, visually better to link the PERIOD names
+    
+    const top = rectTo.top + (rectTo.height / 2);
+    const height = Math.abs(rectFrom.top - rectTo.top);
+    const left = rectFrom.left + 20; // Indent slightly
+
+    // Simple vertical connector style for this list
+    connector.style.top = (Math.min(rectFrom.top, rectTo.top) + window.scrollY + 15) + "px";
+    connector.style.left = (rectFrom.left - 20) + "px"; // Shift left of table
+    connector.style.height = height + "px";
+    connector.style.opacity = "1";
+  }
+
+  function hideArrow() { connector.style.opacity = "0"; }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    hideArrow();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: CURRENT SALES ---
+  document.getElementById('btnSales').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line4');
+    await App.speak("First, let's just see the current sales for each period.");
+    
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const valCell = document.getElementById(`sales-${i}`);
+      
+      row.classList.add('row-highlight');
+      valCell.textContent = `$${data[i].amt}`;
+      
+      App.updateText(`Showing Sales for ${data[i].period}`);
+      await new Promise(r => setTimeout(r, 300)); // Fast reveal
+      
+      row.classList.remove('row-highlight');
+    }
+    
+    App.updateText("Sales Loaded.");
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: SAMEPERIODLASTYEAR ---
+  document.getElementById('btnPY').addEventListener('click', async () => {
+    if(isRunning) return;
+    // Don't full reset, just clear PY column if needed, but for simplicity we assume Sales loaded
+    // If user clicked this first, we load sales first quickly
+    if(document.getElementById('sales-0').textContent === '-') {
+        // Quick load sales
+        data.forEach((d,i) => document.getElementById(`sales-${i}`).textContent = `$${d.amt}`);
+    }
+    
+    isRunning = true;
+    highlight('line5');
+    await App.speak("Starting Time Intelligence. For every row, I will look back exactly one year.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      const row = document.getElementById(`row-${i}`);
+      const pyCell = document.getElementById(`py-${i}`);
+      
+      // We only care about 2024 for this demo (since 2022 data isn't here)
+      if (data[i].year === 2023) {
+          pyCell.textContent = "(No Data)";
+          pyCell.style.fontSize = "0.7rem";
+          pyCell.style.color = "var(--text-dim)";
+          continue; 
+      }
+
+      if(shouldStop) return;
+      row.classList.add('row-highlight');
+      highlight('line5');
+
+      const currentPeriod = data[i].period;
+      const targetYear = data[i].year - 1;
+      const targetQ = data[i].q;
+      
+      App.updateText(`Current: ${currentPeriod}. Looking for Q${targetQ} ${targetYear}...`);
+      await App.speak(`I am at ${currentPeriod}. Shifting back to ${targetYear}.`);
+
+      // Find the row from last year
+      const matchIndex = data.findIndex(d => d.year === targetYear && d.q === targetQ);
+      
+      if (matchIndex !== -1) {
+          // Found it!
+          const matchRow = document.getElementById(`row-${matchIndex}`);
+          matchRow.classList.add('row-highlight'); // Highlight source
+          
+          // Draw connector (visual shift)
+          // drawArrow(row, matchRow); 
+          
+          await App.speak(`Found it. Sales were ${data[matchIndex].amt}. Copying value.`);
+          
+          highlight('line3'); // Calculate
+          pyCell.textContent = `$${data[matchIndex].amt}`;
+          
+          // Show growth bubble
+          const growth = data[i].amt - data[matchIndex].amt;
+          const symbol = growth >= 0 ? "▲" : "▼";
+          totalBubble.textContent = `${symbol} $${Math.abs(growth)}`;
+          totalBubble.style.color = growth >= 0 ? "#4ade80" : "#ef4444";
+          totalBubble.classList.add('show');
+
+          await new Promise(r => setTimeout(r, 1000));
+          matchRow.classList.remove('row-highlight');
+          hideArrow();
+      }
+
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText("Calculation Complete.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

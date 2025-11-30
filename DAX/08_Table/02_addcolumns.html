@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: ADDCOLUMNS</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Animation for the new column appearing */
+  .new-col-header {
+    background: rgba(34, 197, 94, 0.1);
+    border: 2px dashed var(--accent-excel); /* Green for "Added" */
+    color: var(--accent-excel);
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .new-col-cell {
+    background: rgba(34, 197, 94, 0.05);
+    border-left: 2px dashed var(--accent-excel);
+    color: var(--accent-excel);
+    font-weight: bold;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+  .show-col { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📊 Virtual Table Expansion</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Add a "Sales" column to the Product table on the fly.<br>
+      <strong>ADDCOLUMNS:</strong> Returns a table with original columns + new calculated ones.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnAdd">➕ Add "Total Sales"</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Create a temporary table with extra info</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">EVALUATE</span> Enhanced_Table = </div>
+      <div class="codeLine" id="line3">    <span class="fn">ADDCOLUMNS</span>( </div>
+      <div class="codeLine" id="line4">        Products,                 <span class="cmt">-- 1. Source Table</span></div>
+      <div class="codeLine" id="line5">        <span class="str">"Total Sales"</span>,            <span class="cmt">-- 2. New Column Name</span></div>
+      <div class="codeLine" id="line6">        <span class="fn">SUMX</span>( RELATEDTABLE(Sales), Sales[Amt] ) <span class="cmt">-- 3. Expression</span></div>
+      <div class="codeLine" id="line7">    )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Columns:</span>
+      <div class="total-bubble" id="totalBubble">Original</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("ADDCOLUMNS", "../../");
+
+  // Data: Products with related sales info
+  const data = [
+    { prod: "Laptop", price: 1000, sales: 5000 },
+    { prod: "Mouse",  price: 20,   sales: 400 },
+    { prod: "Cable",  price: 10,   sales: 100 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    // Grid with space for the new column (hidden initially)
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1.5fr 1fr 1.5fr;">
+        <div>Product</div> <div>Price</div> <div id="head-new" class="new-col-header">Total Sales</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1.5fr 1fr 1.5fr;">
+          <div>${d.prod}</div>
+          <div class="cell-num">$${d.price}</div>
+          <div class="cell-num new-col-cell" id="new-${i}">$${d.sales}</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO: ADDCOLUMNS ---
+  document.getElementById('btnAdd').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line3');
+    await App.speak("Starting ADDCOLUMNS. I take the 'Products' table and stick a new calculation onto it.");
+    if(shouldStop) return;
+
+    // Show Header
+    highlight('line5');
+    document.getElementById('head-new').classList.add('show-col');
+    App.updateText("Creating new column structure: 'Total Sales'");
+    await App.speak("First, I define the new column name: Total Sales.");
+
+    // Iterate
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const newCell = document.getElementById(`new-${i}`);
+      row.classList.add('row-highlight');
+      
+      highlight('line6'); // Calculation
+      App.updateText(`Row ${i+1}: Calculating SUM of Sales for ${data[i].prod}...`);
+      
+      // Calculate "Math" delay
+      await new Promise(r => setTimeout(r, 500)); 
+      
+      newCell.classList.add('show-col');
+      App.updateText(`Result: $${data[i].sales}`);
+      await App.speak(`Calculated ${data[i].sales}.`);
+
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    totalBubble.textContent = "3 Cols";
+    totalBubble.classList.add('show');
+    App.updateText("Done. The virtual table now has 3 columns.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

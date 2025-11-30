@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: TOTALYTD & TOTALQTD</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📅 Sales Timeline</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate running totals that reset automatically.<br>
+      Watch how <strong>YTD</strong> resets in January, and <strong>QTD</strong> resets in April.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnYTD">📅 TOTALYTD</button>
+        <button class="action primary" id="btnQTD">¼ TOTALQTD</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Year-to-Date Running Total</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Sales YTD = </div>
+      <div class="codeLine" id="line3">    <span class="fn">TOTALYTD</span>( <span class="fn">SUM</span>(Sales[Amt]), 'Date'[Date] )</div>
+      <div class="codeLine" id="line4"><span class="cmt">-- Accumulates until Dec 31, then resets.</span></div>
+      <br>
+      <div class="codeLine" id="line5"><span class="cmt">-- Scenario 2: Quarter-to-Date Running Total</span></div>
+      <div class="codeLine" id="line6"><span class="kwd">MEASURE</span> Sales QTD = </div>
+      <div class="codeLine" id="line7">    <span class="fn">TOTALQTD</span>( <span class="fn">SUM</span>(Sales[Amt]), 'Date'[Date] )</div>
+      <div class="codeLine" id="line8"><span class="cmt">-- Resets at start of Q1, Q2, Q3, Q4.</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Current Running Total:</span>
+      <div class="total-bubble" id="totalBubble">0</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  
+  App.initLayout("Time Intelligence", "../../");
+
+  // Data: Covers Feb, Mar, Apr (Q2 Start), and next Jan (New Year)
+  const data = [
+    { date: "2023-02-15", month: "Feb (Q1)", amt: 100 },
+    { date: "2023-03-20", month: "Mar (Q1)", amt: 50 },
+    { date: "2023-04-10", month: "Apr (Q2)", amt: 200 }, // QTD should reset here
+    { date: "2024-01-05", month: "Jan (Q1)", amt: 300 }  // YTD should reset here
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1.2fr 1fr 0.8fr 1fr;">
+        <div>Date</div> <div>Month</div> <div>Sales</div> <div>Running</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      // Highlight the Quarter/Year change visually
+      let style = "";
+      if (i === 2) style = "border-top: 1px dashed var(--accent-m);"; // Q2 start
+      if (i === 3) style = "border-top: 2px solid var(--accent);";   // New Year
+
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1.2fr 1fr 0.8fr 1fr; ${style}">
+          <div style="font-size:0.85rem; color:var(--text-dim);">${d.date}</div>
+          <div style="font-weight:bold;">${d.month}</div>
+          <div class="cell-num">$${d.amt}</div>
+          <div class="cell-num" id="mem-${i}" style="color:var(--text-dim)">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: TOTALYTD ---
+  document.getElementById('btnYTD').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let runningTotal = 0;
+    let currentYear = "2023";
+
+    highlight('line3');
+    await App.speak("Starting TOTAL-YTD. I accumulate sales, but I must reset to zero when the Year changes.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const memCell = document.getElementById(`mem-${i}`);
+      row.classList.add('row-highlight');
+
+      const rowYear = data[i].date.substring(0, 4);
+      const val = data[i].amt;
+
+      if (rowYear !== currentYear) {
+        // RESET
+        runningTotal = 0;
+        currentYear = rowYear;
+        App.updateText(`New Year (${rowYear}) detected! Resetting Total to 0.`);
+        await App.speak(`Happy New Year! Resetting total to zero.`);
+      }
+
+      runningTotal += val;
+      memCell.textContent = `$${runningTotal}`;
+      memCell.style.color = "#4ade80"; // Green
+      memCell.style.fontWeight = "bold";
+      totalBubble.textContent = `$${runningTotal}`;
+
+      App.updateText(`Adding $${val}. YTD Total: <b>$${runningTotal}</b>`);
+      await App.speak(`Plus ${val}. Total is ${runningTotal}.`);
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText("Calculation Complete.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: TOTALQTD ---
+  document.getElementById('btnQTD').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let runningTotal = 0;
+    
+    // Helper to get quarter
+    const getQ = (monthStr) => {
+        if(monthStr.includes("Q1")) return 1;
+        if(monthStr.includes("Q2")) return 2;
+        return 1; // Fallback
+    };
+    let currentQ = 1;
+    let currentYear = "2023";
+
+    highlight('line7');
+    await App.speak("Starting TOTAL-QTD. I reset the total whenever the Quarter changes (April, July, October, January).");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const memCell = document.getElementById(`mem-${i}`);
+      row.classList.add('row-highlight');
+
+      const rowYear = data[i].date.substring(0, 4);
+      const rowQ = getQ(data[i].month);
+      const val = data[i].amt;
+
+      // Check for reset (Year OR Quarter change)
+      if (rowYear !== currentYear || rowQ !== currentQ) {
+        runningTotal = 0;
+        currentYear = rowYear;
+        currentQ = rowQ;
+        
+        let reason = rowYear !== "2023" ? "New Year" : "New Quarter";
+        App.updateText(`${reason} detected! Resetting Total.`);
+        await App.speak(`${reason}. Resetting.`);
+      }
+
+      runningTotal += val;
+      memCell.textContent = `$${runningTotal}`;
+      memCell.style.color = "#a855f7"; // Purple for QTD
+      memCell.style.fontWeight = "bold";
+      totalBubble.textContent = `$${runningTotal}`;
+
+      App.updateText(`Adding $${val}. QTD Total: <b>$${runningTotal}</b>`);
+      await App.speak(`Plus ${val}. Total is ${runningTotal}.`);
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText("Calculation Complete.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

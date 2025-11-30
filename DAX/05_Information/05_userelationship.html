@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: USERELATIONSHIP</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Styles for Relationship Lines */
+  .diagram-container {
+    position: relative;
+    margin-bottom: 2rem;
+    height: 120px;
+    background: rgba(255,255,255,0.02);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+  }
+  
+  .table-node {
+    position: absolute;
+    width: 100px;
+    background: #334155;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+    color: #fff;
+    z-index: 2;
+  }
+  
+  .rel-line {
+    position: absolute;
+    height: 2px;
+    transform-origin: left center;
+    transition: all 0.5s;
+    z-index: 1;
+  }
+  
+  /* Active Relationship Style */
+  .rel-active {
+    background: var(--accent); /* Blue */
+    opacity: 1;
+  }
+  
+  /* Inactive Relationship Style */
+  .rel-inactive {
+    border-top: 2px dashed var(--accent-m); /* Yellow Dashed */
+    background: transparent;
+    opacity: 0.5;
+  }
+  
+  /* Highlight State */
+  .rel-highlight {
+    height: 4px;
+    box-shadow: 0 0 10px currentColor;
+    opacity: 1 !important;
+    z-index: 10;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📅 Multiple Dates</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <div class="diagram-container">
+      <div class="table-node" style="top:40px; left:20px;">Sales Fact</div>
+      <div class="table-node" style="top:40px; right:20px;">Date Table</div>
+      
+      <div id="rel-active" class="rel-line rel-active" style="top:40px; left:125px; width:180px;"></div>
+      <div style="position:absolute; top:25px; left:180px; font-size:0.65rem; color:var(--accent);">Order Date (Active)</div>
+
+      <div id="rel-inactive" class="rel-line rel-inactive" style="top:70px; left:125px; width:180px;"></div>
+      <div style="position:absolute; top:75px; left:180px; font-size:0.65rem; color:var(--accent-m);">Ship Date (Inactive)</div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate Sales by Ship Date.<br>
+      We must override the default relationship to use the dotted line.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnOrder">📦 By Order Date</button>
+        <button class="action primary" id="btnShip">🚚 By Ship Date</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Default (Uses Active Path)</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Sales = <span class="fn">SUM</span>( Sales[Amount] )</div>
+      <br>
+      <div class="codeLine" id="line3"><span class="cmt">-- Scenario 2: Activate the Inactive Path</span></div>
+      <div class="codeLine" id="line4"><span class="kwd">MEASURE</span> Sales_Shipped = </div>
+      <div class="codeLine" id="line5"><span class="fn">CALCULATE</span>(</div>
+      <div class="codeLine" id="line6">    <span class="fn">SUM</span>( Sales[Amount] ),</div>
+      <div class="codeLine" id="line7">    <span class="fn">USERELATIONSHIP</span>( </div>
+      <div class="codeLine" id="line8">        Sales[ShipDate], 'Date'[Date] </div>
+      <div class="codeLine" id="line9">    )</div>
+      <div class="codeLine" id="line10">)</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Total for "Jan 2023":</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("USERELATIONSHIP", "../../");
+
+  // Data
+  // We are filtering for JANUARY 2023 in the report context
+  const data = [
+    { id: 1, ord: "Jan 01", ship: "Jan 05", amt: 100 }, // Ordered Jan, Shipped Jan
+    { id: 2, ord: "Jan 28", ship: "Feb 02", amt: 200 }, // Ordered Jan, Shipped Feb
+    { id: 3, ord: "Dec 25", ship: "Jan 03", amt: 50 }   // Ordered Dec, Shipped Jan
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+  
+  // Relationship Lines
+  const relActive = document.getElementById('rel-active');
+  const relInactive = document.getElementById('rel-inactive');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 0.5fr 1fr 1fr 1fr 1fr;">
+        <div>ID</div> <div>Order</div> <div>Ship</div> <div>Amt</div> <div>In Jan?</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 0.5fr 1fr 1fr 1fr 1fr;">
+          <div>${d.id}</div>
+          <div id="ord-${i}">${d.ord}</div>
+          <div id="ship-${i}">${d.ship}</div>
+          <div>$${d.amt}</div>
+          <div class="cell-num" id="status-${i}" style="font-size:0.8rem; color:var(--text-dim)">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    // Reset Lines
+    relActive.classList.remove('rel-highlight');
+    relInactive.classList.remove('rel-highlight');
+    relActive.style.opacity = "1";
+    relInactive.style.opacity = "0.5";
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: ORDER DATE (Active) ---
+  document.getElementById('btnOrder').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let sum = 0;
+
+    highlight('line2');
+    App.updateText("Context: January. Using Active Relationship (Order Date).");
+    await App.speak("Standard calculation. This uses the solid blue line, Order Date.");
+    
+    // Animate Line
+    relActive.classList.add('rel-highlight');
+    relInactive.style.opacity = "0.2"; // Dim the other
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      row.classList.add('row-highlight');
+
+      const isJan = data[i].ord.includes("Jan");
+      
+      // Highlight Date Column
+      document.getElementById(`ord-${i}`).style.color = "var(--accent)";
+      document.getElementById(`ord-${i}`).style.fontWeight = "bold";
+
+      if (isJan) {
+        sum += data[i].amt;
+        statusCell.textContent = "✅ Yes";
+        statusCell.style.color = "#4ade80";
+        App.updateText(`Row ${i+1}: Order Date is Jan. Included.`);
+        await App.speak(`Ordered in January. Included.`);
+      } else {
+        statusCell.textContent = "❌ No";
+        statusCell.style.color = "#ef4444";
+        App.updateText(`Row ${i+1}: Order Date is Dec. Excluded.`);
+        await App.speak(`Ordered in December. Excluded.`);
+        row.style.opacity = "0.4";
+      }
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText(`Total Ordered in Jan: <b>$${sum}</b>`);
+    await App.speak(`Total orders placed in January is ${sum}.`);
+    
+    totalBubble.textContent = `$${sum}`;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: SHIP DATE (Inactive -> Active) ---
+  document.getElementById('btnShip').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let sum = 0;
+
+    highlight('line7');
+    App.updateText("Activating USERELATIONSHIP(ShipDate).");
+    await App.speak("Now I activate the dotted yellow line. The blue line becomes inactive.");
+    
+    // Swap Lines Animation
+    relActive.style.opacity = "0.2"; 
+    relInactive.classList.add('rel-highlight');
+    relInactive.style.borderTopStyle = "solid"; // Make it look solid momentarily
+    if(shouldStop) return;
+
+    await new Promise(r => setTimeout(r, 800));
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      row.classList.add('row-highlight');
+
+      const isJan = data[i].ship.includes("Jan");
+      
+      // Highlight Ship Column
+      document.getElementById(`ship-${i}`).style.color = "var(--accent-m)";
+      document.getElementById(`ship-${i}`).style.fontWeight = "bold";
+
+      if (isJan) {
+        sum += data[i].amt;
+        statusCell.textContent = "✅ Yes";
+        statusCell.style.color = "#4ade80"; // Green
+        App.updateText(`Row ${i+1}: Ship Date is Jan. Included.`);
+        await App.speak(`Shipped in January. Included.`);
+      } else {
+        statusCell.textContent = "❌ No";
+        statusCell.style.color = "#ef4444";
+        App.updateText(`Row ${i+1}: Ship Date is Feb. Excluded.`);
+        await App.speak(`Shipped in February. Excluded.`);
+        row.style.opacity = "0.4";
+      }
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText(`Total Shipped in Jan: <b>$${sum}</b>`);
+    await App.speak(`Total shipped in January is ${sum}. Notice it is different from Orders.`);
+    
+    totalBubble.textContent = `$${sum}`;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

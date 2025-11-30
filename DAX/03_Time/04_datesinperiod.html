@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: DATESINPERIOD</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Visual Window Bracket */
+  .window-bracket {
+    position: absolute;
+    right: 10px;
+    width: 10px;
+    border: 2px solid var(--accent);
+    border-left: none;
+    transition: all 0.3s;
+    opacity: 0;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📅 Monthly Trends</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate a <strong>Rolling 3-Month Total</strong>.<br>
+      Watch the "Window" slide down, capturing the current month + previous 2 months.
+    </p>
+
+    <div id="dataTable" style="position:relative;"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnRoll">🔄 Rolling 3-Month Sum</button>
+        <button class="action primary" id="btnAvg">📉 Moving Average</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario: Rolling 3-Month Total</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Rolling_3M = </div>
+      <div class="codeLine" id="line3"><span class="fn">CALCULATE</span> (</div>
+      <div class="codeLine" id="line4">    <span class="fn">SUM</span>( Sales[Amount] ),</div>
+      <div class="codeLine" id="line5">    <span class="fn">DATESINPERIOD</span> ( </div>
+      <div class="codeLine" id="line6">        'Date'[Date],</div>
+      <div class="codeLine" id="line7">        <span class="fn">MAX</span>('Date'[Date]), <span class="cmt">-- End Date (Current Row)</span></div>
+      <div class="codeLine" id="line8">        <span class="val">-3</span>, <span class="kwd">MONTH</span>          <span class="cmt">-- Go back 3 months</span></div>
+      <div class="codeLine" id="line9">    )</div>
+      <div class="codeLine" id="line10">)</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Window Result:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<div id="bracket" class="window-bracket"></div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("DATESINPERIOD", "../../");
+
+  const data = [
+    { month: "Jan", amt: 10 },
+    { month: "Feb", amt: 20 },
+    { month: "Mar", amt: 30 },
+    { month: "Apr", amt: 40 },
+    { month: "May", amt: 50 },
+    { month: "Jun", amt: 60 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+  const bracket = document.getElementById('bracket');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1.5fr;">
+        <div>Month</div> <div>Sales</div> <div>Result</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1.5fr;">
+          <div>${d.month}</div>
+          <div class="cell-num">$${d.amt}</div>
+          <div class="cell-num" id="res-${i}" style="color:var(--text-dim);">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function drawBracket(startIndex, endIndex) {
+    if (startIndex < 0) startIndex = 0;
+    const startRow = document.getElementById(`row-${startIndex}`);
+    const endRow = document.getElementById(`row-${endIndex}`);
+    
+    if(!startRow || !endRow) return;
+
+    const rectTop = startRow.offsetTop;
+    const rectBottom = endRow.offsetTop + endRow.offsetHeight;
+    const height = rectBottom - rectTop;
+
+    bracket.style.top = (rectTop + 55 + window.scrollY) + "px"; // Adjust for header
+    bracket.style.height = height + "px";
+    bracket.style.opacity = "1";
+    
+    // Highlight range
+    for(let i=startIndex; i<=endIndex; i++) {
+        document.getElementById(`row-${i}`).classList.add('row-highlight');
+    }
+  }
+
+  function clearHighlights() {
+    bracket.style.opacity = "0";
+    document.querySelectorAll('.table-row').forEach(r => r.classList.remove('row-highlight'));
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    clearHighlights();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: ROLLING 3-MONTH SUM ---
+  document.getElementById('btnRoll').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line5');
+    await App.speak("Starting DATESINPERIOD. I will define a window starting from the current date, going back 3 months.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      // Determine Window (Current - 2 months)
+      const start = Math.max(0, i - 2);
+      
+      highlight('line7');
+      App.updateText(`Current: ${data[i].month}. Window: ${data[start].month} to ${data[i].month}.`);
+      
+      drawBracket(start, i);
+      await App.speak(`Window is ${data[start].month} to ${data[i].month}.`);
+      if(shouldStop) return;
+
+      // Sum
+      let sum = 0;
+      for(let j=start; j<=i; j++) sum += data[j].amt;
+      
+      highlight('line4');
+      document.getElementById(`res-${i}`).textContent = `$${sum}`;
+      document.getElementById(`res-${i}`).style.color = "#4ade80";
+      
+      App.updateText(`Summing visible rows: $${sum}`);
+      await App.speak(`Sum is ${sum}.`);
+      
+      if(shouldStop) return;
+      await new Promise(r => setTimeout(r, 500));
+      clearHighlights();
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: MOVING AVERAGE (Divide by 3) ---
+  document.getElementById('btnAvg').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line2');
+    await App.speak("Moving Average. I calculate the rolling sum, then divide by the number of months in the window.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const start = Math.max(0, i - 2);
+      const count = (i - start) + 1; // 1, 2, or 3 months
+      
+      drawBracket(start, i);
+      
+      let sum = 0;
+      for(let j=start; j<=i; j++) sum += data[j].amt;
+      
+      const avg = (sum / count).toFixed(1);
+      
+      document.getElementById(`res-${i}`).textContent = `$${avg}`;
+      document.getElementById(`res-${i}`).style.color = "#facc15"; // Yellow
+      
+      App.updateText(`Sum: $${sum} ÷ ${count} Months = $${avg}`);
+      await App.speak(`Average is ${avg}.`);
+      
+      if(shouldStop) return;
+      clearHighlights();
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: FILTER Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📊 Products Table</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate sales for "High Value" products (Price > $50).<br>
+      <strong>FILTER</strong> iterates row-by-row to build a new virtual table.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnBoolean">❌ Simple Filter</button>
+        <button class="action primary" id="btnFilter">🔎 Run FILTER()</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario: Calculate Sales for Expensive Items</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> High Val Sales = </div>
+      <div class="codeLine" id="line3"><span class="fn">CALCULATE</span> (</div>
+      <div class="codeLine" id="line4">    <span class="fn">SUM</span> ( Sales[Amount] ),</div>
+      <div class="codeLine" id="line5">    <span class="fn">FILTER</span> ( </div>
+      <div class="codeLine" id="line6">        Sales,               <span class="cmt">// 1. Input Table</span></div>
+      <div class="codeLine" id="line7">        Sales[Price] > 50    <span class="cmt">// 2. Condition (Row by Row)</span></div>
+      <div class="codeLine" id="line8">    )</div>
+      <div class="codeLine" id="line9">)</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Final Result:</span>
+      <div class="total-bubble" id="totalBubble">0</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  
+  App.initLayout("FILTER Function", "../../");
+
+  // Data
+  const data = [
+    { prod: "Keyboard", price: 25, amt: 100 },
+    { prod: "Monitor", price: 200, amt: 600 },
+    { prod: "Mouse", price: 15, amt: 50 },
+    { prod: "Laptop", price: 1000, amt: 2000 },
+    { prod: "Cable", price: 10, amt: 20 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Product</div> <div>Price</div> <div>Amount</div> <div>Decision</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>${d.prod}</div>
+          <div class="cell-num">$${d.price}</div>
+          <div class="cell-num">$${d.amt}</div>
+          <div class="cell-num" id="status-${i}" style="font-size:0.8rem; color:var(--text-dim)">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready to calculate...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+      const rows = document.querySelectorAll('.table-row');
+      rows.forEach(r => r.style.opacity = "1");
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: Simple Boolean (Explanation Only) ---
+  document.getElementById('btnBoolean').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 150));
+    
+    highlight('line7');
+    await App.speak("A simple filter like 'Price > 50' works for simple columns. But FILTER function is needed when you need complex logic or measures.", 'calcBox');
+    App.updateText("Simple Boolean filters are actually converted to FILTER() behind the scenes by DAX!");
+  });
+
+  // --- SCENARIO 2: FILTER Iterator ---
+  document.getElementById('btnFilter').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let sum = 0;
+
+    // 1. Start Iteration
+    highlight('line5');
+    await App.speak("Starting FILTER. I will create a new virtual table containing only rows where Price is greater than 50.");
+    if(shouldStop) return;
+
+    // 2. Loop Rows
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      highlight('line6'); // Input Table
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      row.classList.add('row-highlight');
+      
+      const price = data[i].price;
+      
+      await App.speak(`Checking ${data[i].prod}. Price is ${price}.`);
+      if(shouldStop) return;
+
+      highlight('line7'); // Condition
+      
+      if (price > 50) {
+        // KEEP
+        statusCell.textContent = "✅ Keep";
+        statusCell.style.color = "#4ade80";
+        statusCell.style.fontWeight = "bold";
+        App.updateText(`Price ${price} > 50. Condition TRUE. Keeping row.`);
+        await App.speak("True. Keeping this row.");
+        sum += data[i].amt; // Add to potential sum
+      } else {
+        // REMOVE
+        statusCell.textContent = "❌ Remove";
+        statusCell.style.color = "#ef4444";
+        row.style.opacity = "0.3"; // Visual removal
+        App.updateText(`Price ${price} is not > 50. Condition FALSE. Removing row.`);
+        await App.speak("False. Removing this row.");
+      }
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    // 3. Final Calc
+    highlight('line4');
+    App.updateText(`Filter done. Now SUM evaluates the remaining rows: <b>$${sum}</b>`);
+    await App.speak(`Iteration complete. Now CALCULATE sums up the amounts from the remaining rows. The total is ${sum}.`);
+    
+    totalBubble.textContent = `$${sum}`;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

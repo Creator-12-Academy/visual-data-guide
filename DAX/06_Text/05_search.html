@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: SEARCH Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Character Block Styling */
+  .char-block {
+    display: inline-block;
+    width: 20px;
+    height: 24px;
+    line-height: 22px;
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    margin: 0 1px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    transition: all 0.1s;
+    background: rgba(255,255,255,0.05);
+  }
+  
+  /* Animation States */
+  .char-scanning {
+    border-color: var(--accent);
+    box-shadow: 0 0 5px var(--accent);
+    transform: scale(1.1);
+  }
+  
+  .char-found {
+    background: #4ade80;
+    color: #000;
+    border-color: #4ade80;
+    font-weight: bold;
+    transform: scale(1.2);
+  }
+
+  .char-error {
+    background: #ef4444;
+    color: #fff;
+    border-color: #ef4444;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📧 Email Scanner</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find the position of the "<strong>@</strong>" symbol.<br>
+      <strong>SEARCH:</strong> Returns the number where the text starts. Case-insensitive.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnSearch">🔎 Find "@"</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Find position of "@" to extract username later</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">COLUMN</span> At_Position = </div>
+      <div class="codeLine" id="line3">    <span class="fn">SEARCH</span>( </div>
+      <div class="codeLine" id="line4">        <span class="str">"@"</span>,              <span class="cmt">-- 1. Find Text</span></div>
+      <div class="codeLine" id="line5">        Customer[Email],  <span class="cmt">-- 2. Within Text</span></div>
+      <div class="codeLine" id="line6">        <span class="val">1</span>,                <span class="cmt">-- 3. Start Position</span></div>
+      <div class="codeLine" id="line7">        <span class="val">0</span>                 <span class="cmt">-- 4. Result if not found (Optional)</span></div>
+      <div class="codeLine" id="line8">    )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Found at Position:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("SEARCH Function", "../../");
+
+  const data = [
+    { text: "user@mail.com" },   // Standard
+    { text: "admin.site.org" },  // Missing @ (Error case)
+    { text: "Help@Desk.net" }    // Capital H (Case Insensitive check)
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  // Render text as individual span blocks
+  function renderChars(text, rowId) {
+    let html = "";
+    for(let i=0; i<text.length; i++) {
+        html += `<span class="char-block" id="char-${rowId}-${i}">${text[i]}</span>`;
+    }
+    return html;
+  }
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Email String</div> <div>Position</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 2fr 1fr;">
+          <div style="white-space:nowrap;">${renderChars(d.text, i)}</div>
+          <div class="cell-num" id="res-${i}" style="color:var(--text-dim); font-size:1rem; font-weight:bold;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO: SEARCH ---
+  document.getElementById('btnSearch').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line3');
+    await App.speak("Starting SEARCH. I am scanning for the 'At' symbol.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const resCell = document.getElementById(`res-${i}`);
+      const text = data[i].text;
+      let found = false;
+
+      App.updateText(`Row ${i+1}: Scanning "${text}"...`);
+      
+      // Character Scan Loop
+      for(let j=0; j<text.length; j++) {
+          const charEl = document.getElementById(`char-${i}-${j}`);
+          const char = text[j];
+          
+          charEl.classList.add('char-scanning');
+          
+          // Check for Match
+          if (char === "@") {
+              found = true;
+              charEl.classList.remove('char-scanning');
+              charEl.classList.add('char-found');
+              
+              const position = j + 1; // DAX is 1-based index
+              resCell.textContent = position;
+              resCell.style.color = "#4ade80";
+              
+              totalBubble.textContent = position;
+              totalBubble.style.background = "#4ade80";
+              totalBubble.classList.add('show');
+              
+              App.updateText(`Found "@" at position ${position}.`);
+              await App.speak(`Found it at position ${position}.`);
+              
+              break; // Stop scanning this row
+          }
+
+          // Speed depending on voice setting
+          await new Promise(r => setTimeout(r, App.voiceEnabled ? 100 : 50));
+          
+          if(shouldStop) return;
+          charEl.classList.remove('char-scanning');
+      }
+
+      if (!found) {
+          // Not Found Logic
+          highlight('line7');
+          resCell.textContent = "0"; // Default value
+          resCell.style.color = "#ef4444";
+          
+          totalBubble.textContent = "0";
+          totalBubble.style.background = "#ef4444";
+          totalBubble.classList.add('show');
+          
+          App.updateText("Symbol not found. Returning 0.");
+          await App.speak("Symbol not found. Returning default value zero.");
+          
+          // Flash error on all chars
+          for(let k=0; k<text.length; k++) document.getElementById(`char-${i}-${k}`).classList.add('char-error');
+      }
+
+      if(shouldStop) return;
+      await new Promise(r => setTimeout(r, 500));
+      totalBubble.classList.remove('show');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

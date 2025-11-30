@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: LEN Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Character Block Styling */
+  .char-block {
+    display: inline-block;
+    width: 20px;
+    height: 24px;
+    line-height: 22px;
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    margin: 0 1px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    transition: all 0.1s;
+    background: rgba(255,255,255,0.05);
+  }
+  
+  /* Space character visualizer (so users can see it being counted) */
+  .char-space {
+    border-style: dashed;
+    opacity: 0.5;
+  }
+  
+  .char-active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    transform: translateY(-3px);
+    font-weight: bold;
+    box-shadow: 0 5px 10px rgba(14, 165, 233, 0.3);
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📏 Text Length</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Count the number of characters in a string.<br>
+      <strong>Note:</strong> Spaces, numbers, and symbols count as 1.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnLen">📏 Measure Length</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Calculate character count</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">COLUMN</span> CharCount = <span class="fn">LEN</span>( Customer[Address] )</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- Useful for data validation (e.g. ZIP codes)</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Current Count:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("LEN Function", "../../");
+
+  const data = [
+    { text: "Apple" },
+    { text: "Power BI" }, // Contains space
+    { text: "123-456" }   // Contains hyphen
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  // Render text as individual span blocks
+  function renderChars(text, rowId) {
+    let html = "";
+    for(let i=0; i<text.length; i++) {
+        let char = text[i];
+        let className = "char-block";
+        if (char === " ") {
+            char = "·"; // Visual dot for space
+            className += " char-space";
+        }
+        html += `<span class="${className}" id="char-${rowId}-${i}">${char}</span>`;
+    }
+    return html;
+  }
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Text String</div> <div>Length</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 2fr 1fr;">
+          <div style="white-space:nowrap;">${renderChars(d.text, i)}</div>
+          <div class="cell-num" id="res-${i}" style="color:var(--text-dim); font-size:1rem; font-weight:bold;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO: LEN ---
+  document.getElementById('btnLen').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line2');
+    await App.speak("Starting LEN. I will count every single character, including spaces and symbols.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const resCell = document.getElementById(`res-${i}`);
+      const text = data[i].text;
+      let count = 0;
+
+      App.updateText(`Row ${i+1}: "${text}"`);
+      
+      // Fast Count Animation
+      for(let j=0; j<text.length; j++) {
+          const charEl = document.getElementById(`char-${i}-${j}`);
+          charEl.classList.add('char-active');
+          count++;
+          
+          totalBubble.textContent = count;
+          totalBubble.classList.add('show');
+          
+          // Speed up the counting visually
+          await new Promise(r => setTimeout(r, App.voiceEnabled ? 100 : 50));
+          
+          if(shouldStop) return;
+          charEl.classList.remove('char-active');
+      }
+
+      await App.speak(`Counted ${count} characters.`);
+      
+      resCell.textContent = count;
+      resCell.style.color = "#4ade80";
+      
+      if(shouldStop) return;
+      await new Promise(r => setTimeout(r, 500));
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: VALUES vs DISTINCT</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📊 Customer Cities</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Generate a list of unique cities.<br>
+      Both functions return a <strong>Table</strong>, not a number.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnValues">📜 VALUES</button>
+        <button class="action primary" id="btnDistinct">✨ DISTINCT</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Get Unique Values</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">EVALUATE</span> Unique_List = <span class="fn">VALUES</span>( Customer[City] )</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- Returns a one-column table of unique cities.</span></div>
+      <div class="codeLine" id="line4"><span class="cmt">-- (Note: VALUES includes the 'Blank Row' if invalid relationships exist)</span></div>
+      <br>
+      <div class="codeLine" id="line5"><span class="cmt">-- Scenario 2: Distinct Values</span></div>
+      <div class="codeLine" id="line6"><span class="kwd">EVALUATE</span> Distinct_List = <span class="fn">DISTINCT</span>( Customer[City] )</div>
+      <div class="codeLine" id="line7"><span class="cmt">-- Returns a one-column table of unique cities.</span></div>
+      <div class="codeLine" id="line8"><span class="cmt">-- (Note: DISTINCT ignores the integrity 'Blank Row')</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border);">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Generated List:</span>
+      <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;" id="listContainer">
+        <span style="color:var(--text-dim); font-size:0.8rem;">(Empty)</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  
+  App.initLayout("VALUES vs DISTINCT", "../../");
+
+  // Data: Cities with duplicates
+  const data = [
+    { id: 1, city: "London" },
+    { id: 2, city: "Paris" },
+    { id: 3, city: "London" }, // Duplicate
+    { id: 4, city: "New York" },
+    { id: 5, city: "Paris" }   // Duplicate
+  ];
+
+  const table = document.getElementById('dataTable');
+  const listContainer = document.getElementById('listContainer');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>ID</div> <div>City</div> <div>Status</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>${d.id}</div>
+          <div class="cell-num" style="color:#fff;">${d.city}</div>
+          <div class="cell-num" id="status-${i}" style="font-size:0.8rem; color:var(--text-dim)">-</div>
+        </div>
+      `;
+    });
+    listContainer.innerHTML = '<span style="color:var(--text-dim); font-size:0.8rem;">(Empty)</span>';
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready to calculate...");
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  function addBadge(text) {
+    // Remove "(Empty)" placeholder if present
+    if (listContainer.innerText.includes("(Empty)")) listContainer.innerHTML = "";
+    
+    const badge = document.createElement("span");
+    badge.textContent = text;
+    badge.style.cssText = "background:var(--accent); color:#000; padding:2px 8px; border-radius:4px; font-size:0.85rem; font-weight:bold; animation: popIn 0.3s ease-out;";
+    listContainer.appendChild(badge);
+  }
+
+  // --- SCENARIO 1: VALUES ---
+  document.getElementById('btnValues').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    const seen = new Set();
+
+    highlight('line2');
+    await App.speak("Starting VALUES. I will scan the column and create a list of unique items.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      row.classList.add('row-highlight');
+
+      const city = data[i].city;
+
+      if (!seen.has(city)) {
+        // New Item
+        seen.add(city);
+        statusCell.textContent = "✨ Added";
+        statusCell.style.color = "#4ade80";
+        addBadge(city);
+        
+        App.updateText(`Found unique city: ${city}`);
+        await App.speak(`Found ${city}. Adding to list.`);
+      } else {
+        // Duplicate
+        statusCell.textContent = "🚫 Skip";
+        statusCell.style.color = "var(--text-dim)";
+        App.updateText(`Skipping duplicate: ${city}`);
+        await App.speak(`${city} is already in the list.`);
+      }
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText("VALUES completed.");
+    await App.speak("Finished. VALUES returns this list. Note: If there were missing relationships, VALUES would also add a Blank Row.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: DISTINCT ---
+  document.getElementById('btnDistinct').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    const seen = new Set();
+
+    highlight('line6');
+    await App.speak("Starting DISTINCT. I also create a unique list, but I am stricter about invalid data.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      row.classList.add('row-highlight');
+
+      const city = data[i].city;
+
+      if (!seen.has(city)) {
+        seen.add(city);
+        statusCell.textContent = "✨ Added";
+        statusCell.style.color = "#a855f7"; // Purple for diff visual
+        addBadge(city);
+        
+        App.updateText(`Found unique city: ${city}`);
+        await App.speak(`Found ${city}. Adding.`);
+      } else {
+        statusCell.textContent = "🚫 Skip";
+        statusCell.style.color = "var(--text-dim)";
+        App.updateText(`Skipping duplicate: ${city}`);
+        await App.speak(`Skipping duplicate.`);
+      }
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText("DISTINCT completed.");
+    await App.speak("Finished. DISTINCT returns this list. It will never add a Blank Row for invalid relationships.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+  // Add keyframes for badge animation
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = "@keyframes popIn { 0% { transform: scale(0); } 80% { transform: scale(1.1); } 100% { transform: scale(1); } }";
+  document.head.appendChild(styleSheet);
+
+</script>
+</body>
+</html>

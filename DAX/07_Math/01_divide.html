@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: DIVIDE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Error Shake Animation */
+  .shake { animation: shake 0.5s; border-color: #ef4444; }
+  @keyframes shake {
+    0% { transform: translateX(0); } 25% { transform: translateX(-5px); }
+    50% { transform: translateX(5px); } 75% { transform: translateX(-5px); }
+    100% { transform: translateX(0); }
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>➗ Profit Margin</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate Profit % (Profit ÷ Revenue).<br>
+      <strong>Problem:</strong> Some products have 0 Revenue (returns/errors).
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnSlash">⚠️ Slash ( / )</button>
+        <button class="action primary" id="btnDivide">🛡️ DIVIDE()</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: The Risky Way</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Margin = Profit / Revenue</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- Errors if Revenue is 0 or Blank.</span></div>
+      <br>
+      <div class="codeLine" id="line4"><span class="cmt">-- Scenario 2: The Safe Way</span></div>
+      <div class="codeLine" id="line5"><span class="kwd">MEASURE</span> Safe_Margin = </div>
+      <div class="codeLine" id="line6">    <span class="fn">DIVIDE</span>( </div>
+      <div class="codeLine" id="line7">        Profit, Revenue,  <span class="cmt">-- Numerator, Denominator</span></div>
+      <div class="codeLine" id="line8">        <span class="val">0</span>                 <span class="cmt">-- Alternate Result (Optional)</span></div>
+      <div class="codeLine" id="line9">    )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Calculation Result:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("DIVIDE Function", "../../");
+
+  const data = [
+    { profit: 50, rev: 200 }, // Normal
+    { profit: 0,  rev: 0 },   // Dangerous (0/0)
+    { profit: 20, rev: 100 }  // Normal
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Profit</div> <div>Revenue</div> <div>Math</div> <div>Result</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      const style = d.rev === 0 ? "color:#ef4444; font-weight:bold;" : "";
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>$${d.profit}</div>
+          <div style="${style}">$${d.rev}</div>
+          <div class="cell-num" id="math-${i}" style="font-size:0.75rem; color:var(--text-dim)">-</div>
+          <div class="cell-num" id="res-${i}" style="font-weight:bold;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: SLASH (/) ---
+  document.getElementById('btnSlash').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line2');
+    await App.speak("Starting standard division. I will use the slash operator.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const mathCell = document.getElementById(`math-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      mathCell.textContent = `${data[i].profit} / ${data[i].rev}`;
+      
+      if (data[i].rev === 0) {
+        // ERROR
+        row.classList.add('shake');
+        resCell.textContent = "Infinity";
+        resCell.style.color = "#ef4444";
+        
+        totalBubble.textContent = "Error";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        
+        App.updateText(`Row ${i+1}: Divide by Zero. Result is Infinity or NaN.`);
+        await App.speak(`Stop! Division by zero is not allowed.`);
+      } else {
+        // OK
+        const res = (data[i].profit / data[i].rev * 100).toFixed(0) + "%";
+        resCell.textContent = res;
+        resCell.style.color = "#4ade80";
+        
+        totalBubble.textContent = res;
+        totalBubble.style.background = "var(--accent)";
+        totalBubble.classList.add('show');
+        
+        App.updateText(`Row ${i+1}: Safe. Result is ${res}.`);
+        await App.speak(`Result is ${res}.`);
+      }
+
+      await new Promise(r => setTimeout(r, 500));
+      row.classList.remove('row-highlight');
+      row.classList.remove('shake');
+      totalBubble.classList.remove('show');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: DIVIDE (Safe) ---
+  document.getElementById('btnDivide').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line6');
+    await App.speak("Starting DIVIDE function. This handles errors internally.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const mathCell = document.getElementById(`math-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      mathCell.textContent = `${data[i].profit} / ${data[i].rev}`;
+      
+      // Try Div
+      highlight('line7');
+      
+      if (data[i].rev === 0) {
+        // Safe Fallback
+        await App.speak(`Division by zero detected.`);
+        highlight('line8');
+        
+        resCell.textContent = "0%";
+        resCell.style.color = "#facc15"; // Yellow
+        
+        totalBubble.textContent = "0%";
+        totalBubble.style.background = "#facc15";
+        totalBubble.classList.add('show');
+        
+        App.updateText(`Row ${i+1}: Error handled. Returning Alternate Result (0).`);
+        await App.speak(`Returning zero instead of crashing.`);
+      } else {
+        // Normal
+        const res = (data[i].profit / data[i].rev * 100).toFixed(0) + "%";
+        resCell.textContent = res;
+        resCell.style.color = "#4ade80";
+        
+        totalBubble.textContent = res;
+        totalBubble.style.background = "var(--accent)";
+        totalBubble.classList.add('show');
+        
+        App.updateText(`Row ${i+1}: Valid. Result is ${res}.`);
+        await App.speak(`Result is ${res}.`);
+      }
+
+      await new Promise(r => setTimeout(r, 500));
+      row.classList.remove('row-highlight');
+      totalBubble.classList.remove('show');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

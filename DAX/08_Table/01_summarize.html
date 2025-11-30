@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: SUMMARIZE</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Styles for Grouping Animation */
+  .source-table-container { margin-bottom: 2rem; border-bottom: 1px dashed var(--border); padding-bottom: 2rem; }
+  
+  /* Highlight unique groups */
+  .group-red { background: rgba(248, 113, 113, 0.1); border-left: 3px solid #f87171; }
+  .group-blue { background: rgba(96, 165, 250, 0.1); border-left: 3px solid #60a5fa; }
+  
+  /* Flying value animation */
+  .flying-val {
+    position: absolute;
+    background: var(--accent);
+    color: #000;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: bold;
+    transition: all 0.8s ease-in-out;
+    z-index: 100;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📊 Grouping Data</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Group Sales by Color and sum up the amounts.<br>
+      <strong>SUMMARIZE:</strong> Creates a new virtual table in memory.
+    </p>
+
+    <div class="source-table-container">
+      <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.5rem;">Source: Sales Table (Raw)</div>
+      <div id="sourceTable"></div>
+    </div>
+
+    <div>
+      <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.5rem;">Result: Summary Table</div>
+      <div id="resultTable"></div>
+    </div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnGroup">📂 Group By</button>
+        <button class="action primary" id="btnAgg">∑ Group & Sum</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Just Grouping (Like DISTINCT)</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">EVALUATE</span> Groups = <span class="fn">SUMMARIZE</span>( Sales, Sales[Color] )</div>
+      <br>
+      <div class="codeLine" id="line3"><span class="cmt">-- Scenario 2: Grouping + Aggregation</span></div>
+      <div class="codeLine" id="line4"><span class="kwd">EVALUATE</span> Summary = </div>
+      <div class="codeLine" id="line5">    <span class="fn">SUMMARIZE</span>( </div>
+      <div class="codeLine" id="line6">        Sales, </div>
+      <div class="codeLine" id="line7">        Sales[Color],           <span class="cmt">-- 1. Group By Column</span></div>
+      <div class="codeLine" id="line8">        <span class="str">"Total Sales"</span>,        <span class="cmt">-- 2. New Col Name</span></div>
+      <div class="codeLine" id="line9">        <span class="fn">SUM</span>( Sales[Amount] )    <span class="cmt">-- 3. Expression</span></div>
+      <div class="codeLine" id="line10">    )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Rows Created:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("SUMMARIZE", "../../");
+
+  const data = [
+    { id: 1, color: "Red", amt: 100 },
+    { id: 2, color: "Blue", amt: 50 },
+    { id: 3, color: "Red", amt: 200 },
+    { id: 4, color: "Blue", amt: 20 }
+  ];
+
+  const sourceTable = document.getElementById('sourceTable');
+  const resultTable = document.getElementById('resultTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTables() {
+    // Source
+    sourceTable.innerHTML = `
+      <div class="table-row header"><div>ID</div> <div>Color</div> <div>Amt</div></div>
+    `;
+    data.forEach((d, i) => {
+      sourceTable.innerHTML += `
+        <div class="table-row" id="src-${i}">
+          <div>${d.id}</div> <div id="col-${i}">${d.color}</div> <div id="amt-${i}">$${d.amt}</div>
+        </div>
+      `;
+    });
+
+    // Result Placeholder
+    resultTable.innerHTML = `<div style="padding:1rem; text-align:center; color:var(--text-dim); font-style:italic;">(Virtual Table Empty)</div>`;
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTables();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: GROUP BY ---
+  document.getElementById('btnGroup').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line2');
+    await App.speak("Starting SUMMARIZE. I will scan the table and find the unique values for the Color column.");
+
+    // Prep Result Table
+    resultTable.innerHTML = `<div class="table-row header" style="grid-template-columns:1fr;"><div>Color</div></div>`;
+
+    const groups = ["Red", "Blue"];
+    
+    for (let g of groups) {
+        if(shouldStop) return;
+
+        App.updateText(`Processing Group: ${g}`);
+        
+        // Highlight matching source rows
+        data.forEach((d, i) => {
+            if(d.color === g) {
+                document.getElementById(`src-${i}`).classList.add(g === "Red" ? 'group-red' : 'group-blue');
+            }
+        });
+
+        await App.speak(`Found group ${g}. Creating row.`);
+        
+        // Add Row to Result
+        resultTable.innerHTML += `
+            <div class="table-row" style="grid-template-columns:1fr; animation: fadeIn 0.5s;">
+                <div style="font-weight:bold;">${g}</div>
+            </div>
+        `;
+
+        await new Promise(r => setTimeout(r, 800));
+        
+        // Clear Highlights
+        data.forEach((d, i) => {
+            document.getElementById(`src-${i}`).classList.remove('group-red', 'group-blue');
+        });
+    }
+
+    totalBubble.textContent = "2 Rows";
+    totalBubble.classList.add('show');
+    App.updateText("Done. Created a table with unique colors.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: GROUP & SUM ---
+  document.getElementById('btnAgg').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line5');
+    await App.speak("SUMMARIZE with Aggregation. I will group by Color, and then SUM the Amount for each group.");
+
+    // Prep Result Table
+    resultTable.innerHTML = `<div class="table-row header" style="grid-template-columns:1fr 1fr;"><div>Color</div><div>Total Sales</div></div>`;
+
+    const groups = ["Red", "Blue"];
+    
+    for (let g of groups) {
+        if(shouldStop) return;
+
+        // 1. Identify Group
+        highlight('line7');
+        App.updateText(`Identifying rows for: ${g}`);
+        
+        let groupSum = 0;
+        
+        // Highlight Source Rows
+        for(let i=0; i<data.length; i++) {
+            if(data[i].color === g) {
+                document.getElementById(`src-${i}`).classList.add(g === "Red" ? 'group-red' : 'group-blue');
+                groupSum += data[i].amt;
+            }
+        }
+        
+        await App.speak(`Found ${g} rows.`);
+        if(shouldStop) return;
+
+        // 2. Calculate
+        highlight('line9');
+        App.updateText(`Summing Amounts for ${g}: $${groupSum}`);
+        await App.speak(`Calculating sum... ${groupSum}.`);
+        
+        // 3. Add Row
+        resultTable.innerHTML += `
+            <div class="table-row" style="grid-template-columns:1fr 1fr; animation: fadeIn 0.5s;">
+                <div style="font-weight:bold;">${g}</div>
+                <div class="cell-num" style="color:#4ade80; font-weight:bold;">$${groupSum}</div>
+            </div>
+        `;
+
+        await new Promise(r => setTimeout(r, 1000));
+        
+        // Clear Highlights
+        data.forEach((d, i) => {
+            document.getElementById(`src-${i}`).classList.remove('group-red', 'group-blue');
+        });
+    }
+
+    totalBubble.textContent = "Summary Ready";
+    totalBubble.classList.add('show');
+    App.updateText("Done. The summary table is created in memory.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTables();
+
+  // Add fade animation style
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = "@keyframes fadeIn { from { opacity:0; transform:translateY(-5px); } to { opacity:1; transform:translateY(0); } }";
+  document.head.appendChild(styleSheet);
+
+</script>
+</body>
+</html>

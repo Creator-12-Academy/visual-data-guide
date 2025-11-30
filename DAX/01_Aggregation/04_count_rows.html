@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: COUNT vs COUNTROWS</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+      <h2>📊 Transactions Table</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Count how many sales happened.<br>
+      Notice how <strong>COUNT</strong> relies on specific column data, while <strong>COUNTROWS</strong> just looks at the table.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnCount">🔢 COUNT (Column)</button>
+        <button class="action primary" id="btnCountRows">📑 COUNTROWS (Table)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Count Numbers Only</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> NumSales = <span class="fn">COUNT</span>( Sales[Amount] )</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- ⚠️ Ignores Blanks and Text!</span></div>
+      <br>
+      <div class="codeLine" id="line4"><span class="cmt">-- Scenario 2: Count The Rows (Best Practice)</span></div>
+      <div class="codeLine" id="line5"><span class="kwd">MEASURE</span> TotalTxn = <span class="fn">COUNTROWS</span>( Sales )</div>
+      <div class="codeLine" id="line6"><span class="cmt">-- Counts the row, even if data is missing.</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Final Count:</span>
+      <div class="total-bubble" id="totalBubble">0</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  
+  App.initLayout("COUNT vs COUNTROWS", "../../");
+
+  // Data: Includes a Number, a Blank (null), and Text
+  const data = [
+    { id: 101, amount: 500 },
+    { id: 102, amount: null },     // Blank
+    { id: 103, amount: "Pending" } // Text
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>ID</div> <div>Amount</div> <div>Status</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      let displayVal = d.amount;
+      let style = "";
+      
+      if (d.amount === null) {
+        displayVal = "(Blank)";
+        style = "color:var(--text-dim); font-style:italic;";
+      } else if (typeof d.amount === 'string') {
+        style = "color:#facc15;"; // Yellow for text
+      }
+
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>${d.id}</div>
+          <div class="cell-num" style="${style}">${displayVal}</div>
+          <div class="cell-num" id="status-${i}" style="font-size:0.8rem; color:var(--text-dim)">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready to calculate...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: COUNT (Strict) ---
+  document.getElementById('btnCount').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let count = 0;
+
+    highlight('line2');
+    await App.speak("Starting COUNT. I look inside the 'Amount' column. I only count numbers and dates.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      row.classList.add('row-highlight');
+
+      const val = data[i].amount;
+
+      if (typeof val === 'number') {
+        count++;
+        statusCell.textContent = "✅ Counted";
+        statusCell.style.color = "#4ade80";
+        App.updateText(`Row ${i+1}: Found number ${val}. Counting it.`);
+        await App.speak(`Row ${i+1} has a number. Included.`);
+      } else if (val === null) {
+        statusCell.textContent = "🚫 Blank";
+        statusCell.style.color = "#ef4444";
+        App.updateText(`Row ${i+1}: Blank value. COUNT ignores blanks.`);
+        await App.speak(`Row ${i+1} is blank. Skipped.`);
+      } else {
+        statusCell.textContent = "🚫 Text";
+        statusCell.style.color = "#ef4444";
+        App.updateText(`Row ${i+1}: Text value. COUNT ignores text.`);
+        await App.speak(`Row ${i+1} is text. Skipped.`);
+      }
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText(`Final Count: <b>${count}</b>`);
+    await App.speak(`Done. The standard COUNT function only found ${count} numeric value.`);
+    
+    totalBubble.textContent = count;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: COUNTROWS (The Table Counter) ---
+  document.getElementById('btnCountRows').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let count = 0;
+
+    highlight('line5');
+    await App.speak("Starting COUNTROWS. I do not care what is inside the cells. I just count the rows.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      row.classList.add('row-highlight');
+
+      count++;
+      statusCell.textContent = "✅ Counted";
+      statusCell.style.color = "#4ade80";
+      
+      App.updateText(`Row ${i+1}: Row exists. Counting it.`);
+      await App.speak(`Row ${i+1} exists. +1.`);
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText(`Final Count: <b>${count}</b>`);
+    await App.speak(`Finished. COUNTROWS found ${count} rows total, ignoring the missing data.`);
+    
+    totalBubble.textContent = count;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

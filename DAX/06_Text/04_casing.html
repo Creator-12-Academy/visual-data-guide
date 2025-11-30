@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: UPPER & LOWER</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Animation for text transformation */
+  .transform-anim {
+    animation: textMorph 0.5s ease-in-out;
+  }
+  @keyframes textMorph {
+    0% { opacity: 0; transform: scale(0.8); }
+    50% { opacity: 0.5; transform: scale(1.1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔤 Data Cleaning</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Standardize messy text input.<br>
+      <strong>UPPER:</strong> Converts to ALL CAPS.<br>
+      <strong>LOWER:</strong> Converts to lowercase.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnUpper">🔠 UPPER ()</button>
+        <button class="action primary" id="btnLower">🔡 LOWER ()</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Standardize Codes (All Caps)</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">COLUMN</span> UpperCode = <span class="fn">UPPER</span>( Products[SKU] )</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- "iphone" becomes "IPHONE"</span></div>
+      <br>
+      <div class="codeLine" id="line4"><span class="cmt">-- Scenario 2: Standardize Emails (Lowercase)</span></div>
+      <div class="codeLine" id="line5"><span class="kwd">COLUMN</span> CleanEmail = <span class="fn">LOWER</span>( Customer[Email] )</div>
+      <div class="codeLine" id="line6"><span class="cmt">-- "John.Doe@Mail.Com" becomes "john.doe@mail.com"</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Transformed Text:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("UPPER / LOWER", "../../");
+
+  const data = [
+    { text: "iPhOnE 15" },
+    { text: "DELL XPS" },
+    { text: "surface pro" }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Original Input</div> <div>Result</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr;">
+          <div style="font-family:monospace;">${d.text}</div>
+          <div class="cell-num" id="res-${i}" style="color:var(--text-dim); font-weight:bold;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: UPPER ---
+  document.getElementById('btnUpper').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line2');
+    await App.speak("Starting UPPER function. I will convert all characters to capital letters.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      const original = data[i].text;
+      const converted = original.toUpperCase();
+
+      App.updateText(`Input: "${original}"`);
+      await new Promise(r => setTimeout(r, 500));
+      
+      resCell.textContent = converted;
+      resCell.style.color = "#4ade80";
+      resCell.classList.add('transform-anim'); // Trigger CSS animation
+      
+      totalBubble.textContent = converted;
+      totalBubble.classList.add('show');
+
+      App.updateText(`Result: "${converted}"`);
+      await App.speak(`Converted to ${converted}.`);
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+      resCell.classList.remove('transform-anim');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: LOWER ---
+  document.getElementById('btnLower').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line5');
+    await App.speak("Starting LOWER function. I will convert all characters to lowercase.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      const original = data[i].text;
+      const converted = original.toLowerCase();
+
+      App.updateText(`Input: "${original}"`);
+      await new Promise(r => setTimeout(r, 500));
+      
+      resCell.textContent = converted;
+      resCell.style.color = "#a855f7"; // Purple for Lower
+      resCell.classList.add('transform-anim');
+      
+      totalBubble.textContent = converted;
+      totalBubble.classList.add('show');
+
+      App.updateText(`Result: "${converted}"`);
+      await App.speak(`Converted to ${converted}.`);
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+      resCell.classList.remove('transform-anim');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

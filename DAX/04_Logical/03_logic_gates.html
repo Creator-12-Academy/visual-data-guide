@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: AND / OR / NOT</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Styles for Logic Bubbles */
+  .logic-badge {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    margin: 0 2px;
+  }
+  .true-badge { background: rgba(74, 222, 128, 0.2); color: #4ade80; border: 1px solid #4ade80; }
+  .false-badge { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid #f87171; }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📊 Student Performance</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Determine Pass/Fail based on Score & Attendance.<br>
+      <strong>AND (&&):</strong> Both must be True.<br>
+      <strong>OR (||):</strong> At least one must be True.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnAnd">⛓️ AND (&&)</button>
+        <button class="action primary" id="btnOr">🔀 OR (||)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Strict (AND)</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Result = <span class="fn">IF</span>( </div>
+      <div class="codeLine" id="line3">    Score > 50 <span class="kwd">&&</span> Attendance > 80,  <span class="cmt">-- Both must be TRUE</span></div>
+      <div class="codeLine" id="line4">    <span class="str">"Pass"</span>, <span class="str">"Fail"</span> </div>
+      <div class="codeLine" id="line5">)</div>
+      <br>
+      <div class="codeLine" id="line6"><span class="cmt">-- Scenario 2: Flexible (OR)</span></div>
+      <div class="codeLine" id="line7"><span class="kwd">MEASURE</span> Result = <span class="fn">IF</span>( </div>
+      <div class="codeLine" id="line8">    Score > 50 <span class="kwd">||</span> Attendance > 80,  <span class="cmt">-- Either one is TRUE</span></div>
+      <div class="codeLine" id="line9">    <span class="str">"Pass"</span>, <span class="str">"Fail"</span> </div>
+      <div class="codeLine" id="line10">)</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Evaluation:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("AND / OR / NOT", "../../");
+
+  // Data: 
+  // Alice: Pass (Score) / Pass (Att)
+  // Bob: Fail (Score) / Pass (Att)
+  // Charlie: Pass (Score) / Fail (Att)
+  const data = [
+    { name: "Alice", score: 90, att: 95 }, 
+    { name: "Bob",   score: 40, att: 90 }, 
+    { name: "Charlie", score: 85, att: 60 } 
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Student</div> <div>Score</div> <div>Att %</div> <div>Result</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>${d.name}</div>
+          <div class="cell-num">${d.score}</div>
+          <div class="cell-num">${d.att}%</div>
+          <div class="cell-num" id="res-${i}" style="color:var(--text-dim)">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  function getBadge(isTrue) {
+    return isTrue ? `<span class='logic-badge true-badge'>TRUE</span>` : `<span class='logic-badge false-badge'>FALSE</span>`;
+  }
+
+  // --- SCENARIO 1: AND (&&) ---
+  document.getElementById('btnAnd').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    
+    highlight('line3');
+    await App.speak("Starting AND logic. I need BOTH Score greater than 50 AND Attendance greater than 80 to pass.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      const scorePass = data[i].score > 50;
+      const attPass = data[i].att > 80;
+      const finalPass = scorePass && attPass;
+
+      // Eval Score
+      App.updateText(`1. Score > 50? ${getBadge(scorePass)}`);
+      await App.speak(`Score is ${data[i].score}. Condition is ${scorePass}.`);
+      if(shouldStop) return;
+
+      // Eval Att
+      App.updateText(`1. Score: ${getBadge(scorePass)} | 2. Att > 80? ${getBadge(attPass)}`);
+      await App.speak(`Attendance is ${data[i].att}. Condition is ${attPass}.`);
+      if(shouldStop) return;
+
+      // Combine
+      if(finalPass) {
+        App.updateText(`Result: TRUE && TRUE = <b>PASS</b>`);
+        resCell.textContent = "Pass";
+        resCell.style.color = "#4ade80";
+        totalBubble.textContent = "Pass";
+        totalBubble.style.background = "#4ade80";
+        totalBubble.classList.add('show');
+        await App.speak("Both are True. Result is Pass.");
+      } else {
+        App.updateText(`Result: One is False = <b>FAIL</b>`);
+        resCell.textContent = "Fail";
+        resCell.style.color = "#ef4444";
+        totalBubble.textContent = "Fail";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        await App.speak("One condition failed. Result is Fail.");
+      }
+
+      await new Promise(r => setTimeout(r, 500));
+      row.classList.remove('row-highlight');
+      totalBubble.classList.remove('show');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: OR (||) ---
+  document.getElementById('btnOr').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    
+    highlight('line8');
+    await App.speak("Starting OR logic. I only need ONE condition to be true. Either Score OR Attendance.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      const scorePass = data[i].score > 50;
+      const attPass = data[i].att > 80;
+      const finalPass = scorePass || attPass;
+
+      // Eval Score
+      App.updateText(`1. Score > 50? ${getBadge(scorePass)}`);
+      
+      // Optimization: In OR, if first is true, we stop!
+      if(scorePass) {
+          await App.speak(`Score is good. I don't even need to check attendance.`);
+      } else {
+          await App.speak(`Score failed. Checking attendance.`);
+          App.updateText(`1. Score: ${getBadge(scorePass)} | 2. Att > 80? ${getBadge(attPass)}`);
+          await new Promise(r => setTimeout(r, 500));
+      }
+
+      if(finalPass) {
+        App.updateText(`Result: At least one TRUE = <b>PASS</b>`);
+        resCell.textContent = "Pass";
+        resCell.style.color = "#4ade80";
+        totalBubble.textContent = "Pass";
+        totalBubble.style.background = "#4ade80";
+        totalBubble.classList.add('show');
+        await App.speak("Passed.");
+      } else {
+        App.updateText(`Result: Both FALSE = <b>FAIL</b>`);
+        resCell.textContent = "Fail";
+        resCell.style.color = "#ef4444";
+        totalBubble.textContent = "Fail";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        await App.speak("Both failed. Result is Fail.");
+      }
+
+      await new Promise(r => setTimeout(r, 500));
+      row.classList.remove('row-highlight');
+      totalBubble.classList.remove('show');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

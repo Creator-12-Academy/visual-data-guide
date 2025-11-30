@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: CALENDAR & AUTO</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Scanning Line Animation */
+  .scanner-line {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: var(--accent-m); /* Yellow/Orange */
+    box-shadow: 0 0 10px var(--accent-m);
+    opacity: 0;
+    pointer-events: none;
+    z-index: 20;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📅 Generating Date Tables</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Create a contiguous Date Table.<br>
+      <strong>CALENDAR:</strong> You pick Start/End.<br>
+      <strong>CALENDARAUTO:</strong> Scans your data model for min/max dates.
+    </p>
+
+    <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.5rem;">Source: Sales Table (Data Model)</div>
+    <div id="sourceTable" style="margin-bottom:1.5rem; position:relative;"></div>
+
+    <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.5rem;">Result: New Date Table</div>
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnManual">📅 CALENDAR (Manual)</button>
+        <button class="action primary" id="btnAuto">🤖 CALENDARAUTO</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Manual Range</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">TABLE</span> Dates = </div>
+      <div class="codeLine" id="line3">    <span class="fn">CALENDAR</span> ( </div>
+      <div class="codeLine" id="line4">        <span class="fn">DATE</span>(2023, 1, 1),  <span class="cmt">-- Start Date</span></div>
+      <div class="codeLine" id="line5">        <span class="fn">DATE</span>(2023, 1, 3)   <span class="cmt">-- End Date</span></div>
+      <div class="codeLine" id="line6">    )</div>
+      <br>
+      <div class="codeLine" id="line7"><span class="cmt">-- Scenario 2: Automatic Scan</span></div>
+      <div class="codeLine" id="line8"><span class="kwd">TABLE</span> Dates = </div>
+      <div class="codeLine" id="line9">    <span class="fn">CALENDARAUTO</span>( )</div>
+      <div class="codeLine" id="line10"><span class="cmt">-- Scans entire model for Min/Max dates.</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Range Generated:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<div id="scanner" class="scanner-line"></div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("CALENDAR / AUTO", "../../");
+
+  // Source Data (Simulated Sales Table)
+  // Min Date: 2023-01-01, Max Date: 2023-01-03
+  const sourceData = [
+    { id: 101, date: "2023-01-02", amt: 50 },
+    { id: 102, date: "2023-01-01", amt: 20 }, // Min
+    { id: 103, date: "2023-01-03", amt: 90 }  // Max
+  ];
+
+  const sourceTable = document.getElementById('sourceTable');
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+  const scanner = document.getElementById('scanner');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTables() {
+    // Source
+    sourceTable.innerHTML = `
+      <div class="table-row header"><div>Txn ID</div> <div>Sales Date</div> <div>Amt</div></div>
+    `;
+    sourceData.forEach((d, i) => {
+      sourceTable.innerHTML += `
+        <div class="table-row" id="src-${i}">
+          <div>${d.id}</div> <div id="date-${i}">${d.date}</div> <div>$${d.amt}</div>
+        </div>
+      `;
+    });
+
+    // Result (Empty initially)
+    table.innerHTML = `<div style="padding:1rem; color:var(--text-dim); text-align:center;">(No Table Generated Yet)</div>`;
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    scanner.style.opacity = "0";
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTables();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  function generateRows(startStr, endStr) {
+    table.innerHTML = `<div class="table-row header"><div>Date</div></div>`;
+    
+    // Simple logic for demo (just generating the 3 days)
+    const dates = ["2023-01-01", "2023-01-02", "2023-01-03"];
+    
+    dates.forEach(date => {
+        table.innerHTML += `
+            <div class="table-row" style="animation: fadeIn 0.5s;">
+                <div style="font-weight:bold; color:#4ade80;">${date} 00:00:00</div>
+            </div>
+        `;
+    });
+  }
+
+  // --- SCENARIO 1: CALENDAR (Manual) ---
+  document.getElementById('btnManual').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    
+    highlight('line3');
+    await App.speak("Executing CALENDAR. You must manually provide the Start and End dates.");
+    if(shouldStop) return;
+
+    // Highlight Inputs
+    highlight('line4');
+    App.updateText("Start Date set to: 2023-01-01");
+    await App.speak("Start Date is January 1st.");
+    
+    highlight('line5');
+    App.updateText("End Date set to: 2023-01-03");
+    await App.speak("End Date is January 3rd.");
+
+    // Generate
+    highlight('line6');
+    App.updateText("Generating contiguous dates...");
+    generateRows();
+    
+    await App.speak("Generating table. It fills every day between start and end.");
+    
+    totalBubble.textContent = "3 Days";
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: CALENDARAUTO (Scan) ---
+  document.getElementById('btnAuto').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line9');
+    await App.speak("Executing CALENDAR-AUTO. I will scan your ENTIRE data model to find date columns.");
+    if(shouldStop) return;
+
+    // Scan Animation
+    const rect = sourceTable.getBoundingClientRect();
+    scanner.style.top = (sourceTable.offsetTop) + "px";
+    scanner.style.width = "100%";
+    scanner.style.opacity = "1";
+    scanner.style.transition = "top 1.5s ease-in-out";
+    
+    // Trigger move
+    requestAnimationFrame(() => {
+        scanner.style.top = (sourceTable.offsetTop + sourceTable.offsetHeight) + "px";
+    });
+
+    App.updateText("Scanning model for Min/Max dates...");
+    await App.speak("Scanning Sales Table...");
+    
+    if(shouldStop) return;
+
+    // Identify Min/Max
+    document.getElementById('src-1').classList.add('row-highlight'); // Min
+    App.updateText("Found Min Date: 2023-01-01");
+    await App.speak("Found minimum date: January 1st.");
+    
+    document.getElementById('src-2').classList.add('row-highlight'); // Max
+    App.updateText("Found Max Date: 2023-01-03");
+    await App.speak("Found maximum date: January 3rd.");
+
+    scanner.style.opacity = "0";
+
+    // Generate
+    App.updateText("Generating range based on scan...");
+    generateRows();
+    
+    totalBubble.textContent = "Auto Range";
+    totalBubble.classList.add('show');
+    
+    await App.speak("Table generated automatically covering the full range found in data.");
+    
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTables();
+
+  // Add fade in style
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = "@keyframes fadeIn { from { opacity:0; transform:translateY(-5px); } to { opacity:1; transform:translateY(0); } }";
+  document.head.appendChild(styleSheet);
+
+</script>
+</body>
+</html>

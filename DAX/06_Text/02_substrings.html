@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: LEFT / RIGHT / MID</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Character Block Styling */
+  .char-block {
+    display: inline-block;
+    width: 20px;
+    text-align: center;
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    margin: 0 1px;
+    font-family: monospace;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+  }
+  .char-selected {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: bold;
+    transform: scale(1.1);
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📦 Product SKU Parsing</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Extract specific parts of the SKU code.<br>
+      Format: <strong>PREFIX-CODE-COUNTRY</strong> (e.g., ABC-1234-US)
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnLeft">⬅️ LEFT (3)</button>
+        <button class="action primary" id="btnMid">↔️ MID (5,4)</button>
+        <button class="action" id="btnRight">➡️ RIGHT (2)</button>
+      </div>
+      <button class="action" id="btnReset" style="width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Get Prefix (First 3 chars)</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">COLUMN</span> Prefix = <span class="fn">LEFT</span>( SKU, <span class="val">3</span> )</div>
+      <br>
+      <div class="codeLine" id="line3"><span class="cmt">-- Scenario 2: Get Middle Code (Start at 5, take 4)</span></div>
+      <div class="codeLine" id="line4"><span class="kwd">COLUMN</span> Code = <span class="fn">MID</span>( SKU, <span class="val">5</span>, <span class="val">4</span> )</div>
+      <br>
+      <div class="codeLine" id="line5"><span class="cmt">-- Scenario 3: Get Country (Last 2 chars)</span></div>
+      <div class="codeLine" id="line6"><span class="kwd">COLUMN</span> Country = <span class="fn">RIGHT</span>( SKU, <span class="val">2</span> )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Extracted Text:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("LEFT / RIGHT / MID", "../../");
+
+  const data = [
+    { sku: "ABC-1234-US" },
+    { sku: "XYZ-5678-UK" },
+    { sku: "LMN-9012-CA" }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  // Render text as individual span blocks
+  function renderChars(text, rowId) {
+    let html = "";
+    for(let i=0; i<text.length; i++) {
+        html += `<span class="char-block" id="char-${rowId}-${i}">${text[i]}</span>`;
+    }
+    return html;
+  }
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>SKU (Characters)</div> <div>Result</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 2fr 1fr;">
+          <div style="white-space:nowrap;">${renderChars(d.sku, i)}</div>
+          <div class="cell-num" id="res-${i}" style="color:var(--text-dim)">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: LEFT ---
+  document.getElementById('btnLeft').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line2');
+    await App.speak("Starting LEFT. I will extract the first 3 characters from the start of the string.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const resCell = document.getElementById(`res-${i}`);
+      const sku = data[i].sku;
+      
+      // Highlight chars 0, 1, 2
+      for(let j=0; j<3; j++) {
+          document.getElementById(`char-${i}-${j}`).classList.add('char-selected');
+      }
+
+      const result = sku.substring(0, 3);
+      App.updateText(`Row ${i+1}: Taking left 3 -> "${result}"`);
+      await App.speak(`Found prefix ${result}.`);
+      
+      resCell.textContent = result;
+      resCell.style.color = "#4ade80";
+      totalBubble.textContent = result;
+      totalBubble.classList.add('show');
+      
+      if(shouldStop) return;
+      await new Promise(r => setTimeout(r, 500));
+      // Cleanup visual
+      for(let j=0; j<sku.length; j++) document.getElementById(`char-${i}-${j}`).classList.remove('char-selected');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: MID ---
+  document.getElementById('btnMid').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line4');
+    await App.speak("Starting MID. I start at position 5, and take 4 characters.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const resCell = document.getElementById(`res-${i}`);
+      const sku = data[i].sku;
+      
+      // DAX MID is 1-based index. 
+      // "ABC-1234" -> 5th char is '1'. (Index 4 in JS)
+      // JS substring is index based. Start index 4, length 4.
+      
+      const startIdx = 4; 
+      const length = 4;
+
+      for(let j=startIdx; j<startIdx+length; j++) {
+          document.getElementById(`char-${i}-${j}`).classList.add('char-selected');
+      }
+
+      const result = sku.substr(startIdx, length);
+      App.updateText(`Row ${i+1}: Start @ 5, Take 4 -> "${result}"`);
+      await App.speak(`Extracted middle code ${result}.`);
+      
+      resCell.textContent = result;
+      resCell.style.color = "#facc15"; // Yellow
+      totalBubble.textContent = result;
+      totalBubble.classList.add('show');
+      
+      if(shouldStop) return;
+      await new Promise(r => setTimeout(r, 500));
+      for(let j=0; j<sku.length; j++) document.getElementById(`char-${i}-${j}`).classList.remove('char-selected');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 3: RIGHT ---
+  document.getElementById('btnRight').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line6');
+    await App.speak("Starting RIGHT. I will count 2 characters from the end of the string.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const resCell = document.getElementById(`res-${i}`);
+      const sku = data[i].sku;
+      
+      const len = sku.length;
+      // Highlight last 2
+      for(let j=len-2; j<len; j++) {
+          document.getElementById(`char-${i}-${j}`).classList.add('char-selected');
+      }
+
+      const result = sku.substring(len-2);
+      App.updateText(`Row ${i+1}: Taking right 2 -> "${result}"`);
+      await App.speak(`Found country code ${result}.`);
+      
+      resCell.textContent = result;
+      resCell.style.color = "#a855f7"; // Purple
+      totalBubble.textContent = result;
+      totalBubble.classList.add('show');
+      
+      if(shouldStop) return;
+      await new Promise(r => setTimeout(r, 500));
+      for(let j=0; j<sku.length; j++) document.getElementById(`char-${i}-${j}`).classList.remove('char-selected');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

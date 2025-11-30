@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aggregation Functions | DAX</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Styles for this list */
+  .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+  
+  .lesson-list {
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+
+  .lesson-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    text-decoration: none;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: 0.2s;
+  }
+  .lesson-card:hover {
+    border-color: var(--accent);
+    transform: translateX(5px);
+    background: rgba(255,255,255,0.03);
+  }
+
+  .lesson-title { color: #fff; font-weight: bold; font-size: 1.1rem; }
+  .lesson-desc { color: var(--text-dim); font-size: 0.9rem; margin-top: 0.2rem; }
+  .icon { font-size: 1.5rem; }
+</style>
+</head>
+<body>
+
+  <header></header>
+
+  <div class="container">
+    <div style="text-align:center; margin-bottom:3rem;">
+      <h1 style="color:var(--accent); margin-bottom:0.5rem;">01. Aggregation Functions</h1>
+      <p style="color:var(--text-dim);">The foundation of DAX. Learn how to sum, count, and average data.</p>
+    </div>
+
+    <div class="lesson-list">
+      
+      <a href="01_sum_vs_sumx.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">SUM vs SUMX</div>
+          <div class="lesson-desc">The difference between aggregating a column vs iterating a table.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="02_average.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">AVERAGE / AVERAGEA</div>
+          <div class="lesson-desc">How text and booleans affect your average calculations.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="03_min_max.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">MIN / MAX</div>
+          <div class="lesson-desc">Finding the highest and lowest values in a dataset.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="04_count_rows.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">COUNT / COUNTROWS</div>
+          <div class="lesson-desc">Counting column values vs counting table rows.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="05_distinctcount.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">DISTINCTCOUNT</div>
+          <div class="lesson-desc">Counting unique values and handling duplicates.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+    </div>
+    
+    <div style="margin-top: 3rem; text-align: center;">
+      <a href="../index.html" class="nav-link" style="display:inline-block; border:1px solid var(--border);">
+        ⬅ Back to DAX Menu
+      </a>
+    </div>
+
+  </div>
+
+  <footer></footer>
+
+  <script src="../../assets/app.js"></script>
+  <script>
+    // Initialize Layout
+    // Args: Title, Path to Root ("../../")
+    App.initLayout("Aggregation", "../../");
+  </script>
+
+</body>
+</html>

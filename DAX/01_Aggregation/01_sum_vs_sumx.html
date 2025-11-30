@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: SUM vs SUMX</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1rem;">
+      <h2>📊 The Sales Table</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate Total Sales by multiplying Price × Quantity for each row.<br>
+      Watch how the iterator works.
+    </p>
+
+    <div id="dataTable">
+      </div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready to calculate...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnSum">❌ Try SUM</button>
+        <button class="action primary" id="btnSumX">▶ Run SUMX</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: The Wrong Way</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Sales = <span class="fn">SUM</span>( Sales[Price] * Sales[Qty] )</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- ⚠️ ERROR: SUM only accepts one column!</span></div>
+      <br>
+      <div class="codeLine" id="line4"><span class="cmt">-- Scenario 2: The Iterator Way (SUMX)</span></div>
+      <div class="codeLine" id="line5"><span class="kwd">MEASURE</span> Sales = </div>
+      <div class="codeLine" id="line6"><span class="fn">SUMX</span> (</div>
+      <div class="codeLine" id="line7">    Sales,              <span class="cmt">// 1. Iterate row-by-row</span></div>
+      <div class="codeLine" id="line8">    Sales[Price] * Sales[Qty]  <span class="cmt">// 2. Calculate row context</span></div>
+      <div class="codeLine" id="line9">)                       <span class="cmt">// 3. Sum the results</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Final Result:</span>
+      <div class="total-bubble" id="totalBubble">$0</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON SPECIFIC LOGIC ---
+  
+  // Initialize Layout (Title, Path to Root)
+  App.initLayout("SUM vs SUMX", "../../");
+
+  // Lesson Data
+  const data = [
+    { prod: "Apple", price: 10, qty: 2 },
+    { prod: "Banana", price: 5, qty: 10 },
+    { prod: "Cherry", price: 20, qty: 1 },
+  ];
+
+  // UI Elements
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  // Render Table
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Product</div> <div>Price</div> <div>Qty</div> <div>Row Total</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>${d.prod}</div>
+          <div class="cell-num">$${d.price}</div>
+          <div class="cell-num">${d.qty}</div>
+          <div class="cell-num" id="mem-${i}">-</div>
+        </div>
+      `;
+    });
+  }
+
+  // Reset State
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    
+    // Immediate UI clear
+    if(progressFill) {
+        progressFill.style.transition = 'none';
+        progressFill.style.width = '0%';
+    }
+    
+    setTimeout(() => {
+      shouldStop = false;
+      isRunning = false;
+      initTable();
+      App.updateText("Ready to calculate...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  // Highlight Code Line
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    const el = document.getElementById(id);
+    if(el) el.classList.add('active');
+  }
+
+  // --- SCENARIO 1: SUM (The Error) ---
+  document.getElementById('btnSum').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 150));
+    
+    highlight('line2');
+    await App.speak("Error. SUM expects a single column, but found a calculation.", 'calcBox', true);
+  });
+
+  // --- SCENARIO 2: SUMX (The Solution) ---
+  document.getElementById('btnSumX').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200)); // Wait for reset
+    if(shouldStop) return;
+
+    isRunning = true;
+    let total = 0;
+
+    // Step 1: Start
+    highlight('line6');
+    await App.speak("Starting SUMX. I will iterate through the Sales table row by row.");
+    if(shouldStop) return;
+
+    // Step 2: Loop
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+
+      highlight('line7');
+      const row = document.getElementById(`row-${i}`);
+      row.classList.add('row-highlight');
+      
+      await App.speak(`Processing Row ${i+1}. The Price is ${data[i].price}, and Quantity is ${data[i].qty}.`);
+      if(shouldStop) return;
+
+      // Step 3: Math
+      highlight('line8');
+      const rowVal = data[i].price * data[i].qty;
+      
+      App.updateText(`Row ${i+1}: $${data[i].price} x ${data[i].qty} = <b>$${rowVal}</b>`);
+      await App.speak(`Multiplying them gives ${rowVal}. I store this in memory.`);
+      
+      // Update Row UI
+      const memCell = document.getElementById(`mem-${i}`);
+      memCell.textContent = `$${rowVal}`;
+      memCell.style.color = "#4ade80";
+      memCell.style.fontWeight = "bold";
+      
+      total += rowVal;
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    // Step 4: Final Sum
+    highlight('line9');
+    await App.speak(`Iteration complete. Now I sum up all the memory results. The total is ${total}.`);
+    if(shouldStop) return;
+    
+    totalBubble.textContent = `$${total}`;
+    totalBubble.classList.add('show');
+    App.updateText("✅ Calculation Complete!");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+  // Initialize
+  initTable();
+
+</script>
+
+</body>
+</html>

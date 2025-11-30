@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: CALCULATE</title>
+<link rel="stylesheet" href="../../assets/style.css">
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📊 Sales Table</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate sales for <strong>"Red"</strong> products only.<br>
+      Watch how <strong>CALCULATE</strong> changes the "Filter Context" temporarily.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnTotal">∑ Total Sales</button>
+        <button class="action primary" id="btnCalc">🔴 CALCULATE (Red)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Measure 1: Standard Sum</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Total Sales = <span class="fn">SUM</span>( Sales[Amount] )</div>
+      <br>
+      <div class="codeLine" id="line3"><span class="cmt">-- Measure 2: Change Context with CALCULATE</span></div>
+      <div class="codeLine" id="line4"><span class="kwd">MEASURE</span> Red Sales = </div>
+      <div class="codeLine" id="line5"><span class="fn">CALCULATE</span> (</div>
+      <div class="codeLine" id="line6">    [Total Sales],           <span class="cmt">// 1. The Expression</span></div>
+      <div class="codeLine" id="line7">    Sales[Color] = <span class="str">"Red"</span>     <span class="cmt">// 2. The New Filter</span></div>
+      <div class="codeLine" id="line8">)</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Final Result:</span>
+      <div class="total-bubble" id="totalBubble">0</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  
+  App.initLayout("CALCULATE Basics", "../../");
+
+  // Data
+  const data = [
+    { id: 1, color: "Red", amt: 100 },
+    { id: 2, color: "Blue", amt: 50 },
+    { id: 3, color: "Red", amt: 200 },
+    { id: 4, color: "Blue", amt: 75 },
+    { id: 5, color: "Red", amt: 150 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>ID</div> <div>Color</div> <div>Amount</div> <div>Status</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      // Color code the text for visual clarity
+      const colorStyle = d.color === 'Red' ? 'color:#f87171;' : 'color:#60a5fa;';
+      
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>${d.id}</div>
+          <div style="font-weight:bold; ${colorStyle}">${d.color}</div>
+          <div class="cell-num">$${d.amt}</div>
+          <div class="cell-num" id="status-${i}" style="font-size:0.8rem; color:var(--text-dim)">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready to calculate...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+      // Reset opacity of rows
+      const rows = document.querySelectorAll('.table-row');
+      rows.forEach(r => r.style.opacity = "1");
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: TOTAL SALES (No Filter) ---
+  document.getElementById('btnTotal').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let sum = 0;
+
+    highlight('line2');
+    await App.speak("Starting Total Sales. I will sum up the Amount column completely. No filters applied.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      row.classList.add('row-highlight');
+
+      sum += data[i].amt;
+      statusCell.textContent = "Summed";
+      statusCell.style.color = "#4ade80"; // Green
+      
+      App.updateText(`Adding $${data[i].amt}. Running Total: $${sum}`);
+      await App.speak(`Plus ${data[i].amt}.`);
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText(`Final Total: <b>$${sum}</b>`);
+    await App.speak(`Done. The total sum of all rows is ${sum} dollars.`);
+    
+    totalBubble.textContent = `$${sum}`;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: CALCULATE (Red Only) ---
+  document.getElementById('btnCalc').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let sum = 0;
+
+    // 1. Start Function
+    highlight('line5');
+    await App.speak("Starting CALCULATE. This function allows us to change the filter context before doing any math.");
+    if(shouldStop) return;
+
+    // 2. Apply Filter
+    highlight('line7');
+    App.updateText("Applying Filter: Color = 'Red'");
+    await App.speak("I am applying a new filter. Only Red rows will be visible to the calculation.");
+    
+    // VISUAL EFFECT: Fade out Blue rows
+    for (let i = 0; i < data.length; i++) {
+      if (data[i].color !== "Red") {
+        document.getElementById(`row-${i}`).style.opacity = "0.2";
+        document.getElementById(`status-${i}`).textContent = "Filtered Out";
+      }
+    }
+    await new Promise(r => setTimeout(r, 1000)); // Pause to let user see effect
+    if(shouldStop) return;
+
+    // 3. Perform Calc
+    highlight('line6');
+    await App.speak("Now I run the SUM expression on the visible rows.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      // Skip hidden rows logically
+      if (data[i].color !== "Red") continue;
+
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      row.classList.add('row-highlight');
+
+      sum += data[i].amt;
+      statusCell.textContent = "Included";
+      statusCell.style.color = "#f87171"; // Red text
+      statusCell.style.fontWeight = "bold";
+      
+      App.updateText(`Row ${i+1}: It is Red. Adding $${data[i].amt}.`);
+      await App.speak(`Found Red row. Adding ${data[i].amt}.`);
+      
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    // 4. Finish
+    highlight('line8');
+    App.updateText(`Result: <b>$${sum}</b>. Restoring context...`);
+    await App.speak(`Calculation finished. The result is ${sum}. Now I restore the original table.`);
+    
+    // Restore rows
+    const rows = document.querySelectorAll('.table-row');
+    rows.forEach(r => r.style.opacity = "1");
+    
+    totalBubble.textContent = `$${sum}`;
+    totalBubble.classList.add('show');
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

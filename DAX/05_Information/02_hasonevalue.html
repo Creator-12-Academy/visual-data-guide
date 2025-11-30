@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: HASONEVALUE</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Style for the Grand Total row to make it distinct */
+  .row-total {
+    border-top: 2px solid var(--border);
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.02);
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📊 Matrix Visual</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Detect if we are looking at a single item or the Grand Total.<br>
+      <strong>HASONEVALUE</strong> is the sensor for this.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnCheck">🔍 Check Context</button>
+        <button class="action primary" id="btnHide">🙈 Hide Total</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: The Sensor</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Is_Single_Color = <span class="fn">HASONEVALUE</span>( Sales[Color] )</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- Returns TRUE for rows, FALSE for Total.</span></div>
+      <br>
+      <div class="codeLine" id="line4"><span class="cmt">-- Scenario 2: Hide Calculation at Total</span></div>
+      <div class="codeLine" id="line5"><span class="kwd">MEASURE</span> Safe_Rank = </div>
+      <div class="codeLine" id="line6">    <span class="fn">IF</span>( </div>
+      <div class="codeLine" id="line7">        <span class="fn">HASONEVALUE</span>( Sales[Color] ), </div>
+      <div class="codeLine" id="line8">        [MyRankingMeasure],  <span class="cmt">-- Show Rank</span></div>
+      <div class="codeLine" id="line9">        <span class="fn">BLANK</span>()              <span class="cmt">-- Hide at Total</span></div>
+      <div class="codeLine" id="line10">    )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Return Value:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("HASONEVALUE", "../../");
+
+  // Data: Includes Red, Blue, and a Total Row representation
+  const data = [
+    { label: "Red", type: "item" },
+    { label: "Blue", type: "item" },
+    { label: "Green", type: "item" },
+    { label: "TOTAL", type: "total" }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Product Color</div> <div>Context</div> <div>Result</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      const rowClass = d.type === 'total' ? 'table-row row-total' : 'table-row';
+      const labelStyle = d.type === 'total' ? 'font-weight:bold; color:var(--accent);' : '';
+      
+      table.innerHTML += `
+        <div class="${rowClass}" id="row-${i}">
+          <div style="${labelStyle}">${d.label}</div>
+          <div class="cell-num" id="ctx-${i}" style="font-size:0.8rem; color:var(--text-dim)">-</div>
+          <div class="cell-num" id="res-${i}" style="font-weight:bold;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: CHECK (TRUE/FALSE) ---
+  document.getElementById('btnCheck').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line2');
+    await App.speak("Checking HASONEVALUE. I will look at the filter context for each row.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const ctxCell = document.getElementById(`ctx-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      if (data[i].type === 'item') {
+        // Individual Row
+        ctxCell.textContent = "1 Value";
+        resCell.textContent = "TRUE";
+        resCell.style.color = "#4ade80"; // Green
+        
+        totalBubble.textContent = "TRUE";
+        totalBubble.style.background = "#4ade80";
+        totalBubble.classList.add('show');
+        
+        App.updateText(`Row ${i+1}: Context is filtered to '${data[i].label}' only.`);
+        await App.speak(`Filtered to ${data[i].label}. That is one value. True.`);
+      } else {
+        // Total Row
+        ctxCell.textContent = "Multiple (All)";
+        resCell.textContent = "FALSE";
+        resCell.style.color = "#ef4444"; // Red
+        
+        totalBubble.textContent = "FALSE";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        
+        App.updateText(`Total Row: Context sees ALL colors.`);
+        await App.speak(`Total row sees Red, Blue, and Green. That is many values. False.`);
+      }
+
+      await new Promise(r => setTimeout(r, 500));
+      row.classList.remove('row-highlight');
+      totalBubble.classList.remove('show');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: HIDE TOTAL (IF) ---
+  document.getElementById('btnHide').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line6');
+    await App.speak("Hiding Totals. I will only calculate the ranking if HASONEVALUE is True.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      // 1. Check Condition
+      highlight('line7');
+      const isOne = data[i].type === 'item';
+      
+      if (isOne) {
+        // 2. Value (Show Rank)
+        await App.speak(`Context is ${data[i].label}. Single value.`);
+        highlight('line8');
+        const rank = i + 1; // Fake Rank
+        resCell.textContent = `Rank #${rank}`;
+        resCell.style.color = "var(--text-primary)";
+        App.updateText(`Showing Rank for ${data[i].label}.`);
+        await App.speak(`Showing rank ${rank}.`);
+      } else {
+        // 3. Blank (Hide)
+        await App.speak(`Context is Total. Multiple values.`);
+        highlight('line9');
+        resCell.textContent = ""; // Blank
+        App.updateText(`Total Row: Returning BLANK() to hide result.`);
+        await App.speak(`Hiding the result.`);
+      }
+
+      await new Promise(r => setTimeout(r, 500));
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

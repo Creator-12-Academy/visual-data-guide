@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: ISCROSSFILTERED</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Styles */
+  .tables-container {
+    display: grid;
+    grid-template-columns: 0.8fr 1.2fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    position: relative;
+  }
+  .mini-table { border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden; background: var(--bg-main); }
+  .mini-header { background: rgba(255,255,255,0.05); padding: 0.4rem; font-weight: bold; font-size: 0.75rem; color: var(--accent); text-align: center; border-bottom: 1px solid var(--border); }
+  
+  /* Filter Flow Arrow */
+  .flow-arrow {
+    position: absolute;
+    top: 50%; left: 38%;
+    width: 20%; height: 2px;
+    background: var(--accent-m); /* Yellow */
+    transform: translateY(-50%);
+    opacity: 0;
+    transition: opacity 0.5s;
+    z-index: 10;
+  }
+  .flow-arrow::after {
+    content: '►';
+    position: absolute; right: -5px; top: -8px;
+    color: var(--accent-m); font-size: 1rem;
+  }
+  .flow-label {
+    position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+    font-size: 0.7rem; color: var(--accent-m); white-space: nowrap;
+  }
+
+  /* Slicer */
+  .slicer-btn {
+    background: #334155; border: 1px solid var(--border); color: var(--text-dim);
+    padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; transition: 0.2s; display: inline-block; margin-right: 5px;
+  }
+  .slicer-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔗 Relationship Filter</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <div style="margin-bottom:1rem; padding:0.5rem; border:1px solid var(--border); border-radius:0.5rem;">
+      <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.5rem;">FILTER PRODUCT TABLE:</div>
+      <div id="slice-A" class="slicer-btn">Product A</div>
+      <div id="slice-All" class="slicer-btn active">All Products</div>
+    </div>
+
+    <div class="tables-container">
+      
+      <div class="mini-table" id="t1">
+        <div class="mini-header">Product (Lookup)</div>
+        <div id="prodTable"></div>
+      </div>
+
+      <div id="arrow" class="flow-arrow">
+        <span class="flow-label">Relationship Flow</span>
+      </div>
+
+      <div class="mini-table" id="t2">
+        <div class="mini-header">Sales (Fact)</div>
+        <div id="salesTable"></div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnDirect">🔍 ISFILTERED</button>
+        <button class="action primary" id="btnCross">🌐 ISCROSSFILTERED</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Check: Is 'Sales' filtered DIRECTLY?</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Direct_Check = </div>
+      <div class="codeLine" id="line3">    <span class="fn">ISFILTERED</span>( Sales[ProductID] )</div>
+      <div class="codeLine" id="line4"><span class="cmt">-- Returns FALSE because we sliced the Product table, not Sales.</span></div>
+      <br>
+      <div class="codeLine" id="line5"><span class="cmt">-- Check: Is 'Sales' filtered INDIRECTLY?</span></div>
+      <div class="codeLine" id="line6"><span class="kwd">MEASURE</span> Cross_Check = </div>
+      <div class="codeLine" id="line7">    <span class="fn">ISCROSSFILTERED</span>( Sales[ProductID] )</div>
+      <div class="codeLine" id="line8"><span class="cmt">-- Returns TRUE because the filter flows Product -> Sales.</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Return Value:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("ISCROSSFILTERED", "../../");
+
+  // Data
+  const prodData = [ { id: "A" }, { id: "B" } ];
+  const salesData = [ 
+    { pid: "A", amt: 10 }, 
+    { pid: "B", amt: 20 }, 
+    { pid: "A", amt: 15 } 
+  ];
+
+  let currentSlice = "All";
+
+  // Elements
+  const prodTable = document.getElementById('prodTable');
+  const salesTable = document.getElementById('salesTable');
+  const arrow = document.getElementById('arrow');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTables() {
+    // Product Table
+    prodTable.innerHTML = `<div class="table-row header" style="grid-template-columns:1fr;"><div>ID</div></div>`;
+    prodData.forEach((d, i) => {
+        let opacity = (currentSlice === "All" || currentSlice === d.id) ? "1" : "0.3";
+        prodTable.innerHTML += `<div class="table-row" style="grid-template-columns:1fr; opacity:${opacity}"><div>${d.id}</div></div>`;
+    });
+
+    // Sales Table
+    salesTable.innerHTML = `<div class="table-row header" style="grid-template-columns:1fr 1fr;"><div>PID</div><div>Amt</div></div>`;
+    salesData.forEach((d, i) => {
+        let opacity = (currentSlice === "All" || currentSlice === d.pid) ? "1" : "0.3";
+        salesTable.innerHTML += `<div class="table-row" style="grid-template-columns:1fr 1fr; opacity:${opacity}"><div>${d.pid}</div><div>$${d.amt}</div></div>`;
+    });
+  }
+
+  // Handle Slicer
+  function setSlice(val) {
+    if(isRunning) return;
+    currentSlice = val;
+    document.getElementById('slice-A').classList.toggle('active', val === 'A');
+    document.getElementById('slice-All').classList.toggle('active', val === 'All');
+    initTables();
+    
+    // Show arrow if filtered
+    arrow.style.opacity = val === 'A' ? "1" : "0";
+    totalBubble.classList.remove('show');
+  }
+
+  document.getElementById('slice-A').onclick = () => setSlice('A');
+  document.getElementById('slice-All').onclick = () => setSlice('All');
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      setSlice('All');
+      App.updateText("Ready...");
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: ISFILTERED (Direct) ---
+  document.getElementById('btnDirect').addEventListener('click', async () => {
+    if(isRunning) return;
+    
+    if(currentSlice === "All") {
+        App.showToast("Please select 'Product A' first to see the effect!");
+        return;
+    }
+
+    isRunning = true;
+    highlight('line3');
+    App.updateText("Checking ISFILTERED( Sales[ProductID] )");
+    await App.speak("I am checking if the Sales table is being filtered DIRECTLY.");
+    if(shouldStop) return;
+
+    // Check Slicer location
+    document.getElementById('t1').style.borderColor = "var(--accent-m)"; // Highlight Prod Table
+    App.updateText("Slicer is on 'Product' Table. Not 'Sales'.");
+    await App.speak("The slicer is on the Product table.");
+    
+    await new Promise(r => setTimeout(r, 800));
+    if(shouldStop) return;
+
+    document.getElementById('t2').style.borderColor = "var(--border)"; // Reset
+    document.getElementById('t1').style.borderColor = "var(--border)";
+
+    App.updateText("Result: FALSE (Sales is filtered indirectly, not directly).");
+    await App.speak("Result is False. The Sales table is filtered, but only indirectly via the relationship.");
+
+    totalBubble.textContent = "FALSE";
+    totalBubble.style.background = "#ef4444";
+    totalBubble.classList.add('show');
+    
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: ISCROSSFILTERED (Indirect) ---
+  document.getElementById('btnCross').addEventListener('click', async () => {
+    if(isRunning) return;
+
+    if(currentSlice === "All") {
+        App.showToast("Please select 'Product A' first!");
+        return;
+    }
+
+    isRunning = true;
+    highlight('line7');
+    App.updateText("Checking ISCROSSFILTERED( Sales[ProductID] )");
+    await App.speak("Now I check IS-CROSS-FILTERED. This checks for ANY filter reaching this column.");
+    if(shouldStop) return;
+
+    // Visualize Flow
+    document.getElementById('t1').style.borderColor = "var(--accent-m)";
+    await new Promise(r => setTimeout(r, 500));
+    
+    // Pulse Arrow
+    arrow.style.transform = "translateY(-50%) scale(1.2)";
+    App.updateText("Filter flows from Product ---> Sales");
+    await App.speak("The filter starts at Product, and flows down the relationship line.");
+    
+    await new Promise(r => setTimeout(r, 500));
+    arrow.style.transform = "translateY(-50%) scale(1)";
+    
+    document.getElementById('t2').style.borderColor = "var(--accent-m)"; // Highlight Sales
+    App.updateText("Sales table is affected!");
+    await App.speak("It reaches the Sales table.");
+
+    if(shouldStop) return;
+
+    App.updateText("Result: TRUE (Filter propagated successfully).");
+    await App.speak("Result is True. The column is cross-filtered.");
+
+    totalBubble.textContent = "TRUE";
+    totalBubble.style.background = "#4ade80";
+    totalBubble.classList.add('show');
+
+    // Reset styles
+    setTimeout(() => {
+        document.getElementById('t1').style.borderColor = "var(--border)";
+        document.getElementById('t2').style.borderColor = "var(--border)";
+    }, 2000);
+
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTables();
+
+</script>
+</body>
+</html>

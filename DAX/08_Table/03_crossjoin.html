@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: CROSSJOIN</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Layout for Source Tables */
+  .source-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .mini-table {
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    overflow: hidden;
+  }
+  .mini-header {
+    background: rgba(255,255,255,0.05);
+    padding: 0.3rem;
+    font-size: 0.7rem;
+    text-align: center;
+    color: var(--accent);
+    font-weight: bold;
+    border-bottom: 1px solid var(--border);
+  }
+  
+  /* Animation: Connector Line */
+  .join-line {
+    position: absolute;
+    height: 2px;
+    background: var(--accent-m); /* Yellow */
+    transform-origin: left center;
+    opacity: 0;
+    z-index: 20;
+    box-shadow: 0 0 8px var(--accent-m);
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>✖️ Cartesian Product</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Generate all possible combinations.<br>
+      <strong>CROSSJOIN:</strong> Returns a table where every row from Table A is paired with every row from Table B.
+    </p>
+
+    <div class="source-container">
+      <div class="mini-table">
+        <div class="mini-header">Colors (2 Rows)</div>
+        <div id="tableA"></div>
+      </div>
+      <div class="mini-table">
+        <div class="mini-header">Sizes (3 Rows)</div>
+        <div id="tableB"></div>
+      </div>
+    </div>
+
+    <div style="font-size:0.75rem; color:var(--text-dim); margin-bottom:0.5rem;">Result: 2 x 3 = 6 Rows</div>
+    <div id="resultTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnJoin">✖️ CROSSJOIN</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Generate all Color/Size combinations</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">EVALUATE</span> Combinations = </div>
+      <div class="codeLine" id="line3">    <span class="fn">CROSSJOIN</span>( </div>
+      <div class="codeLine" id="line4">        Colors,    <span class="cmt">-- Table 1 (2 rows)</span></div>
+      <div class="codeLine" id="line5">        Sizes      <span class="cmt">-- Table 2 (3 rows)</span></div>
+      <div class="codeLine" id="line6">    )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Rows Generated:</span>
+      <div class="total-bubble" id="totalBubble">0</div>
+    </div>
+  </section>
+
+</div>
+
+<div id="connector" class="join-line"></div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("CROSSJOIN", "../../");
+
+  const dataA = [ { val: "Red" }, { val: "Blue" } ];
+  const dataB = [ { val: "Small" }, { val: "Medium" }, { val: "Large" } ];
+
+  const tableA = document.getElementById('tableA');
+  const tableB = document.getElementById('tableB');
+  const resultTable = document.getElementById('resultTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+  const connector = document.getElementById('connector');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTables() {
+    // Table A
+    tableA.innerHTML = ``;
+    dataA.forEach((d, i) => {
+      tableA.innerHTML += `
+        <div class="table-row" id="a-${i}" style="padding:0.4rem; justify-content:center; display:flex;">
+          <strong>${d.val}</strong>
+        </div>
+      `;
+    });
+
+    // Table B
+    tableB.innerHTML = ``;
+    dataB.forEach((d, i) => {
+      tableB.innerHTML += `
+        <div class="table-row" id="b-${i}" style="padding:0.4rem; justify-content:center; display:flex;">
+          ${d.val}
+        </div>
+      `;
+    });
+
+    // Result
+    resultTable.innerHTML = `<div class="table-row header" style="grid-template-columns:1fr 1fr;"><div>Color</div><div>Size</div></div>`;
+  }
+
+  function drawLine(rowA, rowB) {
+    const r1 = rowA.getBoundingClientRect();
+    const r2 = rowB.getBoundingClientRect();
+    
+    const x1 = r1.right;
+    const y1 = r1.top + (r1.height/2);
+    const x2 = r2.left;
+    const y2 = r2.top + (r2.height/2);
+
+    const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+    connector.style.width = `${length}px`;
+    connector.style.left = `${x1 + window.scrollX}px`;
+    connector.style.top = `${y1 + window.scrollY}px`;
+    connector.style.transform = `rotate(${angle}deg)`;
+    connector.style.opacity = "1";
+  }
+
+  function hideLine() { connector.style.opacity = "0"; }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    hideLine();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTables();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO: CROSSJOIN ---
+  document.getElementById('btnJoin').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let count = 0;
+
+    highlight('line3');
+    await App.speak("Starting CROSSJOIN. I will take every Color, and pair it with every Size.");
+
+    // Loop Table A (Colors)
+    for (let i = 0; i < dataA.length; i++) {
+      if(shouldStop) return;
+      const rowA = document.getElementById(`a-${i}`);
+      rowA.style.backgroundColor = "rgba(14, 165, 233, 0.2)"; // Blue
+      
+      highlight('line4');
+      App.updateText(`Selected Color: ${dataA[i].val}`);
+      await App.speak(`Taking ${dataA[i].val}.`);
+
+      // Loop Table B (Sizes)
+      for (let j = 0; j < dataB.length; j++) {
+        if(shouldStop) return;
+        const rowB = document.getElementById(`b-${j}`);
+        rowB.style.backgroundColor = "rgba(34, 197, 94, 0.2)"; // Green
+        
+        highlight('line5');
+        drawLine(rowA, rowB);
+        
+        App.updateText(`Pairing: ${dataA[i].val} + ${dataB[j].val}`);
+        // await App.speak(`Pairing with ${dataB[j].val}.`); // Optional: Skipping voice for speed
+        
+        // Add Result Row
+        count++;
+        resultTable.innerHTML += `
+            <div class="table-row" style="grid-template-columns:1fr 1fr; animation:fadeIn 0.3s;">
+                <div style="font-weight:bold; color:#38bdf8;">${dataA[i].val}</div>
+                <div style="font-weight:bold; color:#4ade80;">${dataB[j].val}</div>
+            </div>
+        `;
+        
+        totalBubble.textContent = count;
+        totalBubble.classList.add('show');
+
+        await new Promise(r => setTimeout(r, 600));
+        rowB.style.backgroundColor = "transparent";
+      }
+
+      rowA.style.backgroundColor = "transparent";
+      hideLine();
+    }
+
+    App.updateText(`Done! Created ${count} rows.`);
+    await App.speak(`Finished. We started with 2 colors and 3 sizes, and ended up with ${count} rows.`);
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTables();
+
+  // Animation Keyframe
+  const styleSheet = document.createElement("style");
+  styleSheet.innerText = "@keyframes fadeIn { from { opacity:0; transform:translateY(-10px); } to { opacity:1; transform:translateY(0); } }";
+  document.head.appendChild(styleSheet);
+
+</script>
+</body>
+</html>

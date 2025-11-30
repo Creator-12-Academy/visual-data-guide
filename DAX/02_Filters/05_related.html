@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: RELATED & RELATEDTABLE</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Custom Grid for Two Tables */
+  .tables-container {
+    display: grid;
+    grid-template-columns: 1.2fr 0.8fr; /* Sales is wider */
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .mini-table { border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden; }
+  .mini-header { background: rgba(255,255,255,0.05); padding: 0.4rem; font-weight: bold; font-size: 0.75rem; color: var(--accent); text-align: center; border-bottom: 1px solid var(--border); }
+  
+  /* Connection Line Animation */
+  .connector {
+    position: absolute; background: var(--accent); height: 2px;
+    transform-origin: left center; opacity: 0; pointer-events: none; z-index: 50;
+    box-shadow: 0 0 10px var(--accent);
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔗 Relationships</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Fetch data across tables.<br>
+      <strong>RELATED:</strong> Pulls info from the "One" side (Lookup).<br>
+      <strong>RELATEDTABLE:</strong> Counts rows on the "Many" side (Fact).
+    </p>
+
+    <div class="tables-container">
+      
+      <div class="mini-table">
+        <div class="mini-header">Fact: Sales Table (Many Side)</div>
+        <div id="salesTable"></div>
+      </div>
+
+      <div class="mini-table">
+        <div class="mini-header">Lookup: Product Table (One Side)</div>
+        <div id="prodTable"></div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnRelated">⬅️ RELATED()</button>
+        <button class="action primary" id="btnRelTable">➡️ RELATEDTABLE()</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Fetch Price from Lookup Table</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">COLUMN</span> Revenue = Sales[Qty] * <span class="fn">RELATED</span>( Product[Price] )</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- "Go look up the Price for this product"</span></div>
+      <br>
+      <div class="codeLine" id="line4"><span class="cmt">-- Scenario 2: Count Sales for each Product</span></div>
+      <div class="codeLine" id="line5"><span class="kwd">COLUMN</span> Txn_Count = <span class="fn">COUNTROWS</span>( <span class="fn">RELATEDTABLE</span>( Sales ) )</div>
+      <div class="codeLine" id="line6"><span class="cmt">-- "Go count how many times this product appears in Sales"</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border);">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Relationship:</span>
+      <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem; font-size:0.85rem;">
+        <span style="color:var(--accent);">Sales[*]</span> 
+        <span style="color:#666;">────── related to ──────</span> 
+        <span style="color:var(--accent);">Product[1]</span>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="line" class="connector"></div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  
+  App.initLayout("RELATED / RELATEDTABLE", "../../");
+
+  // Data Tables
+  const salesData = [
+    { id: 101, prod: "A", qty: 2 },
+    { id: 102, prod: "B", qty: 1 },
+    { id: 103, prod: "A", qty: 3 },
+  ];
+
+  const prodData = [
+    { name: "A", price: 10 },
+    { name: "B", price: 20 },
+  ];
+
+  const salesTable = document.getElementById('salesTable');
+  const prodTable = document.getElementById('prodTable');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+  const connector = document.getElementById('line');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTables() {
+    // SALES TABLE
+    salesTable.innerHTML = `
+      <div class="table-row header" style="grid-template-columns:1fr 1fr 1fr 1.5fr;">
+        <div>ID</div><div>Prod</div><div>Qty</div><div id="col-rev">Rev</div>
+      </div>
+    `;
+    salesData.forEach((d, i) => {
+      salesTable.innerHTML += `
+        <div class="table-row" id="s-row-${i}" style="grid-template-columns:1fr 1fr 1fr 1.5fr;">
+          <div>${d.id}</div>
+          <div id="s-prod-${i}">${d.prod}</div>
+          <div>${d.qty}</div>
+          <div class="cell-num" id="s-res-${i}" style="color:var(--text-dim)">-</div>
+        </div>
+      `;
+    });
+
+    // PRODUCT TABLE
+    prodTable.innerHTML = `
+      <div class="table-row header" style="grid-template-columns:1fr 1fr 1.5fr;">
+        <div>Prod</div><div>Price</div><div id="col-cnt">Cnt</div>
+      </div>
+    `;
+    prodData.forEach((d, i) => {
+      prodTable.innerHTML += `
+        <div class="table-row" id="p-row-${i}" style="grid-template-columns:1fr 1fr 1.5fr;">
+          <div id="p-name-${i}">${d.name}</div>
+          <div class="cell-num">$${d.price}</div>
+          <div class="cell-num" id="p-res-${i}" style="color:var(--text-dim)">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function drawLine(el1, el2) {
+    const rect1 = el1.getBoundingClientRect();
+    const rect2 = el2.getBoundingClientRect();
+    
+    // Calculate center points
+    const x1 = rect1.right;
+    const y1 = rect1.top + rect1.height / 2;
+    const x2 = rect2.left;
+    const y2 = rect2.top + rect2.height / 2;
+
+    // Math for line
+    const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+    connector.style.width = `${length}px`;
+    connector.style.left = `${x1 + window.scrollX}px`;
+    connector.style.top = `${y1 + window.scrollY}px`;
+    connector.style.transform = `rotate(${angle}deg)`;
+    connector.style.opacity = "1";
+  }
+
+  function hideLine() { connector.style.opacity = "0"; }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    hideLine();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTables();
+      App.updateText("Ready to calculate...");
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: RELATED (Fact -> Lookup) ---
+  document.getElementById('btnRelated').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    document.getElementById('col-rev').style.color = "var(--accent)";
+    
+    highlight('line2');
+    await App.speak("Starting RELATED. I am in the Sales table, but I need the Price from the Product table to calculate Revenue.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < salesData.length; i++) {
+      if(shouldStop) return;
+      const sRow = document.getElementById(`s-row-${i}`);
+      const sRes = document.getElementById(`s-res-${i}`);
+      sRow.classList.add('row-highlight');
+
+      const prodName = salesData[i].prod;
+      const prodIndex = prodData.findIndex(p => p.name === prodName);
+      
+      App.updateText(`Row ${i+1}: Product is ${prodName}. Looking up Price...`);
+      await App.speak(`Product is ${prodName}. Fetching price.`);
+      
+      // Draw Line
+      const pRow = document.getElementById(`p-row-${prodIndex}`);
+      pRow.classList.add('row-highlight'); // Highlight target
+      
+      drawLine(document.getElementById(`s-prod-${i}`), document.getElementById(`p-name-${prodIndex}`));
+      
+      await new Promise(r => setTimeout(r, 800)); // Pause to see connection
+      if(shouldStop) return;
+
+      const price = prodData[prodIndex].price;
+      const qty = salesData[i].qty;
+      const revenue = price * qty;
+
+      App.updateText(`Price is $${price}. ${qty} x $${price} = <b>$${revenue}</b>`);
+      await App.speak(`Price is ${price}. Total is ${revenue}.`);
+      
+      sRes.textContent = `$${revenue}`;
+      sRes.style.color = "#4ade80";
+      sRes.style.fontWeight = "bold";
+
+      hideLine();
+      sRow.classList.remove('row-highlight');
+      pRow.classList.remove('row-highlight');
+    }
+
+    App.updateText("Calculation Complete.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: RELATEDTABLE (Lookup -> Fact) ---
+  document.getElementById('btnRelTable').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    document.getElementById('col-cnt').style.color = "var(--accent)";
+
+    highlight('line5');
+    await App.speak("Starting RELATEDTABLE. I am in the Product table. I want to count how many transactions exist for each product.");
+    if(shouldStop) return;
+
+    for (let i = 0; i < prodData.length; i++) {
+      if(shouldStop) return;
+      const pRow = document.getElementById(`p-row-${i}`);
+      const pRes = document.getElementById(`p-res-${i}`);
+      pRow.classList.add('row-highlight');
+
+      const prodName = prodData[i].name;
+      App.updateText(`Product ${prodName}: Searching Sales table for matches...`);
+      await App.speak(`Checking Sales for Product ${prodName}.`);
+
+      // Find Matches in Sales
+      let count = 0;
+      for(let j=0; j<salesData.length; j++) {
+        if(salesData[j].prod === prodName) {
+            const sRow = document.getElementById(`s-row-${j}`);
+            sRow.classList.add('row-highlight'); // Highlight match
+            drawLine(document.getElementById(`p-name-${i}`), document.getElementById(`s-prod-${j}`));
+            count++;
+            await new Promise(r => setTimeout(r, 400)); // Fast blink per match
+            sRow.classList.remove('row-highlight');
+        }
+      }
+      hideLine();
+
+      App.updateText(`Found ${count} transactions for Product ${prodName}.`);
+      await App.speak(`Found ${count} transactions.`);
+      
+      pRes.textContent = count;
+      pRes.style.color = "#a855f7"; // Purple for count
+      pRes.style.fontWeight = "bold";
+      
+      if(shouldStop) return;
+      pRow.classList.remove('row-highlight');
+    }
+
+    App.updateText("Calculation Complete.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTables();
+
+</script>
+</body>
+</html>

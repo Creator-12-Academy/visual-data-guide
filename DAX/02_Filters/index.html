@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Filter Context Functions | DAX</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Styles for this list */
+  .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+  
+  .lesson-list {
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+
+  .lesson-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    text-decoration: none;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: 0.2s;
+  }
+  .lesson-card:hover {
+    border-color: var(--accent);
+    transform: translateX(5px);
+    background: rgba(255,255,255,0.03);
+  }
+
+  .lesson-title { color: #fff; font-weight: bold; font-size: 1.1rem; }
+  .lesson-desc { color: var(--text-dim); font-size: 0.9rem; margin-top: 0.2rem; }
+  .icon { font-size: 1.5rem; }
+</style>
+</head>
+<body>
+
+  <header></header>
+
+  <div class="container">
+    <div style="text-align:center; margin-bottom:3rem;">
+      <h1 style="color:var(--accent); margin-bottom:0.5rem;">02. Filter Context</h1>
+      <p style="color:var(--text-dim);">The "Brain" of DAX. Learn how to manipulate, remove, and modify filters.</p>
+    </div>
+
+    <div class="lesson-list">
+      
+      <a href="01_calculate.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">CALCULATE (The King)</div>
+          <div class="lesson-desc">The only function that can modify the filter context.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="02_filter.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">FILTER (Iterator)</div>
+          <div class="lesson-desc">Iterating through a table to keep specific rows based on logic.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="03_all_allexcept.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">ALL / ALLEXCEPT</div>
+          <div class="lesson-desc">How to remove filters to calculate Grand Totals and Subtotals.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="04_values_distinct.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">VALUES vs DISTINCT</div>
+          <div class="lesson-desc">Handling unique lists and the "Blank Row" behavior.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="05_related.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">RELATED / RELATEDTABLE</div>
+          <div class="lesson-desc">Fetching data from other tables using relationships.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+    </div>
+    
+    <div style="margin-top: 3rem; text-align: center;">
+      <a href="../index.html" class="nav-link" style="display:inline-block; border:1px solid var(--border);">
+        ⬅ Back to DAX Menu
+      </a>
+    </div>
+
+  </div>
+
+  <footer></footer>
+
+  <script src="../../assets/app.js"></script>
+  <script>
+    // Initialize Layout
+    // Args: Title, Path to Root ("../../")
+    App.initLayout("Filter Context", "../../");
+  </script>
+
+</body>
+</html>

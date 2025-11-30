@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: DATEADD</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Style: Highlight the shift direction */
+  .shift-indicator {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    margin-left: 5px;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .shift-back { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid #f87171; } /* Red */
+  .shift-fwd { background: rgba(74, 222, 128, 0.2); color: #4ade80; border: 1px solid #4ade80; } /* Green */
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📅 Monthly Sales</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Shift the date context to compare against specific past or future periods.<br>
+      <strong>DATEADD</strong> is the "Time Machine" of DAX.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnPrev">⏪ Prev Month (-1)</button>
+        <button class="action primary" id="btnNext">⏩ Next Month (+1)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Previous Month (PM)</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Sales PM = </div>
+      <div class="codeLine" id="line3"><span class="fn">CALCULATE</span> (</div>
+      <div class="codeLine" id="line4">    <span class="fn">SUM</span>( Sales[Amount] ),</div>
+      <div class="codeLine" id="line5">    <span class="fn">DATEADD</span>( 'Date'[Date], <span class="val">-1</span>, <span class="kwd">MONTH</span> )</div>
+      <div class="codeLine" id="line6">)</div>
+      <br>
+      <div class="codeLine" id="line7"><span class="cmt">-- Scenario 2: Next Month (Projection)</span></div>
+      <div class="codeLine" id="line8"><span class="kwd">MEASURE</span> Sales NM = </div>
+      <div class="codeLine" id="line9">    <span class="fn">CALCULATE</span>( <span class="fn">SUM</span>(Sales[Amt]), <span class="fn">DATEADD</span>(..., <span class="val">1</span>, <span class="kwd">MONTH</span>) )</div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Comparison Result:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("DATEADD", "../../");
+
+  // Data: Sequential Months
+  const data = [
+    { month: "January", amt: 100 },
+    { month: "February", amt: 120 },
+    { month: "March", amt: 150 },
+    { month: "April", amt: 130 },
+    { month: "May", amt: 200 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1.2fr 1fr 1fr;">
+        <div>Month</div> <div>Sales</div> <div>Result</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1.2fr 1fr 1fr;">
+          <div>${d.month}</div>
+          <div class="cell-num">$${d.amt}</div>
+          <div class="cell-num" id="res-${i}" style="color:var(--text-dim);">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: PREVIOUS MONTH (-1) ---
+  document.getElementById('btnPrev').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line5');
+    await App.speak("Executing DATEADD with minus 1 Month. This shifts the context backwards in time.");
+    
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      // Look back 1 index
+      const targetIndex = i - 1;
+      
+      App.updateText(`Current: ${data[i].month}. Looking for previous month...`);
+      await new Promise(r => setTimeout(r, 500));
+
+      if (targetIndex >= 0) {
+        // Found Previous Data
+        const prevRow = document.getElementById(`row-${targetIndex}`);
+        prevRow.style.backgroundColor = "rgba(168, 85, 247, 0.2)"; // Purple highlight source
+        
+        await App.speak(`Found ${data[targetIndex].month}. Sales were ${data[targetIndex].amt}.`);
+        
+        resCell.textContent = `$${data[targetIndex].amt}`;
+        resCell.style.color = "#4ade80";
+        
+        // Show diff bubble
+        const diff = data[i].amt - data[targetIndex].amt;
+        totalBubble.textContent = `${diff >= 0 ? '+' : ''}${diff}`;
+        totalBubble.classList.add('show');
+
+        prevRow.style.backgroundColor = "transparent";
+      } else {
+        // No Data (Start of time)
+        resCell.textContent = "(Blank)";
+        await App.speak("No previous month found. Result is blank.");
+        totalBubble.classList.remove('show');
+      }
+
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: NEXT MONTH (+1) ---
+  document.getElementById('btnNext').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    highlight('line9');
+    await App.speak("Executing DATEADD with positive 1 Month. This looks into the future context.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      // Look forward 1 index
+      const targetIndex = i + 1;
+      
+      App.updateText(`Current: ${data[i].month}. Looking for next month...`);
+      await new Promise(r => setTimeout(r, 500));
+
+      if (targetIndex < data.length) {
+        // Found Next Data
+        const nextRow = document.getElementById(`row-${targetIndex}`);
+        nextRow.style.backgroundColor = "rgba(245, 158, 11, 0.2)"; // Orange highlight source
+        
+        await App.speak(`Found ${data[targetIndex].month}. Sales are ${data[targetIndex].amt}.`);
+        
+        resCell.textContent = `$${data[targetIndex].amt}`;
+        resCell.style.color = "#facc15"; // Yellow text
+        
+        totalBubble.textContent = `$${data[targetIndex].amt}`;
+        totalBubble.classList.add('show');
+
+        nextRow.style.backgroundColor = "transparent";
+      } else {
+        // End of data
+        resCell.textContent = "(Blank)";
+        await App.speak("No future data available.");
+        totalBubble.classList.remove('show');
+      }
+
+      if(shouldStop) return;
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText("Done.");
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

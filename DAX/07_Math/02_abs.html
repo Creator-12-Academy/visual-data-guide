@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>DAX: ABS Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Animation for stripping the negative sign */
+  .neg-strip { animation: stripSign 0.6s forwards; color: #f87171; font-weight: bold; }
+  @keyframes stripSign {
+    0% { transform: scale(1); color: #f87171; }
+    50% { transform: scale(1.2); color: #facc15; }
+    100% { transform: scale(1); color: #4ade80; }
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🎯 Target Variance</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate total deviation from the target.<br>
+      <strong>Problem:</strong> Positives (+20) and Negatives (-20) cancel each other out to 0.
+    </p>
+
+    <div id="dataTable"></div>
+
+    <div class="calculation-box" id="calcBox">
+      Ready...
+    </div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action" id="btnDiff">➖ Raw Diff</button>
+        <button class="action primary" id="btnAbs">🛡️ ABS Diff</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 DAX Formula</h2>
+    
+    <div id="codeDisplay" class="codeArea">
+      <div class="codeLine" id="line1"><span class="cmt">-- Scenario 1: Standard Subtraction</span></div>
+      <div class="codeLine" id="line2"><span class="kwd">MEASURE</span> Variance = Sales - Target</div>
+      <div class="codeLine" id="line3"><span class="cmt">-- Result can be negative. Summing them might result in 0.</span></div>
+      <br>
+      <div class="codeLine" id="line4"><span class="cmt">-- Scenario 2: Absolute Deviation</span></div>
+      <div class="codeLine" id="line5"><span class="kwd">MEASURE</span> Abs_Var = </div>
+      <div class="codeLine" id="line6">    <span class="fn">ABS</span>( Sales - Target )</div>
+      <div class="codeLine" id="line7"><span class="cmt">-- Converts negative numbers to positive.</span></div>
+    </div>
+
+    <div style="margin-top:auto; padding-top:1rem; border-top:1px solid var(--border); display:flex; align-items:center;">
+      <span style="color:var(--text-dim); font-size:0.9rem;">Total Deviation:</span>
+      <div class="total-bubble" id="totalBubble">-</div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  // --- LESSON LOGIC ---
+  App.initLayout("ABS Function", "../../");
+
+  const data = [
+    { sales: 120, target: 100 }, // +20 (Over)
+    { sales: 80,  target: 100 }, // -20 (Under)
+    { sales: 110, target: 100 }  // +10 (Over)
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const lines = document.querySelectorAll('.codeLine');
+  const progressFill = document.getElementById('progressFill');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header">
+        <div>Sales</div> <div>Target</div> <div>Math</div> <div>Result</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}">
+          <div>${d.sales}</div>
+          <div>${d.target}</div>
+          <div class="cell-num" id="math-${i}" style="font-size:0.75rem; color:var(--text-dim)">-</div>
+          <div class="cell-num" id="res-${i}" style="font-weight:bold;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(progressFill) { progressFill.style.transition = 'none'; progressFill.style.width = '0%'; }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      lines.forEach(l => l.classList.remove('active'));
+    }, 100);
+  }
+
+  function highlight(id) {
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- SCENARIO 1: RAW DIFFERENCE ---
+  document.getElementById('btnDiff').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let total = 0;
+
+    highlight('line2');
+    await App.speak("Starting Calculation. Simple subtraction: Sales minus Target.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const mathCell = document.getElementById(`math-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      const diff = data[i].sales - data[i].target;
+      mathCell.textContent = `${data[i].sales} - ${data[i].target}`;
+      
+      // Visual Logic
+      if(diff < 0) {
+        resCell.textContent = diff;
+        resCell.style.color = "#ef4444"; // Red for negative
+        App.updateText(`Row ${i+1}: Negative result (${diff}). Under target.`);
+        await App.speak(`Negative ${Math.abs(diff)}.`);
+      } else {
+        resCell.textContent = "+" + diff;
+        resCell.style.color = "#4ade80";
+        App.updateText(`Row ${i+1}: Positive result (+${diff}). Over target.`);
+        await App.speak(`Positive ${diff}.`);
+      }
+
+      total += diff;
+      await new Promise(r => setTimeout(r, 500));
+      row.classList.remove('row-highlight');
+    }
+
+    // Final Problem
+    totalBubble.textContent = total;
+    totalBubble.classList.add('show');
+    
+    App.updateText(`Total Sum: ${total}. Notice how they canceled out!`);
+    await App.speak(`The total is only ${total}. The negative numbers canceled the positive ones. This hides the true variance.`);
+    
+    highlight(null);
+    isRunning = false;
+  });
+
+  // --- SCENARIO 2: ABSOLUTE (ABS) ---
+  document.getElementById('btnAbs').addEventListener('click', async () => {
+    if(isRunning) return;
+    reset();
+    await new Promise(r => setTimeout(r, 200));
+    if(shouldStop) return;
+
+    isRunning = true;
+    let total = 0;
+
+    highlight('line6');
+    await App.speak("Using ABS function. I will convert any negative deviation into a positive distance.");
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      const mathCell = document.getElementById(`math-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      row.classList.add('row-highlight');
+
+      const rawDiff = data[i].sales - data[i].target;
+      const absDiff = Math.abs(rawDiff);
+
+      mathCell.textContent = `ABS( ${rawDiff} )`;
+      
+      if(rawDiff < 0) {
+        // Animation for converting neg to pos
+        resCell.textContent = rawDiff;
+        resCell.style.color = "#ef4444";
+        App.updateText(`Row ${i+1}: Found negative (${rawDiff}). Stripping sign...`);
+        await new Promise(r => setTimeout(r, 400));
+        
+        resCell.classList.add('neg-strip'); // CSS Animation
+        resCell.textContent = absDiff;
+        
+        await App.speak(`Negative ${Math.abs(rawDiff)} becomes Positive ${absDiff}.`);
+      } else {
+        resCell.textContent = absDiff;
+        resCell.style.color = "#4ade80";
+        App.updateText(`Row ${i+1}: Already positive. Stays same.`);
+        await App.speak(`Positive ${absDiff}. No change.`);
+      }
+
+      total += absDiff;
+      await new Promise(r => setTimeout(r, 500));
+      row.classList.remove('row-highlight');
+    }
+
+    totalBubble.textContent = total;
+    totalBubble.classList.add('show');
+    
+    App.updateText(`Total Deviation: ${total}. Accurate measure of error.`);
+    await App.speak(`The total absolute deviation is ${total}. This shows the true scale of variance.`);
+    
+    highlight(null);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

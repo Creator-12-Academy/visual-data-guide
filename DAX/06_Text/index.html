@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Text Functions | DAX</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Styles */
+  .container { max-width: 800px; margin: 0 auto; padding: 2rem; }
+  .lesson-list { display: flex; flex-direction: column; gap: 1rem; }
+  
+  .lesson-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    padding: 1.5rem; border-radius: 1rem; text-decoration: none;
+    display: flex; justify-content: space-between; align-items: center;
+    transition: 0.2s;
+  }
+  .lesson-card:hover {
+    border-color: var(--accent); transform: translateX(5px);
+    background: rgba(255,255,255,0.03);
+  }
+  .lesson-title { color: #fff; font-weight: bold; font-size: 1.1rem; }
+  .lesson-desc { color: var(--text-dim); font-size: 0.9rem; margin-top: 0.2rem; }
+  .icon { font-size: 1.5rem; }
+</style>
+</head>
+<body>
+
+  <header></header>
+
+  <div class="container">
+    <div style="text-align:center; margin-bottom:3rem;">
+      <h1 style="color:var(--accent); margin-bottom:0.5rem;">06. Text Functions</h1>
+      <p style="color:var(--text-dim);">Manipulate strings, join values, and extract text patterns.</p>
+    </div>
+
+    <div class="lesson-list">
+      
+      <a href="01_concatenate.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">CONCATENATE & X</div>
+          <div class="lesson-desc">Joining two strings vs joining a list of values (Iterator).</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="02_substrings.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">LEFT / RIGHT / MID</div>
+          <div class="lesson-desc">Extracting specific parts of a text string.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="03_len.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">LEN</div>
+          <div class="lesson-desc">Counting the number of characters in a string.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="04_casing.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">UPPER / LOWER</div>
+          <div class="lesson-desc">Converting text case for standardization.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+      <a href="05_search.html" class="lesson-card">
+        <div>
+          <div class="lesson-title">SEARCH</div>
+          <div class="lesson-desc">Finding the position of a specific text inside a string.</div>
+        </div>
+        <div class="icon">👉</div>
+      </a>
+
+    </div>
+    
+    <div style="margin-top: 3rem; text-align: center;">
+      <a href="../index.html" class="nav-link" style="display:inline-block; border:1px solid var(--border);">
+        ⬅ Back to DAX Menu
+      </a>
+    </div>
+
+  </div>
+
+  <footer></footer>
+
+  <script src="../../assets/app.js"></script>
+  <script>
+    App.initLayout("Text Functions", "../../");
+  </script>
+
+</body>
+</html>
