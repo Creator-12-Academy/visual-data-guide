@@ -5,151 +5,130 @@ const App = {
   baseSpeed: 1000,
   voices: [],
   
-  // --- 1. CENTRALIZED LAYOUT INJECTION ---
-  // Args: title = Page Title, rootPath = Path to go back to root ("../../")
+  // --- 1. LAYOUT & INITIALIZATION ---
   initLayout: function(title, rootPath = "../../") {
-    
-    // A. AUTO-DETECT MODULE & CONTEXT
+    console.log("App Initialized:", title); 
+
     const path = window.location.pathname.toLowerCase();
     let moduleBtn = '';
-    
-    // Logic: Only hide the "Menu" button if we are strictly at the Module's Root page
-    // We check if the path ends with the module name + index.html
-    
-    const isDaxRoot   = path.endsWith('/dax/index.html') || path.endsWith('/dax/');
-    const isExcelRoot = path.endsWith('/excel/index.html') || path.endsWith('/excel/');
-    const isSqlRoot   = path.endsWith('/sql/index.html') || path.endsWith('/sql/');
-    const isMRoot     = path.endsWith('/m_language/index.html') || path.endsWith('/m_language/');
+    let isMenuPage = path.endsWith('index.html') || path.endsWith('/'); 
 
-    // Generate Buttons based on folder, but skip if we are already on that module's home page
-    if (path.includes('/dax/') && !isDaxRoot) {
-       // We use rootPath + "DAX/index.html" to ensure we always jump back to the main menu correctly
-       moduleBtn = `<a href="${rootPath}DAX/index.html" class="nav-link nav-dax"><span>📊</span> DAX Menu</a>`;
-    } 
-    else if (path.includes('/excel/') && !isExcelRoot) {
-       moduleBtn = `<a href="${rootPath}Excel/index.html" class="nav-link nav-excel"><span>📗</span> Excel Menu</a>`;
-    } 
-    else if (path.includes('/sql/') && !isSqlRoot) {
-       moduleBtn = `<a href="${rootPath}SQL/index.html" class="nav-link nav-sql"><span>🗄️</span> SQL Menu</a>`;
-    } 
-    else if (path.includes('/m_language/') && !isMRoot) {
-       moduleBtn = `<a href="${rootPath}M_Language/index.html" class="nav-link nav-m"><span>⚙️</span> M Menu</a>`;
+    // A. Module Detection logic
+    if (path.includes('/dax/') && !isMenuPage) {
+       moduleBtn = `<a href="../index.html" class="nav-link nav-dax"><span>📊</span> DAX Menu</a>`;
+    } else if (path.includes('/excel/') && !isMenuPage) {
+       moduleBtn = `<a href="../index.html" class="nav-link nav-excel"><span>📗</span> Excel Menu</a>`;
+    } else if (path.includes('/sql/') && !isMenuPage) {
+       moduleBtn = `<a href="../index.html" class="nav-link nav-sql"><span>🗄️</span> SQL Menu</a>`;
+    } else if (path.includes('/m_language/') && !isMenuPage) {
+       moduleBtn = `<a href="../index.html" class="nav-link nav-m"><span>⚙️</span> M Menu</a>`;
     }
 
-    // B. INJECT HEADER
+    // B. Inject Header
     const headerHTML = `
-      <div class="brand-area">
-        <span class="brand-icon">∑</span> 
-        <span class="brand-text">${title}</span>
-      </div>
-      <nav class="nav-group">
-        ${moduleBtn}
-        <a href="${rootPath}index.html" class="nav-link nav-main"><span>🏠</span> Main Home</a>
-      </nav>
+      <div class="brand-area"><span class="brand-icon">∑</span><span class="brand-text">${title}</span></div>
+      <nav class="nav-group">${moduleBtn}<a href="${rootPath}index.html" class="nav-link nav-main"><span>🏠</span> Main Home</a></nav>
     `;
     const headerEl = document.querySelector('header');
     if(headerEl) headerEl.innerHTML = headerHTML;
 
-    // C. INJECT FOOTER
-    const footerHTML = `
-      <div class="footer-links">
-        <strong>Visual Data Guide</strong> by 
-        <a href="https://www.linkedin.com/company/109928041" target="_blank">Creator 12 Academy</a>
-        <span class="divider">|</span> 
-        Created by <a href="https://www.linkedin.com/in/iamnkannan/" target="_blank">Kannan N</a>
-      </div>
-    `;
+    // C. Inject Footer
+    const footerHTML = `<div class="footer-links"><strong>Visual Data Guide</strong> by <a href="#" target="_blank">Creator 12 Academy</a> <span class="divider">|</span> Created by <a href="https://www.linkedin.com/in/iamnkannan/" target="_blank">Kannan N</a></div>`;
     const footerEl = document.querySelector('footer');
     if(footerEl) footerEl.innerHTML = footerHTML;
 
-    // D. INJECT CONTROLS (Voice/Speed) - Only where needed
+    // D. Inject Controls (Voice/Speed)
     const controlsContainer = document.getElementById('controls-mount');
     if(controlsContainer) {
       controlsContainer.innerHTML = `
-        <div class="setting-group">
-          <span class="setting-label">Voice</span>
-          <div class="toggle-group" id="voiceToggle">
-            <div class="toggle-opt selected" onclick="App.toggleVoice(false)" id="voiceOff">🔇 Off</div>
-            <div class="toggle-opt" onclick="App.toggleVoice(true)" id="voiceOn">🔊 On</div>
-          </div>
-        </div>
-        <div class="setting-group">
-          <span class="setting-label">Speed</span>
-          <div class="toggle-group" id="speedGroup">
-            <div class="speed-opt toggle-opt" onclick="App.setSpeed('slow')" id="btnSlow">Slow</div>
-            <div class="speed-opt toggle-opt" onclick="App.setSpeed('medium')" id="btnMed">Med</div>
-            <div class="speed-opt toggle-opt selected" onclick="App.setSpeed('fast')" id="btnFast">Fast</div>
-          </div>
-        </div>
+        <div class="setting-group"><span class="setting-label">Voice</span><div class="toggle-group" id="voiceToggle"><div class="toggle-opt selected" onclick="App.toggleVoice(false)" id="voiceOff">🔇 Off</div><div class="toggle-opt" onclick="App.toggleVoice(true)" id="voiceOn">🔊 On</div></div></div>
+        <div class="setting-group"><span class="setting-label">Speed</span><div class="toggle-group" id="speedGroup"><div class="speed-opt toggle-opt" onclick="App.setSpeed('slow')" id="btnSlow">Slow</div><div class="speed-opt toggle-opt" onclick="App.setSpeed('medium')" id="btnMed">Med</div><div class="speed-opt toggle-opt selected" onclick="App.setSpeed('fast')" id="btnFast">Fast</div></div></div>
       `;
     }
 
-    // E. INIT EXTRAS (Voice + Progress)
+    // E. Init Voice & Progress
     this.loadVoices();
     if (window.speechSynthesis.onvoiceschanged !== undefined) {
       window.speechSynthesis.onvoiceschanged = this.loadVoices.bind(this);
     }
 
-    // F. TRACK PROGRESS (Only on lesson pages, not menus)
-    // We assume if the file is NOT named "index.html" and NOT "about.html", it is a lesson.
-    const fileName = path.split('/').pop();
-    if (fileName && fileName !== 'index.html' && fileName !== 'about.html') {
+    // Track Progress (Only if it's a lesson page, not a menu)
+    if (!isMenuPage && !path.endsWith('about.html')) {
       this.markPageAsVisited();
     }
   },
 
-  // --- 2. PROGRESS TRACKING ---
+  // --- 2. PROGRESS TRACKING SYSTEM ---
   
-  markPageAsVisited: function() {
-    const fullPath = window.location.pathname;
-    const fileName = fullPath.substring(fullPath.lastIndexOf('/') + 1);
+  getUniqueId: function(url) {
+    // Generates "excel_01_vlookup.html" to avoid conflicts with "dax_01_vlookup.html"
+    const lowerUrl = url.toLowerCase().split('?')[0];
+    const filename = lowerUrl.split('/').pop();
     
-    if (!fileName) return;
+    if(lowerUrl.includes('/dax/')) return 'dax_' + filename;
+    if(lowerUrl.includes('/excel/')) return 'excel_' + filename;
+    if(lowerUrl.includes('/sql/')) return 'sql_' + filename;
+    if(lowerUrl.includes('/m_language/')) return 'm_' + filename;
+    
+    return filename;
+  },
 
-    let visited = JSON.parse(localStorage.getItem('c12_visited') || '[]');
-    
-    if (!visited.includes(fileName)) {
-      visited.push(fileName);
-      localStorage.setItem('c12_visited', JSON.stringify(visited));
+  markPageAsVisited: function() {
+    const uniqueId = this.getUniqueId(window.location.pathname);
+    if (!uniqueId) return;
+
+    // Save to LocalStorage
+    let visited = JSON.parse(localStorage.getItem('c12_visited_v2') || '[]');
+    if (!visited.includes(uniqueId)) {
+      visited.push(uniqueId);
+      localStorage.setItem('c12_visited_v2', JSON.stringify(visited));
     }
   },
 
   loadProgress: function() {
-    const visited = JSON.parse(localStorage.getItem('c12_visited') || '[]');
-    const links = document.querySelectorAll('.lesson-btn, .lesson-card'); // Support both card and list styles
+    const visited = JSON.parse(localStorage.getItem('c12_visited_v2') || '[]');
+    const links = document.querySelectorAll('.lesson-btn'); 
     
+    // Context detection for Index pages
+    const currentPath = window.location.pathname.toLowerCase();
+    let prefix = "";
+    if(currentPath.includes('/dax/')) prefix = "dax_";
+    if(currentPath.includes('/excel/')) prefix = "excel_";
+    if(currentPath.includes('/sql/')) prefix = "sql_";
+    if(currentPath.includes('/m_language/')) prefix = "m_";
+
     links.forEach(link => {
       const href = link.getAttribute('href');
-      if (href && visited.some(file => href.endsWith(file))) {
+      if(!href) return;
+
+      const targetFilename = href.split('/').pop().toLowerCase();
+      const expectedId = prefix + targetFilename;
+
+      // Check if ID matches visited list
+      if (visited.includes(expectedId)) {
+        link.classList.add('active'); // CSS turns it Green
         
-        // Add active class
-        link.classList.add('active'); 
-        link.classList.add('completed'); // Support for both CSS naming conventions
-        
-        // Try to find the dot and update it
-        const dot = link.querySelector('.status-dot, .icon');
-        if(dot) {
-            // If it's a lesson card (with arrow), change arrow to check
-            if(dot.classList.contains('icon')) dot.textContent = '✅';
-            // If it's a lesson list (with dot), change dot to check
-            else dot.textContent = '✅';
-        }
+        const dot = link.querySelector('.status-dot');
+        if(dot) dot.textContent = '✅';
       }
     });
   },
 
-  // --- 3. VOICE & ANIMATION LOGIC ---
+  // --- 3. ROBUST VOICE ENGINE ---
 
-  loadVoices: function() { App.voices = window.speechSynthesis.getVoices(); },
+  loadVoices: function() {
+    App.voices = window.speechSynthesis.getVoices();
+  },
 
   toggleVoice: function(status) {
-    if(status && App.voices.length === 0) {
-      App.loadVoices();
+    if(status && App.voices.length === 0) { 
+      App.loadVoices(); // Try force load
       if(App.voices.length === 0) {
-        App.showToast("Error: No voices found in browser.");
+        App.showToast("Error: No voices found in this browser.");
         return;
       }
     }
+
     App.voiceEnabled = status;
     
     const onBtn = document.getElementById('voiceOn');
@@ -165,22 +144,37 @@ const App = {
 
   setSpeed: function(level) {
     document.querySelectorAll('.speed-opt').forEach(b => b.classList.remove('selected'));
-    if(level === 'slow') { App.baseSpeed = 2500; const btn = document.getElementById('btnSlow'); if(btn) btn.classList.add('selected'); }
-    else if (level === 'medium') { App.baseSpeed = 1500; const btn = document.getElementById('btnMed'); if(btn) btn.classList.add('selected'); }
-    else { App.baseSpeed = 800; const btn = document.getElementById('btnFast'); if(btn) btn.classList.add('selected'); }
+    
+    if(level === 'slow') { 
+      App.baseSpeed = 2500; 
+      const btn = document.getElementById('btnSlow'); if(btn) btn.classList.add('selected');
+    } else if (level === 'medium') { 
+      App.baseSpeed = 1500; 
+      const btn = document.getElementById('btnMed'); if(btn) btn.classList.add('selected');
+    } else { 
+      App.baseSpeed = 800; 
+      const btn = document.getElementById('btnFast'); if(btn) btn.classList.add('selected');
+    }
   },
 
+  // Main Speak Function (Safe Promise)
   speak: function(text, calcBoxId = 'calcBox', isError = false) {
-    const calcBox = document.getElementById(calcBoxId);
-    if(calcBox) {
-      calcBox.textContent = text;
-      calcBox.style.color = isError ? "#ef4444" : "var(--text-dim)";
-      calcBox.style.borderColor = isError ? "#ef4444" : "var(--border)";
-      if(!isError) calcBox.style.color = "var(--text-dim)";
+    
+    // UX Feature: Only show conversational text if Voice is ON.
+    // If Voice is OFF, we prefer the clean technical status (set via updateText).
+    if(App.voiceEnabled) {
+        const calcBox = document.getElementById(calcBoxId);
+        if(calcBox) {
+          calcBox.textContent = text;
+          calcBox.style.color = isError ? "#ef4444" : "var(--text-dim)";
+          calcBox.style.borderColor = isError ? "#ef4444" : "var(--border)";
+        }
     }
 
     return new Promise(resolve => {
       const bar = document.getElementById('progressFill');
+      
+      // Scenario A: Voice OFF (Use Timer)
       if (!App.voiceEnabled) {
         if(bar) { 
           bar.style.transition = 'none'; bar.style.width = '0%'; 
@@ -194,25 +188,46 @@ const App = {
         return;
       }
 
+      // Scenario B: Voice ON (Wait for Audio)
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(text);
-      const preferred = App.voices.find(v => v.name.includes("Zira") || v.name.includes("Google US English") || v.name.toLowerCase().includes("female"));
-      const fallback = App.voices.find(v => v.lang.startsWith('en'));
-      if (preferred) utterance.voice = preferred; else if (fallback) utterance.voice = fallback;
       
-      utterance.onend = () => resolve();
-      utterance.onerror = () => resolve();
+      // Select Best Voice (Female Preferred)
+      const preferred = App.voices.find(v => 
+        v.name.includes("Zira") || 
+        v.name.includes("Google US English") || 
+        v.name.toLowerCase().includes("female")
+      );
+      
+      // Fallback
+      const fallback = App.voices.find(v => v.lang.startsWith('en'));
+      
+      if (preferred) utterance.voice = preferred; 
+      else if (fallback) utterance.voice = fallback;
+      
+      // SAFETY TIMER: Force resolve after 4s if browser audio hangs
+      const safeTimer = setTimeout(() => { resolve(); }, 4000);
+
+      utterance.onend = () => { clearTimeout(safeTimer); resolve(); };
+      utterance.onerror = () => { clearTimeout(safeTimer); resolve(); };
+      
       window.speechSynthesis.speak(utterance);
     });
   },
 
   showToast: function(msg) {
     let t = document.getElementById('toast');
-    if(!t) { t = document.createElement('div'); t.id = 'toast'; document.body.appendChild(t); }
-    t.textContent = msg; t.className = 'show'; 
+    if(!t) { 
+      t = document.createElement('div'); 
+      t.id = 'toast'; 
+      document.body.appendChild(t); 
+    }
+    t.textContent = msg; 
+    t.className = 'show'; 
     setTimeout(() => t.className = t.className.replace("show", ""), 4000);
   },
 
+  // Helper to update text box (used for technical status updates)
   updateText: function(html, id='calcBox') { 
     const box = document.getElementById(id); 
     if(box) box.innerHTML = html; 
