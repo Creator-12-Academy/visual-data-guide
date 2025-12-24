@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lookup & Reference | Index</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- THEME OVERRIDES --- */
+  :root { 
+    --accent: #107c41; /* Excel Green */
+    --bg-body: #f3f4f6; /* Light Gray Content */
+    --bg-bars: #ebf8f2; /* Mint Green Bars */
+    --text-main: #333;
+    --text-dim: #666;
+  }
+
+  /* LAYOUT: Forces Footer to Bottom */
+  body { 
+    background-color: var(--bg-body); 
+    color: var(--text-main);
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* WRAPPER: Pushes footer down */
+  .content-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- HEADER VISIBILITY FIX --- */
+  header {
+    background: var(--bg-bars);
+    padding: 1.5rem 3rem; 
+    border-bottom: 1px solid #d1fae5;
+    /* Force Header Text Black */
+    color: #000 !important; 
+  }
+
+  /* !!! CRITICAL: Overrides App.js Dark Theme !!! */
+  header .brand-text { color: #000 !important; font-weight: 800; }
+  header .brand-icon { color: #000 !important; }
+  header .nav-link { 
+    color: #333 !important; 
+    background: rgba(255,255,255,0.5);
+    border: 1px solid #ccc;
+  }
+  header .nav-link:hover { background: #fff; color: var(--accent) !important; }
+
+  /* --- HERO SECTION --- */
+  .hero-section { 
+    text-align: center; 
+    padding: 3rem 1rem; 
+    background: linear-gradient(180deg, rgba(16, 124, 65, 0.1) 0%, transparent 100%); 
+    border-bottom: 1px solid #e5e7eb; 
+    margin-bottom: 2rem; 
+  }
+  .hero-icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
+  .hero-title { font-size: 2rem; color: #1e293b; margin-bottom: 0.5rem; font-weight: 800; }
+  .hero-sub { color: var(--text-dim); max-width: 600px; margin: 0 auto; line-height: 1.5; }
+
+  /* --- LESSON GRID --- */
+  .lesson-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+    gap: 1.5rem; 
+    padding: 0 2rem 2rem; 
+    max-width: 1200px; 
+    margin: 0 auto; 
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* --- CARD STYLING --- */
+  .lesson-card { 
+    background: #ffffff; 
+    border: 1px solid #e2e8f0; 
+    border-radius: 1rem; 
+    padding: 1.5rem; 
+    transition: all 0.3s ease; 
+    text-decoration: none; 
+    display: flex; 
+    flex-direction: column; 
+    position: relative; 
+    overflow: hidden; 
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+  
+  .lesson-card:hover { 
+    transform: translateY(-5px); 
+    border-color: var(--accent); 
+    box-shadow: 0 10px 20px rgba(16, 124, 65, 0.15); 
+  }
+
+  .lesson-card::before { 
+    content: ''; position: absolute; top: 0; left: 0; 
+    width: 4px; height: 100%; background: var(--accent); 
+    opacity: 0; transition: 0.3s; 
+  }
+  .lesson-card:hover::before { opacity: 1; }
+
+  .card-icon { 
+    width: 40px; height: 40px; 
+    background: #dcfce7; color: #15803d; 
+    border-radius: 8px; 
+    display: flex; align-items: center; justify-content: center; 
+    font-size: 1.2rem; margin-bottom: 1rem; 
+  }
+  
+  .card-title { color: #1e293b; font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; }
+  .card-desc { color: var(--text-dim); font-size: 0.85rem; line-height: 1.5; }
+
+  .status-badge { 
+    position: absolute; top: 1.5rem; right: 1.5rem; 
+    font-size: 0.7rem; color: #64748b; background: #f1f5f9;
+    border: 1px solid #cbd5e1; padding: 2px 8px; border-radius: 12px; font-weight: 600;
+  }
+
+  /* --- FOOTER FIXED STYLE --- */
+  footer { 
+    text-align: center; 
+    padding: 3rem 1rem; 
+    background: var(--bg-bars); /* Mint Green */
+    border-top: 1px solid #d1fae5;
+    color: #333 !important; /* Force Dark Text */
+    font-size: 0.9rem;
+    margin-top: auto; /* Push to bottom */
+    width: 100%;
+  }
+
+  /* Override App.js Footer Links */
+  footer a { color: #107c41 !important; text-decoration: none; font-weight: bold; }
+  
+  /* Back Button Area */
+  .back-area { text-align:center; padding: 2rem; margin-top: auto; }
+  .btn-back {
+    color: var(--text-dim); text-decoration: none; 
+    border: 1px solid #cbd5e1; padding: 0.8rem 1.5rem; 
+    border-radius: 8px; transition: 0.2s; background: #fff;
+    font-weight: 500;
+  }
+  .btn-back:hover { border-color: var(--accent); color: var(--accent); }
+
+  #controls-mount { display: none; }
+
+</style>
+</head>
+<body>
+
+  <header></header> <div class="content-wrapper">
+    
+    <div class="hero-section">
+      <span class="hero-icon">🔎</span>
+      <h1 class="hero-title">Lookup & Reference</h1>
+      <p class="hero-sub">The art of finding data. Master the essentials like VLOOKUP and XLOOKUP to connect your datasets dynamically.</p>
+    </div>
+
+    <div class="lesson-grid">
+      <a href="01_vlookup.html" class="lesson-card">
+        <div class="card-icon">V</div>
+        <div class="card-title">01. VLOOKUP & HLOOKUP</div>
+        <div class="card-desc">The classic vertical lookup. Searches the first column and retrieves data from the row.</div>
+        <span class="status-badge">Essential</span>
+      </a>
+      <a href="02_xlookup.html" class="lesson-card">
+        <div class="card-icon">X</div>
+        <div class="card-title">02. XLOOKUP</div>
+        <div class="card-desc">The modern replacement. Look left, look right, handle errors, and search arrays easily.</div>
+        <span class="status-badge">New</span>
+      </a>
+      <a href="03_index_match.html" class="lesson-card">
+        <div class="card-icon">I</div>
+        <div class="card-title">03. INDEX & MATCH</div>
+        <div class="card-desc">The powerful duo. More flexible than VLOOKUP, allowing 2-way lookups and dynamic ranges.</div>
+      </a>
+      <a href="04_filter.html" class="lesson-card">
+        <div class="card-icon">F</div>
+        <div class="card-title">04. FILTER Function</div>
+        <div class="card-desc">Return multiple results based on criteria. The ultimate tool for dynamic lists.</div>
+        <span class="status-badge">Array</span>
+      </a>
+      <a href="05_unique.html" class="lesson-card">
+        <div class="card-icon">U</div>
+        <div class="card-title">05. UNIQUE</div>
+        <div class="card-desc">Instantly extract a list of distinct values from a range or table.</div>
+      </a>
+      <a href="06_sort.html" class="lesson-card">
+        <div class="card-icon">S</div>
+        <div class="card-title">06. SORT & SORTBY</div>
+        <div class="card-desc">Sort your data dynamically without touching the 'Sort' button in the ribbon.</div>
+      </a>
+      <a href="07_offset.html" class="lesson-card">
+        <div class="card-icon">O</div>
+        <div class="card-title">07. OFFSET</div>
+        <div class="card-desc">Create moving ranges. Useful for scrolling charts and dynamic named ranges.</div>
+        <span class="status-badge">Adv</span>
+      </a>
+      <a href="08_indirect.html" class="lesson-card">
+        <div class="card-icon">N</div>
+        <div class="card-title">08. INDIRECT</div>
+        <div class="card-desc">Turn a text string into a valid cell reference. Great for dynamic sheet references.</div>
+      </a>
+      <a href="09_choose.html" class="lesson-card">
+        <div class="card-icon">C</div>
+        <div class="card-title">09. CHOOSE</div>
+        <div class="card-desc">Select a value from a list based on an index number. Simple but effective.</div>
+      </a>
+      <a href="10_lookup.html" class="lesson-card">
+        <div class="card-icon">L</div>
+        <div class="card-title">10. LOOKUP (Legacy)</div>
+        <div class="card-desc">The original backward-compatible lookup function. Rarely used but good to know.</div>
+      </a>
+    </div>
+
+    <div class="back-area">
+      <a href="../../excel/index.html" class="btn-back">
+        ⬅ Back to Excel Roadmap
+      </a>
+    </div>
+
+  </div> <footer></footer>
+
+  <script src="../../assets/app.js"></script>
+  <script>
+    App.initLayout("Excel Guide", "../../");
+    App.loadProgress();
+  </script>
+</body>
+</html>
