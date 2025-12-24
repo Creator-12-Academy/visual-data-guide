@@ -1,0 +1,206 @@
+# 📊 Excel Masterclass Roadmap
+
+This project is a comprehensive interactive library of 100+ Excel formulas, organized from basic syntax to advanced dashboard techniques.
+
+## 📂 Project Structure (Tree View)
+
+```text
+EXCEL FORMULAS ROADMAP
+│
+├── PART 1: THE FORMULA LIBRARY
+│   ├── 01. Lookup & Reference (🔎)
+│   │   ├── | 01_vlookup.html     | VLOOKUP / HLOOKUP  |
+│   │   ├── | 02_xlookup.html     | XLOOKUP            |
+│   │   ├── | 03_index_match.html | INDEX / MATCH      |
+│   │   ├── | 04_filter.html      | FILTER             |
+│   │   ├── | 05_unique.html      | UNIQUE             |
+│   │   ├── | 06_sort.html        | SORT / SORTBY      |
+│   │   ├── | 07_offset.html      | OFFSET             |
+│   │   ├── | 08_indirect.html    | INDIRECT           |
+│   │   ├── | 09_choose.html      | CHOOSE             |
+│   │   └── | 10_lookup.html      | LOOKUP (Legacy)    |
+│   │
+│   ├── 02. Logical (⚖️)
+│   │   ├── | 01_if.html          | IF                 |
+│   │   ├── | 02_ifs.html         | IFS                |
+│   │   ├── | 03_and_or.html      | AND / OR / NOT     |
+│   │   ├── | 04_xor.html         | XOR                |
+│   │   ├── | 05_switch.html      | SWITCH             |
+│   │   ├── | 06_iferror.html     | IFERROR            |
+│   │   ├── | 07_ifna.html        | IFNA               |
+│   │   └── | 08_true.html        | TRUE / FALSE       |
+│   │
+│   ├── 03. Math & Trig (∑)
+│   │   ├── | 01_sum.html         | SUM                |
+│   │   ├── | 02_sumif.html       | SUMIF / SUMIFS     |
+│   │   ├── | 03_product.html     | PRODUCT            |
+│   │   ├── | 04_quotient.html    | QUOTIENT / MOD     |
+│   │   ├── | 05_power.html       | POWER / SQRT       |
+│   │   ├── | 06_round.html       | ROUND / UP / DOWN  |
+│   │   ├── | 07_ceiling.html     | CEILING / FLOOR    |
+│   │   ├── | 08_int.html         | INT                |
+│   │   ├── | 09_abs.html         | ABS                |
+│   │   └── | 10_rand.html        | RAND / BETWEEN     |
+│   │
+│   ├── 04. Statistical (📊)
+│   │   ├── | 01_average.html     | AVERAGE / A        |
+│   │   ├── | 02_averageif.html   | AVERAGEIF / S      |
+│   │   ├── | 03_count.html       | COUNT / COUNTA     |
+│   │   ├── | 04_countblank.html  | COUNTBLANK         |
+│   │   ├── | 05_countif.html     | COUNTIF / S        |
+│   │   ├── | 06_min_max.html     | MIN / MAX          |
+│   │   ├── | 07_large.html       | LARGE / SMALL      |
+│   │   ├── | 08_median.html      | MEDIAN / MODE      |
+│   │   ├── | 09_stdev.html       | STDEV.P / .S       |
+│   │   └── | 10_rank.html        | RANK.EQ / .AVG     |
+│   │
+│   ├── 05. Text Functions (Aa)
+│   │   ├── | 01_trim.html        | TRIM / CLEAN       |
+│   │   ├── | 02_left.html        | LEFT / RIGHT       |
+│   │   ├── | 03_mid.html         | MID                |
+│   │   ├── | 04_len.html         | LEN                |
+│   │   ├── | 05_find.html        | FIND / SEARCH      |
+│   │   ├── | 06_concat.html      | CONCAT / TEXTJOIN  |
+│   │   ├── | 07_substitute.html  | SUBSTITUTE         |
+│   │   ├── | 08_replace.html     | REPLACE            |
+│   │   ├── | 09_text.html        | TEXT / VALUE       |
+│   │   └── | 10_upper.html       | UPPER / LOWER      |
+│   │
+│   ├── 06. Date & Time (📅)
+│   │   ├── | 01_today.html       | TODAY / NOW        |
+│   │   ├── | 02_date.html        | DATE / TIME        |
+│   │   ├── | 03_parts.html       | YEAR / MONTH       |
+│   │   ├── | 04_timeparts.html   | HOUR / MIN / SEC   |
+│   │   ├── | 05_datedif.html     | DATEDIF            |
+│   │   ├── | 06_eomonth.html     | EOMONTH / EDATE    |
+│   │   ├── | 07_workday.html     | WORKDAY / INTL     |
+│   │   ├── | 08_network.html     | NETWORKDAYS        |
+│   │   ├── | 09_week.html        | WEEKNUM / DAY      |
+│   │   └── | 10_text.html        | TEXT (Date)        |
+│   │
+│   ├── 07. Financial (💰)
+│   │   ├── | 01_pmt.html         | PMT (Payments)     |
+│   │   ├── | 02_rate.html        | RATE               |
+│   │   ├── | 03_npv.html         | NPV (Net Present)  |
+│   │   ├── | 04_irr.html         | IRR                |
+│   │   ├── | 05_fv.html          | FV (Future Value)  |
+│   │   ├── | 06_pv.html          | PV (Present Value) |
+│   │   └── | 07_nper.html        | NPER               |
+│   │
+│   ├── 08. Information (ℹ️)
+│   │   ├── | 01_ischecks.html    | ISNUMBER / TEXT    |
+│   │   ├── | 02_isblank.html     | ISBLANK            |
+│   │   ├── | 03_iserror.html     | ISERROR / ISNA     |
+│   │   ├── | 04_type.html        | TYPE / CELL        |
+│   │   └── | 05_errortype.html   | ERROR.TYPE         |
+│   │
+│   ├── 09. Dynamic Arrays (🌊)
+│   │   ├── | 01_sequence.html    | SEQUENCE           |
+│   │   ├── | 02_randarray.html   | RANDARRAY          |
+│   │   ├── | 03_transpose.html   | TRANSPOSE          |
+│   │   ├── | 04_vstack.html      | VSTACK / HSTACK    |
+│   │   ├── | 05_tocol.html       | TOCOL / TOROW      |
+│   │   ├── | 06_take.html        | TAKE / DROP        |
+│   │   └── | 07_choosecols.html  | CHOOSECOLS         |
+│   │
+│   └── 10. Engineering (⚙️)
+│       ├── | 01_conversions.html | BIN2DEC / DEC2BIN  |
+│       ├── | 02_hex.html         | HEX2DEC            |
+│       └── | 03_fact.html        | FACT (Factorial)   |
+│
+├── PART 2: SYNTAX & ESSENTIALS (🛠️)
+│   └── 07_Essentials
+│       ├── | 01_ops_math.html    | Math (+ - * / ^)        |
+│       ├── | 02_ops_logic.html   | Logical (= > < >=)      |
+│       ├── | 03_refs.html        | References ($A$1 vs A1) |
+│       ├── | 04_ops_text.html    | Text Join (&)           |
+│       ├── | 05_wildcards.html   | Wildcards (* ?)         |
+│       ├── | 06_errors.html      | Errors (#N/A #REF!)     |
+│       ├── | 07_ranges.html      | Ranges (: ,)            |
+│       └── | 08_tables.html      | Structured Refs ([@Col])|
+│
+└── PART 3: COMBINED FORMULAS (✨)
+    ├── Advanced Lookups (🔎)
+    │   ├── | 01_index_match.html      | 01. INDEX + MATCH             |
+    │   ├── | 02_index_match_match.html| 02. INDEX + MATCH + MATCH     |
+    │   ├── | 03_vlookup_choose.html   | 03. VLOOKUP + CHOOSE          |
+    │   ├── | 04_xlookup_nested.html   | 04. XLOOKUP + XLOOKUP         |
+    │   ├── | 05_vlookup_match.html    | 05. VLOOKUP + MATCH           |
+    │   ├── | 06_multi_criteria.html   | 06. Multiple Criteria (Array) |
+    │   ├── | 07_lookup_max.html       | 07. Lookup MAX Value          |
+    │   ├── | 08_lookup_last.html      | 08. Lookup Last Value         |
+    │   ├── | 09_hyperlink.html        | 09. Hyperlink Lookup          |
+    │   ├── | 10_image.html            | 10. Image Lookup              |
+    │   ├── | 11_case_sensitive.html   | 11. Case Sensitive Lookup     |
+    │   ├── | 12_fuzzy.html            | 12. Closest Match (Fuzzy)     |
+    │   ├── | 13_wildcard.html         | 13. Wildcard Search (*)       |
+    │   ├── | 14_offset_match.html     | 14. OFFSET + MATCH            |
+    │   └── | 15_indirect.html         | 15. INDIRECT + VLOOKUP        |
+    │
+    ├── Data Cleaning (🧹)
+    │   ├── | 01_clean.html         | 01. TRIM + CLEAN + PROPER   |
+    │   ├── | 02_first_name.html    | 02. Extract First Name      |
+    │   ├── | 03_last_name.html     | 03. Extract Last Name       |
+    │   ├── | 04_middle.html        | 04. Extract Middle Text     |
+    │   ├── | 05_count_words.html   | 05. Count Words             |
+    │   ├── | 06_breaks.html        | 06. Remove Line Breaks      |
+    │   ├── | 07_numbers.html       | 07. Extract Numbers Only    |
+    │   ├── | 08_split_rows.html    | 08. Split Cell to Rows      |
+    │   ├── | 09_kpi.html           | 09. Dynamic KPI Sentence    |
+    │   ├── | 10_email.html         | 10. Get Username from Email |
+    │   ├── | 11_mask.html          | 11. Mask Data (****)        |
+    │   ├── | 12_initials.html      | 12. Generate Initials       |
+    │   ├── | 13_reverse.html       | 13. Reverse Text            |
+    │   ├── | 14_spaces.html        | 14. Remove Double Spaces    |
+    │   └── | 15_url.html           | 15. Parse URL Domain        |
+    │
+    ├── Complex Logic (🧠)
+    │   ├── | 01_sumproduct.html    | 01. SUMPRODUCT Logic        |
+    │   ├── | 02_nested_alt.html    | 02. Nested IF Alternatives  |
+    │   ├── | 03_weighted.html      | 03. Weighted Averages       |
+    │   ├── | 04_offset.html        | 04. Dynamic Sum (OFFSET)    |
+    │   ├── | 05_commission.html    | 05. Tiered Commission       |
+    │   ├── | 06_ifs.html           | 06. IFS vs Nested IF        |
+    │   ├── | 07_switch_true.html   | 07. SWITCH(TRUE)            |
+    │   ├── | 08_between.html       | 08. Count Between Dates     |
+    │   ├── | 09_highlight.html     | 09. Highlight Odd Rows      |
+    │   ├── | 10_3d_sum.html        | 10. 3D Sum (Multi-Sheet)    |
+    │   ├── | 11_min_nz.html        | 11. Min Non-Zero            |
+    │   ├── | 12_visible.html       | 12. Sum Visible Rows        |
+    │   ├── | 13_rank_group.html    | 13. Rank within Group       |
+    │   ├── | 14_unique_cond.html   | 14. Count Unique (Cond)     |
+    │   └── | 15_top_avg.html       | 15. Average Top 5           |
+    │
+    ├── Date & Projects (⏳)
+    │   ├── | 01_project.html       | 01. Project Due Date        |
+    │   ├── | 02_age.html           | 02. Age Calculation         |
+    │   ├── | 03_remaining.html     | 03. Days Remaining          |
+    │   ├── | 04_fiscal_year.html   | 04. Fiscal Year             |
+    │   ├── | 05_fiscal_q.html      | 05. Fiscal Quarter          |
+    │   ├── | 06_first_day.html     | 06. First Day Next Month    |
+    │   ├── | 07_last_day.html      | 07. Last Day Month          |
+    │   ├── | 08_day_name.html      | 08. Get Day Name            |
+    │   ├── | 09_week_start.html    | 09. Week Start Date         |
+    │   ├── | 10_overlap.html       | 10. Overlapping Dates       |
+    │   ├── | 11_time_diff.html     | 11. Time Difference         |
+    │   ├── | 12_convert.html       | 12. Convert Text Date       |
+    │   ├── | 13_anniversary.html   | 13. Next Anniversary        |
+    │   ├── | 14_nearest.html       | 14. Nearest Workday         |
+    │   └── | 15_gantt.html         | 15. Gantt Chart Data        |
+    │
+    └── Dashboards (✨)
+        ├── | 01_search.html        | 01. Search Bar              |
+        ├── | 02_top10.html         | 02. Top 10 Dynamic          |
+        ├── | 03_dropdown.html      | 03. Dependent Dropdown      |
+        ├── | 04_duplicates.html    | 04. Extract Duplicates      |
+        ├── | 05_compare.html       | 05. Compare Lists           |
+        ├── | 06_transpose.html     | 06. Transpose Stack         |
+        ├── | 07_calendar.html      | 07. Calendar Gen            |
+        ├── | 08_top_bottom.html    | 08. Top N Bottom N          |
+        ├── | 09_random.html        | 09. Random Sample           |
+        ├── | 10_running.html       | 10. Running Total Array     |
+        ├── | 11_split.html         | 11. Split Cols              |
+        ├── | 12_unpivot.html       | 12. Unpivot Data            |
+        ├── | 13_sheet.html         | 13. Sheet Index             |
+        ├── | 14_image.html         | 14. Dynamic Image           |
+        └── | 15_lambda.html        | 15. Custom LAMBDA           |

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: VLOOKUP</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override for Excel (Green) */
+  :root { --accent: var(--accent-excel); }
+
+  /* VLOOKUP Visual Connectors */
+  .lookup-line {
+    position: absolute; width: 2px; background: var(--accent);
+    box-shadow: 0 0 8px var(--accent); transform-origin: left center;
+    transition: all 0.5s ease-in-out; z-index: 20; opacity: 0;
+  }
+  
+  /* Animation Classes */
+  .scan-col { background: rgba(34, 197, 94, 0.2); border: 2px dashed var(--accent); transition: 0.2s; }
+  .match-found { background: var(--accent); color: #000; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔎 Product Price Lookup</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find the Price for "Product B".<br>
+      VLOOKUP scans the <strong>First Column</strong> vertically.
+    </p>
+
+    <div id="dataTable" style="position:relative;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnLookup">🔎 VLOOKUP (Find B)</button>
+        <button class="action" id="btnError">⚠️ Error (Find Z)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">VLOOKUP</span>(lookup_val, table, col_idx, [false])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Lookup Value:</strong> What you are searching for.</li>
+          <li><strong>2. Table Array:</strong> Must START with the ID column.</li>
+          <li><strong>3. Col Index:</strong> Column number to return (1, 2, 3...).</li>
+          <li><strong>4. Range:</strong> Always use 0 (FALSE) for exact match.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Find Price for "Product B"</span></div>
+        <div class="codeLine" id="line2">=<span class="fn">VLOOKUP</span>( <span class="str" id="codeVal">"Product B"</span>, A2:C5, <span class="val">2</span>, <span class="kwd">FALSE</span> )</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 0 0 0.5rem; border-top:1px solid var(--border); padding-top:1.5rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Look Left Error</div>
+          <div class="mistake-desc">
+            VLOOKUP cannot look to the LEFT. It only searches the first column of your selection.
+          </div>
+          <div class="mistake-fix">✅ Fix: Use XLOOKUP or INDEX/MATCH.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Missing "FALSE"</div>
+          <div class="mistake-desc">
+            If you forget the last argument, Excel assumes Approximate Match (TRUE), which can give wrong results.
+          </div>
+          <div class="mistake-fix">✅ Fix: Always type ", 0" at the end.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="connector" class="lookup-line"></div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("VLOOKUP Basics", "../../");
+
+  const data = [
+    { prod: "Product A", price: 100, stock: 50 },
+    { prod: "Product B", price: 200, stock: 20 }, // Target
+    { prod: "Product C", price: 150, stock: 0 },
+    { prod: "Product D", price: 300, stock: 10 }
+  ];
+  const targetValue = "Product B";
+  const errorValue = "Product Z";
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const connector = document.getElementById('connector');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1.5fr 1fr 1fr;">
+        <div id="h-prod">Product (Col 1)</div> <div id="h-price">Price (Col 2)</div> <div>Stock (Col 3)</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1.5fr 1fr 1fr;">
+          <div id="prod-${i}"><b>${d.prod}</b></div>
+          <div class="cell-num" id="price-${i}">$${d.price}</div>
+          <div class="cell-num" id="qty-${i}">${d.stock}</div>
+        </div>
+      `;
+    });
+  }
+
+  function drawLine(startEl, endEl, color = 'var(--accent)') {
+    const rect1 = startEl.getBoundingClientRect();
+    const rect2 = endEl.getBoundingClientRect();
+    
+    const x1 = rect1.left + (rect1.width / 2);
+    const y1 = rect1.top + (rect1.height / 2);
+    const x2 = rect2.left + (rect2.width / 2);
+    const y2 = rect2.top + (rect2.height / 2);
+
+    const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+    connector.style.width = `${length}px`;
+    connector.style.left = `${x1}px`;
+    connector.style.top = `${y1}px`;
+    connector.style.transform = `rotate(${angle}deg)`;
+    connector.style.backgroundColor = color;
+    connector.style.opacity = "1";
+  }
+
+  function hideLine() { connector.style.opacity = "0"; }
+
+  function highlight(id) {
+    document.querySelectorAll('.codeLine').forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    hideLine();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    document.getElementById('line1').innerHTML = '<span class="cmt">-- Find Price for "Product B"</span>';
+    document.getElementById('codeVal').textContent = '"Product B"';
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    // Clear highlights
+    document.querySelectorAll('.table-row').forEach(r => r.style.backgroundColor = 'transparent');
+    document.querySelectorAll('.match-found').forEach(c => c.classList.remove('match-found'));
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- VLOOKUP CORE LOGIC ---
+  async function runVlookup(target, errorMode = false) {
+    let result = "#N/A";
+    let matchIndex = -1;
+    let matchRow = null;
+
+    // 1. Setup Code Display
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- Find Price for "${target}"</span>`;
+    document.getElementById('codeVal').textContent = `"${target}"`;
+
+    highlight('line2');
+    App.updateText(`1. Lookup Value: <b>${target}</b>`);
+    await App.speak(`Okay, I am looking for ${target}.`);
+    if(shouldStop) return;
+    
+    // 2. Scan Table
+    App.updateText(`2. Scanning first column...`);
+    await App.speak(`I'm scanning the Product column from top to bottom.`);
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+        if(shouldStop) return;
+        const prodCell = document.getElementById(`prod-${i}`);
+        const row = document.getElementById(`row-${i}`);
+        
+        prodCell.classList.add('scan-col');
+        
+        await new Promise(r => setTimeout(r, App.voiceEnabled ? 300 : 150));
+        
+        if (data[i].prod === target) {
+            matchIndex = i;
+            matchRow = row;
+            prodCell.classList.remove('scan-col');
+            prodCell.classList.add('match-found');
+            break;
+        }
+        prodCell.classList.remove('scan-col');
+    }
+
+    if (matchIndex === -1) {
+        App.updateText(`❌ ERROR: "${target}" not found.`);
+        await App.speak(`I searched the whole list, but ${target} is not there. Returning N A Error.`);
+        totalBubble.textContent = "#N/A";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        return;
+    }
+
+    // 3. Match Found
+    matchRow.style.backgroundColor = "rgba(34, 197, 94, 0.1)";
+    App.updateText(`3. Match found! Getting the Price...`);
+    await App.speak(`I found a match! Now I'm moving right to column 2 to get the Price.`);
+
+    const targetCell = document.getElementById(`price-${matchIndex}`);
+    drawLine(document.getElementById(`prod-${matchIndex}`), targetCell);
+    
+    await new Promise(r => setTimeout(r, 800));
+    if(shouldStop) return;
+
+    // 4. Return Result
+    targetCell.classList.add('match-found');
+    result = targetCell.textContent;
+    
+    App.updateText(`Result: <b>${result}</b>`);
+    await App.speak(`Here it is. The price is ${result}.`);
+
+    totalBubble.textContent = result;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    await new Promise(r => setTimeout(r, 1000));
+    hideLine();
+  }
+  
+  // --- EVENT LISTENERS ---
+  document.getElementById('btnLookup').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 150));
+    await runVlookup(targetValue);
+    isRunning = false;
+  });
+
+  document.getElementById('btnError').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 150));
+    await runVlookup(errorValue, true); 
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>
