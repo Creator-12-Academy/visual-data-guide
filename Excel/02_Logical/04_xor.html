@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: XOR Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Toggle Switches Visual */
+  .switch-container {
+    display: flex; gap: 5px; justify-content: center;
+  }
+  .toggle {
+    width: 30px; height: 16px; border-radius: 10px;
+    background: #334155; position: relative; transition: 0.3s;
+    border: 1px solid var(--border);
+  }
+  .toggle::after {
+    content:''; position: absolute; left: 1px; top: 1px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #94a3b8; transition: 0.3s;
+  }
+  /* Active State */
+  .toggle.on { background: #4ade80; border-color: #4ade80; }
+  .toggle.on::after { transform: translateX(14px); background: #fff; }
+
+  /* Result Badge */
+  .status-badge {
+    font-size: 0.75rem; font-weight: bold; padding: 3px 8px; border-radius: 4px;
+    opacity: 0; transform: scale(0.8); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .status-badge.show { opacity: 1; transform: scale(1); }
+  
+  .badge-allow { background: #4ade80; color: #000; box-shadow: 0 0 10px rgba(74,222,128,0.3); }
+  .badge-deny { background: #ef4444; color: #fff; opacity: 0.8; }
+
+  /* Highlight */
+  .checking { border: 2px solid #facc15; background: rgba(250,204,21,0.1); }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🌗 The "One or Other" Gate</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Check Discount Eligibility.<br>
+      Rule: You can use a <strong>Coupon</strong> OR get the <strong>Sale Price</strong>, but <span style="color:#ef4444; font-weight:bold;">NOT BOTH</span>.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1rem;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ Check Rules</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">XOR</span>(logic1, [logic2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Logic 1:</strong> Has Coupon? (TRUE/FALSE)</li>
+          <li><strong>2. Logic 2:</strong> Is Sale Item? (TRUE/FALSE)</li>
+          <li><strong>Result:</strong> TRUE if <em>odd number</em> of inputs are True. (For 2 inputs: One, but not both).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Allow if Coupon OR Sale (Exclusive)</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">XOR</span>( <span class="col">B2="Yes"</span>, <span class="col">C2="Yes"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Discount Allowed?</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Confusion with OR</div>
+          <div class="mistake-desc">
+            <strong>OR</strong> allows "Both". <strong>XOR</strong> forbids "Both".<br>
+            Use XOR when choices are mutually exclusive (e.g., Male/Female, Day/Night).
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 More than 2 Inputs</div>
+          <div class="mistake-desc">With 3+ inputs, XOR returns TRUE if an <strong>ODD</strong> number of them are True. It gets confusing quickly!</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("XOR Function", "../../");
+
+  const data = [
+    { item: "Shirt", cpn: true, sale: false }, // Coupon Only (Pass)
+    { item: "Hat",   cpn: false, sale: true }, // Sale Only (Pass)
+    { item: "Shoes", cpn: true,  sale: true }, // Both (Fail - Double Dip)
+    { item: "Socks", cpn: false, sale: false } // Neither (Fail)
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1fr 1.2fr;">
+        <div>Item</div> <div>Coupon</div> <div>Sale</div> <div>Result</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      // Visual Toggles
+      const cpnClass = d.cpn ? 'toggle on' : 'toggle';
+      const saleClass = d.sale ? 'toggle on' : 'toggle';
+      
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1fr 1.2fr;">
+          <div>${d.item}</div>
+          <div style="display:flex; justify-content:center;"><div class="${cpnClass}"></div></div>
+          <div style="display:flex; justify-content:center;"><div class="${saleClass}"></div></div>
+          <div id="res-${i}" style="font-size:0.8rem; text-align:center;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  // --- LOGIC: RUN XOR ---
+  async function runXor() {
+    document.getElementById('line2').classList.add('active');
+    App.updateText("Checking for exclusive conditions...");
+    await App.speak("Let's check who gets a discount. Remember: One yes is good. Two yeses is bad.");
+    
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      const item = data[i];
+      
+      row.classList.add('checking');
+      
+      // Calculate inputs
+      const cpn = item.cpn;
+      const sale = item.sale;
+      
+      // LOGIC: XOR is true if inputs are different
+      const result = (cpn !== sale); 
+      // Or in excel terms: count of True is Odd. (1 is odd -> True. 2 is even -> False).
+
+      App.updateText(`Checking ${item.item}: Coupon=${cpn}, Sale=${sale}.`);
+      await new Promise(r => setTimeout(r, 600));
+
+      if (result) {
+        // PASS
+        resCell.innerHTML = `<span class="status-badge badge-allow show">✅ Approved</span>`;
+        totalBubble.textContent = "TRUE";
+        totalBubble.style.background = "#4ade80";
+        
+        App.updateText(`${item.item}: Exactly one condition met. XOR is TRUE.`);
+        if (i < 2) await App.speak(`Yes. Only one condition is met. Approved.`);
+      
+      } else {
+        // FAIL
+        let reason = (!cpn && !sale) ? "Neither met" : "Double Dipping!";
+        resCell.innerHTML = `<span class="status-badge badge-deny show">❌ Denied</span>`;
+        totalBubble.textContent = "FALSE";
+        totalBubble.style.background = "#ef4444";
+        
+        App.updateText(`${item.item}: ${reason}. XOR is FALSE.`);
+        if (reason.includes("Double")) await App.speak(`Wait! Coupon AND Sale? That is double dipping. Denied.`);
+        else await App.speak(`Neither condition is met. Denied.`);
+      }
+      
+      totalBubble.classList.add('show');
+      await new Promise(r => setTimeout(r, 600));
+      
+      row.classList.remove('checking');
+      totalBubble.classList.remove('show');
+    }
+
+    App.updateText("Done.");
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runXor();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

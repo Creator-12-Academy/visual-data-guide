@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: SUM Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Visual "Plus" Signs */
+  .plus-sign {
+    position: absolute; color: var(--text-dim); font-weight: bold;
+    opacity: 0; transition: opacity 0.3s; font-size: 1.2rem;
+    right: -15px; top: 12px;
+  }
+  .show-plus { opacity: 1; }
+
+  /* Total Bubble Pulse */
+  .pulse-total { animation: pulseGreen 0.4s ease-in-out; }
+  
+  @keyframes pulseGreen {
+    0% { transform: scale(1); box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
+    50% { transform: scale(1.2); box-shadow: 0 0 20px rgba(34, 197, 94, 0.5); background: #4ade80; color:#000; }
+    100% { transform: scale(1); box-shadow: 0 0 0 rgba(34, 197, 94, 0); }
+  }
+
+  /* Flying Number */
+  .flying-num {
+    position: absolute; font-weight: bold; color: var(--accent);
+    z-index: 100; pointer-events: none; font-size: 1.1rem;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>➕ The Aggregator</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate the Total Cost of the shopping list.<br>
+      <strong>SUM</strong> adds up all numbers in a selected range.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1rem;"></div>
+
+    <div style="background:#0f172a; padding:1rem; border-radius:8px; border:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+      <span style="color:var(--text-dim);">Running Total:</span>
+      <span id="runningTotal" style="font-size:1.5rem; font-weight:bold; font-family:monospace;">$0</span>
+    </div>
+
+    <div class="calculation-box" id="calcBox" style="margin-top:1rem;">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ AutoSum</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">SUM</span>(number1, [number2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Numbers:</strong> A range of cells (A1:A5), individual numbers (1, 2), or separate cells (A1, C1).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Add everything in Column B</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">SUM</span>( <span class="col" id="rangeRef">B2:B5</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Total:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Text is Ignored</div>
+          <div class="mistake-desc">SUM ignores cells containing text (like "N/A" or "Ten"). It treats them as 0.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🎹 Shortcut Tip</div>
+          <div class="mistake-desc">Press <kbd>Alt</kbd> + <kbd>=</kbd> to instantly insert a SUM formula that guesses the range above it.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("SUM Function", "../../");
+
+  const data = [
+    { item: "Apples", price: 10 },
+    { item: "Bread",  price: 5 },
+    { item: "Milk",   price: 8 },
+    { item: "Eggs",   price: 12 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const runningTotalEl = document.getElementById('runningTotal');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1.5fr 1fr;">
+        <div>Item</div> <div>Price</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1.5fr 1fr; position:relative;">
+          <div>${d.item}</div>
+          <div class="cell-num" id="val-${i}">$${d.price}</div>
+          <div class="plus-sign" id="plus-${i}">+</div>
+        </div>
+      `;
+    });
+    runningTotalEl.textContent = "$0";
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.textContent = "-";
+      totalBubble.classList.remove('show');
+      runningTotalEl.classList.remove('pulse-total');
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  function flyNumber(startEl, value) {
+    const rect = startEl.getBoundingClientRect();
+    const endRect = runningTotalEl.getBoundingClientRect();
+    
+    const fly = document.createElement('div');
+    fly.className = 'flying-num';
+    fly.textContent = `+$${value}`;
+    fly.style.left = `${rect.left}px`;
+    fly.style.top = `${rect.top}px`;
+    document.body.appendChild(fly);
+
+    const deltaX = endRect.left + (endRect.width/2) - rect.left - 20;
+    const deltaY = endRect.top + (endRect.height/2) - rect.top;
+
+    const anim = fly.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: `translate(${deltaX}px, ${deltaY}px) scale(0.5)`, opacity: 0 }
+    ], {
+      duration: 600,
+      easing: 'ease-in'
+    });
+
+    anim.onfinish = () => fly.remove();
+  }
+
+  // --- LOGIC: SUM ---
+  async function runSum() {
+    document.getElementById('line2').classList.add('active');
+    App.updateText("Combining all values in the range...");
+    await App.speak("I am adding up every number in the Price column.");
+    
+    if(shouldStop) return;
+
+    let currentSum = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const valCell = document.getElementById(`val-${i}`);
+      const plus = document.getElementById(`plus-${i}`);
+      const val = data[i].price;
+      
+      row.classList.add('row-highlight');
+      plus.classList.add('show-plus');
+      
+      App.updateText(`Adding $${val}...`);
+      
+      // Animation
+      flyNumber(valCell, val);
+      await new Promise(r => setTimeout(r, 600)); // Wait for flight
+      
+      // Update Total
+      currentSum += val;
+      runningTotalEl.textContent = `$${currentSum}`;
+      runningTotalEl.classList.add('pulse-total'); // Pulse effect
+      setTimeout(() => runningTotalEl.classList.remove('pulse-total'), 400);
+      
+      row.classList.remove('row-highlight');
+    }
+
+    // Final Result
+    App.updateText(`Total Sum: $${currentSum}`);
+    await App.speak(`The total sum is ${currentSum} dollars.`);
+    
+    totalBubble.textContent = `$${currentSum}`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSum();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

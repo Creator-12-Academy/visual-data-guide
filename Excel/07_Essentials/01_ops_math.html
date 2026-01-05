@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: Math Operators</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --op-yellow: #facc15;
+    --res-green: #4ade80;
+    --err-red: #f87171;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .math-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 350px; position: relative;
+    overflow: hidden;
+  }
+
+  /* Equation Row */
+  .eq-row {
+    display: flex; gap: 15px; align-items: center; font-family: monospace;
+    font-size: 2rem; font-weight: 900;
+  }
+
+  /* Input Boxes */
+  .num-box {
+    width: 80px; height: 80px; background: #0f172a;
+    border: 2px solid var(--border); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; transition: all 0.3s;
+  }
+  .num-box.active { border-color: var(--accent); box-shadow: 0 0 15px rgba(56, 189, 248, 0.3); }
+
+  /* Operator Circle */
+  .op-circle {
+    width: 60px; height: 60px; border-radius: 50%;
+    background: var(--op-yellow); color: #000;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 2.5rem; box-shadow: 0 4px 10px rgba(250, 204, 21, 0.4);
+    transform: scale(0.8); opacity: 0.5; transition: all 0.4s;
+  }
+  .op-circle.pulse { transform: scale(1.1); opacity: 1; }
+
+  /* Result Box */
+  .res-box {
+    width: 100px; height: 80px; background: transparent;
+    border: 2px dashed var(--text-dim); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--res-green); opacity: 0.5; transition: all 0.4s;
+  }
+  .res-show {
+    background: rgba(74, 222, 128, 0.1); border-style: solid; border-color: var(--res-green);
+    opacity: 1; transform: scale(1.1); text-shadow: 0 0 10px var(--res-green);
+  }
+  .res-err {
+    border-color: var(--err-red); color: var(--err-red);
+    background: rgba(248, 113, 113, 0.1); text-shadow: none;
+  }
+
+  /* Connecting Lines (Visual decoration) */
+  .connect-line {
+    position: absolute; height: 4px; background: var(--border); z-index: -1;
+    width: 60%; top: 50%; left: 20%; transform: translateY(-50%);
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>➕ The Math Lab</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Perform calculations using standard operators.<br>
+      Excel follows standard math order (PEMDAS), but we focus on individual operators here.
+    </p>
+
+    <div class="math-stage">
+      
+      <div class="connect-line"></div>
+
+      <div class="eq-row">
+        <div class="num-box" id="boxA">10</div>
+        
+        <div class="op-circle" id="opCircle">+</div>
+        
+        <div class="num-box" id="boxB">5</div>
+        
+        <div style="color:var(--text-dim);">=</div>
+        
+        <div class="res-box" id="boxRes">?</div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnAdd">➕ Add (+)</button>
+        <button class="action" id="btnSub">➖ Subtract (-)</button>
+        <button class="action" id="btnMul">✖ Multiply (*)</button>
+        <button class="action" id="btnDiv">➗ Divide (/)</button>
+        <button class="action" id="btnPow">🚀 Power (^)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;" id="syntaxTitle">
+          =A1 + B1
+        </div>
+        <ul class="arg-list" id="syntaxDesc">
+          <li><strong>+:</strong> Adds values.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Basic Math</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="val" id="codeA">10</span> <span class="fn" id="codeOp">+</span> <span class="val" id="codeB">5</span>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Divide by Zero</div>
+          <div class="mistake-desc">
+            Dividing any number by 0 results in the <code>#DIV/0!</code> error. Always check your denominator if it comes from a cell reference.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">✖ Use Asterisk</div>
+          <div class="mistake-desc">
+            In Excel, multiplication is always <code>*</code> (Asterisk), never <code>x</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("Math Operators", "../../");
+
+  const boxA = document.getElementById('boxA');
+  const boxB = document.getElementById('boxB');
+  const opCircle = document.getElementById('opCircle');
+  const boxRes = document.getElementById('boxRes');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // Code Elements
+  const codeA = document.getElementById('codeA');
+  const codeB = document.getElementById('codeB');
+  const codeOp = document.getElementById('codeOp');
+  const syntaxTitle = document.getElementById('syntaxTitle');
+  const syntaxDesc = document.getElementById('syntaxDesc');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Visuals
+    opCircle.className = "op-circle";
+    opCircle.textContent = "?";
+    
+    boxRes.className = "res-box";
+    boxRes.textContent = "?";
+    
+    boxA.classList.remove('active');
+    boxB.classList.remove('active');
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(opChar, desc, example) {
+    opCircle.textContent = opChar;
+    codeOp.textContent = opChar;
+    
+    // Default Values
+    let valA = 10;
+    let valB = 5;
+    
+    // Edge cases for demo variety
+    if(opChar === '^') { valA = 2; valB = 3; }
+    
+    boxA.textContent = valA;
+    boxB.textContent = valB;
+    codeA.textContent = valA;
+    codeB.textContent = valB;
+
+    syntaxTitle.textContent = example;
+    syntaxDesc.innerHTML = `<li><strong>${opChar}:</strong> ${desc}</li>`;
+    
+    return { valA, valB };
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runMath(opName) {
+    let vals;
+    let res = 0;
+    let opChar = "";
+    
+    if (opName === 'ADD') {
+        opChar = "+";
+        vals = updateUI("+", "Adds two numbers.", "=A1 + B1");
+        res = vals.valA + vals.valB;
+    } else if (opName === 'SUB') {
+        opChar = "-";
+        vals = updateUI("-", "Subtracts second from first.", "=A1 - B1");
+        res = vals.valA - vals.valB;
+    } else if (opName === 'MUL') {
+        opChar = "*";
+        vals = updateUI("*", "Multiplies numbers.", "=A1 * B1");
+        res = vals.valA * vals.valB;
+    } else if (opName === 'DIV') {
+        opChar = "/";
+        vals = updateUI("/", "Divides first by second.", "=A1 / B1");
+        res = vals.valA / vals.valB;
+    } else if (opName === 'POW') {
+        opChar = "^";
+        vals = updateUI("^", "Raises to the power.", "=A1 ^ B1");
+        res = Math.pow(vals.valA, vals.valB);
+    }
+
+    document.getElementById('line2').classList.add('active');
+    App.updateText(`Calculating: ${vals.valA} ${opChar} ${vals.valB}...`);
+    await App.speak(`Calculating ${vals.valA} ${opChar} ${vals.valB}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Highlight Inputs
+    boxA.classList.add('active');
+    await new Promise(r => setTimeout(r, 200));
+    boxB.classList.add('active');
+    await new Promise(r => setTimeout(r, 200));
+
+    // 2. Pulse Operator
+    opCircle.classList.add('pulse');
+    await new Promise(r => setTimeout(r, 500));
+
+    // 3. Show Result
+    if (!isFinite(res) || isNaN(res)) {
+        // Handle Error (e.g. DIV/0)
+        boxRes.textContent = "#DIV/0!";
+        boxRes.classList.add('res-show', 'res-err');
+        App.updateText("Error! Division by Zero.");
+        totalBubble.textContent = "Error";
+        totalBubble.style.background = "var(--err-red)";
+    } else {
+        boxRes.textContent = res;
+        boxRes.classList.add('res-show');
+        App.updateText(`Result: ${res}`);
+        await App.speak(`The result is ${res}.`);
+        totalBubble.textContent = res;
+        totalBubble.style.background = "var(--res-green)";
+    }
+    
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+    boxA.classList.remove('active');
+    boxB.classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnAdd').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runMath('ADD');
+    isRunning = false;
+  });
+
+  document.getElementById('btnSub').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runMath('SUB');
+    isRunning = false;
+  });
+
+  document.getElementById('btnMul').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runMath('MUL');
+    isRunning = false;
+  });
+
+  document.getElementById('btnDiv').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runMath('DIV');
+    isRunning = false;
+  });
+
+  document.getElementById('btnPow').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runMath('POW');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

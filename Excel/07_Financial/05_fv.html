@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: FV Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --pos-green: #4ade80;
+    --gold-coin: #facc15;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .fv-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    gap: 1rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 350px; position: relative;
+  }
+
+  /* Growth Chart Container */
+  .chart-area {
+    display: flex; align-items: flex-end; justify-content: center; gap: 40px;
+    height: 250px; width: 100%; position: relative;
+    border-bottom: 2px solid var(--border);
+  }
+
+  /* The Bars */
+  .bar-group {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    width: 80px; position: relative;
+  }
+  
+  .bar {
+    width: 100%; transition: height 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    border-radius: 4px 4px 0 0; position: relative;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 0.8rem; color: #000;
+  }
+
+  /* Bar Types */
+  .bar-principal { background: var(--accent); z-index: 2; }
+  .bar-interest { background: var(--pos-green); border-bottom: 1px solid rgba(0,0,0,0.1); }
+
+  /* Stack Container */
+  .stack-container {
+    width: 80px; display: flex; flex-direction: column-reverse; /* Build up */
+    height: 0%; transition: height 0.3s;
+  }
+
+  /* Labels */
+  .bar-label {
+    margin-top: 10px; font-size: 0.8rem; color: var(--text-dim); text-align: center;
+  }
+  .float-val {
+    position: absolute; top: -25px; width: 100%; text-align: center;
+    font-weight: bold; font-family: monospace; opacity: 0; transition: opacity 0.3s;
+  }
+  .show-val .float-val { opacity: 1; }
+
+  /* Coin Animation for PMT */
+  .coin-drop {
+    position: absolute; width: 30px; height: 30px; 
+    background: var(--gold-coin); border-radius: 50%;
+    top: 0; left: 50%; transform: translateX(-50%);
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+    opacity: 0; z-index: 20;
+  }
+  .anim-drop { animation: dropDown 0.4s forwards; }
+
+  @keyframes dropDown {
+    0% { top: 0; opacity: 1; }
+    100% { top: 80%; opacity: 0; transform: translateX(-50%) scale(0.5); }
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🚀 Compound Growth Engine</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate how much money you will have in the future.<br>
+      <strong>FV</strong> combines your deposits (Principal) with the magic of Compound Interest.
+    </p>
+
+    <div class="fv-stage">
+      
+      <div class="coin-drop" id="coin"></div>
+
+      <div class="chart-area">
+        
+        <div class="bar-group">
+          <div class="float-val" id="valInvest">-</div>
+          <div class="bar bar-principal" id="barInvest" style="height:0px;"></div>
+          <div class="bar-label">Total Invested</div>
+        </div>
+
+        <div class="bar-group show-val" id="totalGroup">
+          <div class="float-val" id="valTotal">-</div>
+          <div class="stack-container" id="stackTotal" style="height:0px;">
+            <div class="bar bar-interest" id="segInterest" style="flex:0;">Interest</div>
+            <div class="bar bar-principal" id="segPrincipal" style="flex:0;"></div>
+          </div>
+          <div class="bar-label">Future Value</div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnSave">💰 Savings ($500/mo)</button>
+        <button class="action" id="btnLump">💎 Lump Sum ($10k)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">FV</span>(rate, nper, pmt, [pv], [type])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Rate:</strong> Interest rate per period (e.g., 5%/12).</li>
+          <li><strong>2. Nper:</strong> Total periods (Years * 12).</li>
+          <li><strong>3. Pmt:</strong> Regular payment (Negative for deposit).</li>
+          <li><strong>4. Pv:</strong> (Optional) Starting lump sum.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Calculate Future Wealth</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">FV</span>( <span class="val" id="cRate">5%/12</span>, <span class="val" id="cNper">60</span>, <span class="val" id="cPmt">-500</span>, <span class="val" id="cPv">0</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Amount:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Sign Confusion</div>
+          <div class="mistake-desc">
+            Money you pay out (deposits) should be <strong>negative</strong>. Money you receive back (future value) will be <strong>positive</strong>. If you enter PMT as positive, FV returns negative (debt).
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">📅 Period Matching</div>
+          <div class="mistake-desc">
+            Ensure Rate and Nper match. If you save <strong>Monthly</strong>, divide annual Rate by 12 and multiply Years by 12.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("FV Function", "../../");
+
+  // Elements
+  const barInvest = document.getElementById('barInvest');
+  const stackTotal = document.getElementById('stackTotal');
+  const segInterest = document.getElementById('segInterest');
+  const segPrincipal = document.getElementById('segPrincipal');
+  const valInvest = document.getElementById('valInvest');
+  const valTotal = document.getElementById('valTotal');
+  const coin = document.getElementById('coin');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // Code Elements
+  const cRate = document.getElementById('cRate');
+  const cNper = document.getElementById('cNper');
+  const cPmt = document.getElementById('cPmt');
+  const cPv = document.getElementById('cPv');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Bars
+    barInvest.style.height = "0px";
+    stackTotal.style.height = "0px";
+    valInvest.textContent = "-";
+    valTotal.textContent = "-";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(rateStr, nper, pmt, pv) {
+    cRate.textContent = rateStr;
+    cNper.textContent = nper;
+    cPmt.textContent = pmt;
+    cPv.textContent = pv;
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runFV(annualRate, years, pmt, pv, desc) {
+    updateUI(`${(annualRate*100)}%/12`, years*12, pmt, pv);
+    App.updateText(`Calculating ${desc}...`);
+    await App.speak(`Let's project the growth for ${desc}.`);
+    
+    if(shouldStop) return;
+
+    // Calc Params
+    const r = annualRate / 12;
+    const n = years * 12;
+    
+    // Iterative Simulation for Animation
+    let currentBal = Math.abs(pv); // Start positive for visual
+    let totalInvested = Math.abs(pv);
+    const absPmt = Math.abs(pmt);
+
+    // Scaling Factor: Let's say max height 200px = $50,000 (approx)
+    // We need dynamic scale or fixed. Let's aim for a target max visual of ~200px.
+    // Calculate Final FV first to set scale.
+    // FV = Pmt * (((1 + r)^n - 1) / r) + PV * (1 + r)^n
+    // Simplified logic loop is safer for visual sync.
+    
+    // Pre-calc final for scale
+    let tempBal = Math.abs(pv);
+    for(let i=0; i<n; i++) {
+        tempBal += tempBal * r;
+        tempBal += absPmt;
+    }
+    const maxVal = tempBal * 1.1; // 10% buffer
+    const scaleFactor = 200 / maxVal; 
+
+    // Visualization Loop (We'll skip frames to make it fast)
+    const stepSize = Math.ceil(n / 10); // animate in ~10 steps
+    
+    for(let i=1; i<=n; i++) {
+        if(shouldStop) return;
+
+        // Math
+        const interest = currentBal * r;
+        currentBal += interest;
+        currentBal += absPmt;
+        totalInvested += absPmt;
+
+        // Visual Update (Only every few months)
+        if (i % stepSize === 0 || i === n) {
+            // Drop Coin Effect
+            coin.classList.remove('anim-drop');
+            void coin.offsetWidth; // trigger reflow
+            coin.classList.add('anim-drop');
+
+            // Bar Heights
+            const hTotal = currentBal * scaleFactor;
+            const hInvest = totalInvested * scaleFactor;
+            const hInterest = (currentBal - totalInvested) * scaleFactor;
+            
+            // Proportions for stack
+            const pctPrincipal = (totalInvested / currentBal) * 100;
+            // The stack container height is total pixels
+            stackTotal.style.height = `${hTotal}px`;
+            
+            // Flex basis for segments
+            segPrincipal.style.flex = `0 0 ${pctPrincipal}%`; 
+            // Interest takes remaining space automatically
+            segInterest.style.flex = "1";
+            segInterest.textContent = hInterest > 15 ? "Interest" : ""; // Hide text if too small
+
+            // Invest Bar (Left)
+            barInvest.style.height = `${hInvest}px`;
+
+            // Text Labels
+            valInvest.textContent = `$${Math.round(totalInvested/1000)}k`;
+            valTotal.textContent = `$${Math.round(currentBal/1000)}k`;
+
+            App.updateText(`Year ${(i/12).toFixed(1)}: Balance is $${Math.round(currentBal).toLocaleString()}`);
+            await new Promise(r => setTimeout(r, 200)); // speed
+        }
+    }
+
+    // Final Result
+    const finalVal = currentBal.toFixed(2);
+    App.updateText(`Done! You invested $${Math.round(totalInvested)}, but you have $${Math.round(currentBal)}.`);
+    await App.speak(`Finished. Notice the green section. That is free money from interest.`);
+    
+    totalBubble.textContent = `$${Math.round(currentBal).toLocaleString()}`;
+    totalBubble.style.background = "var(--pos-green)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnSave').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 5% rate, 5 years, $500/mo, 0 start
+    await runFV(0.05, 5, -500, 0, "Savings Plan");
+    isRunning = false;
+  });
+
+  document.getElementById('btnLump').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 7% rate, 10 years, 0 monthly, 10k start
+    await runFV(0.07, 10, 0, -10000, "Lump Sum Growth");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

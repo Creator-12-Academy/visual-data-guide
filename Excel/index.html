@@ -6,15 +6,15 @@
 <title>Excel Masterclass | Roadmap</title>
 <link rel="stylesheet" href="../assets/style.css"> 
 <style>
-  /* --- 1. GLOBAL VARIABLES & THEME --- */
+  /* --- 1. GLOBAL VARIABLES & THEME (Dark Slate) --- */
   :root { 
-    --accent: #107c41; /* Excel Green */
-    --bg-body: #f3f4f6; /* Soft Gray */
-    --bg-bars: #ebf8f2; /* Mint Green Header/Footer */
-    --bg-card: #ffffff;
-    --text-main: #333;
-    --text-dim: #666;
-    --border: #d1fae5;
+    --accent: #38bdf8;   /* Sky Blue for contrast against slate */
+    --bg-body: #1e293b;  /* Slate 800 (User Requested) */
+    --bg-bars: #0f172a;  /* Slate 900 (Darker for Header) */
+    --bg-card: #334155;  /* Slate 700 (User Requested) */
+    --text-main: #f8fafc; /* Slate 50 (White-ish) */
+    --text-dim: #cbd5e1;  /* Slate 300 (Light Grey) */
+    --border: #475569;    /* Slate 600 */
   }
 
   body {
@@ -27,65 +27,22 @@
     flex-direction: column;
   }
 
-  /* --- 2. HEADER VISIBILITY FIXES --- */
+  /* --- 2. HEADER --- */
   header {
     background: var(--bg-bars);
     padding: 1.5rem 3rem; 
     border-bottom: 1px solid var(--border);
-    box-shadow: 0 2px 10px rgba(16, 124, 65, 0.05);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
     margin-bottom: 2rem;
-    
-    /* FLEXBOX for alignment */
     display: flex;
     justify-content: space-between;
     align-items: center;
   }
 
-  /* FORCE BLACK TEXT IN HEADER */
-  .brand-area {
-    display: flex;
-    align-items: center;
-    color: #000000 !important; 
-  }
-
-  /* Target the injected classes from App.js */
-  .brand-text {
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: #000000 !important; 
-    letter-spacing: -0.5px;
-  }
-
-  .brand-icon {
-    font-size: 1.8rem;
-    margin-right: 12px;
-    color: #000000 !important; 
-    font-weight: bold;
-  }
-
-  /* Header Navigation Links */
-  .nav-group {
-    display: flex;
-    gap: 15px;
-    align-items: center;
-  }
-
-  .nav-link {
-    text-decoration: none;
-    color: #1f2937 !important; /* Dark Grey link text */
-    font-weight: 600;
-    padding: 8px 16px;
-    border-radius: 6px;
-    background: rgba(255,255,255,0.6);
-    border: 1px solid #cbd5e1;
-    transition: all 0.2s;
-  }
-
-  .nav-link:hover {
-    background: #fff;
-    color: var(--accent) !important;
-    border-color: var(--accent);
-  }
+  /* Text Colors Updated for Dark Mode */
+  .brand-area { display: flex; align-items: center; color: var(--text-main) !important; }
+  .brand-text { font-size: 1.6rem; font-weight: 800; color: var(--text-main) !important; letter-spacing: -0.5px; }
+  .brand-icon { font-size: 1.8rem; margin-right: 12px; color: var(--accent) !important; font-weight: bold; }
 
   /* --- 3. LAYOUT --- */
   .container { 
@@ -100,7 +57,7 @@
     margin-top: 4rem; 
     margin-bottom: 1.5rem; 
     font-size: 1.6rem; 
-    color: #1e293b;
+    color: var(--text-main);
     border-left: 6px solid var(--accent); 
     padding-left: 1rem; 
     font-weight: 900; 
@@ -125,72 +82,63 @@
     padding: 15px 20px;
     padding-left: 50px;
     font-size: 1.1rem;
-    border: 2px solid #cbd5e1;
-    background-color: #fff;
+    border: 2px solid var(--border);
+    background-color: var(--bg-card); /* Dark Input */
+    color: var(--text-main); /* Light Text */
     border-radius: 50px;
     outline: none;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.03);
-    box-sizing: border-box;
-    color: #333; 
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
   }
+
+  #searchInput::placeholder { color: var(--text-dim); opacity: 0.7; }
 
   #searchInput:focus {
     border-color: var(--accent);
-    box-shadow: 0 4px 12px rgba(16, 124, 65, 0.15);
+    box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2); /* Blue Glow */
   }
 
   .search-icon {
-    position: absolute;
-    left: 20px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 1.2rem;
-    opacity: 0.5;
-    color: #333;
+    position: absolute; left: 20px; top: 50%; transform: translateY(-50%);
+    font-size: 1.2rem; opacity: 0.7; color: var(--text-main);
   }
 
   /* --- 5. CARDS & LINKS --- */
   .cat-card {
     background: var(--bg-card); 
-    border: 1px solid #e2e8f0;
+    border: 1px solid var(--border);
     border-radius: 1rem; 
-    padding: 0;
-    display: flex; 
-    flex-direction: column;
-    transition: 0.3s; 
-    height: 100%;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+    display: flex; flex-direction: column;
+    transition: 0.3s; height: 100%;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
   }
 
   .cat-card:hover { 
     transform: translateY(-5px); 
     border-color: var(--accent); 
-    box-shadow: 0 10px 20px rgba(16, 124, 65, 0.1); 
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4); 
   }
 
   a.cat-header-link {
     text-decoration: none; display: block;
-    background: #f8fafc;
-    padding: 1rem; border-bottom: 1px solid #e2e8f0;
+    background: rgba(255,255,255,0.05); /* Slight tint */
+    padding: 1rem; border-bottom: 1px solid var(--border);
     transition: 0.2s;
-    border-radius: 1rem 1rem 0 0;
   }
   
-  a.cat-header-link:hover { background: #f0fdf4; }
+  a.cat-header-link:hover { background: rgba(255,255,255,0.1); }
 
   .cat-header-content { display: flex; align-items: center; gap: 0.8rem; }
   
   .cat-icon { 
-    font-size: 1.5rem; 
-    background: #dcfce7;
+    font-size: 1.5rem; background: rgba(56, 189, 248, 0.15);
     width: 40px; height: 40px; 
     display: flex; align-items: center; justify-content: center; 
-    border-radius: 0.5rem; 
-    color: #14532d;
+    border-radius: 0.5rem; color: var(--accent);
   }
 
-  .cat-title { font-weight: 800; font-size: 1rem; color: #333; display: block; }
+  .cat-title { font-weight: 800; font-size: 1rem; color: var(--text-main); }
 
   .link-container { padding: 1rem; flex: 1; }
   .link-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -201,39 +149,29 @@
     padding: 0.5rem 0.8rem; border-radius: 0.4rem; font-size: 0.85rem; 
     font-family: 'Consolas', monospace; 
     border: 1px solid transparent; 
-    background-color: #f8fafc;
+    background-color: rgba(0,0,0,0.2); /* Darker inner button */
     transition: 0.2s;
   }
 
   a.lesson-btn:hover { 
-    border-color: var(--accent); 
-    color: var(--accent); 
-    background: #fff; 
-    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border-color: var(--accent); color: var(--accent); 
+    background: rgba(56, 189, 248, 0.1); /* Subtle Blue hover */
   }
 
-  .status-dot { font-size: 0.7rem; opacity: 0.4; color: #ccc; }
-  a.lesson-btn.active { background-color: #ecfdf5; border-color: #10b981; color: #065f46; }
-  a.lesson-btn.active .status-dot { color: #10b981; opacity: 1; }
+  .status-dot { font-size: 0.7rem; opacity: 0.4; color: #64748b; }
+  a.lesson-btn.active { background-color: rgba(56, 189, 248, 0.15); border-color: var(--accent); color: var(--accent); }
+  a.lesson-btn.active .status-dot { color: var(--accent); opacity: 1; }
 
   .combined-card { border-top: 4px solid var(--accent); }
 
   /* --- 6. FOOTER --- */
   footer { 
-    text-align: center; 
-    padding: 4rem 1rem; 
-    background: var(--bg-bars);
-    border-top: 1px solid var(--border);
-    color: #333 !important; 
-    font-size: 0.9rem;
-    margin-top: auto; 
+    text-align: center; padding: 4rem 1rem; 
+    background: var(--bg-bars); border-top: 1px solid var(--border);
+    color: var(--text-dim) !important; font-size: 0.9rem; margin-top: auto; 
   }
   
-  footer a { color: #107c41; text-decoration: none; font-weight: bold; }
-
-  /* Hide Controls on Menu Page */
-  #controls-mount { display: none; }
-
+  /* Mobile Responsive */
   @media(max-width: 768px) {
     .roadmap-grid, .combined-grid { grid-template-columns: 1fr; }
     .section-title { margin-top: 2rem; font-size: 1.4rem; }
@@ -243,10 +181,17 @@
 </head>
 <body>
 
-  <header></header> <div class="container">
+  <header>
+    <div class="brand-area">
+      <span class="brand-icon">⚡</span>
+      <span class="brand-text">Excel Masterclass</span>
+    </div>
+  </header> 
+
+  <div class="container">
     
     <div style="text-align:center; margin-bottom:2rem;">
-      <h1 style="color:var(--accent); margin-bottom:0.5rem; font-size: 2.5rem;">Excel Formulas Roadmap</h1>
+      <h1 style="color:var(--text-main); margin-bottom:0.5rem; font-size: 2.5rem;">Excel Formula Roadmap</h1>
       <p style="color:var(--text-dim);">The Complete Library: 100+ Formulas & Use Cases.</p>
     </div>
 
@@ -260,7 +205,7 @@
 
       <div class="cat-card">
         <a href="01_Lookups/index.html" class="cat-header-link">
-          <div class="cat-header-content"><div class="cat-icon">🔎</div><span class="cat-title">Lookup & Reference</span></div>
+          <div class="cat-header-content"><div class="cat-icon">🔎</div><span class="cat-title">01. Lookup & Reference</span></div>
         </a>
         <div class="link-container"><div class="link-list">
           <a class="lesson-btn" href="01_Lookups/01_vlookup.html">VLOOKUP / HLOOKUP <span class="status-dot">○</span></a>
@@ -277,96 +222,96 @@
       </div>
 
       <div class="cat-card">
-        <a href="04_Logical/index.html" class="cat-header-link">
-          <div class="cat-header-content"><div class="cat-icon">⚖️</div><span class="cat-title">Logical</span></div>
+        <a href="02_Logical/index.html" class="cat-header-link">
+          <div class="cat-header-content"><div class="cat-icon">⚖️</div><span class="cat-title">02. Logical</span></div>
         </a>
         <div class="link-container"><div class="link-list">
-          <a class="lesson-btn" href="04_Logical/01_if.html">IF <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="04_Logical/02_ifs.html">IFS <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="04_Logical/03_and_or.html">AND / OR / NOT <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="04_Logical/04_xor.html">XOR <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="04_Logical/05_switch.html">SWITCH <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="04_Logical/06_iferror.html">IFERROR <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="04_Logical/07_ifna.html">IFNA <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="04_Logical/08_true.html">TRUE / FALSE <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="02_Logical/01_if.html">IF <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="02_Logical/02_ifs.html">IFS <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="02_Logical/03_and_or.html">AND / OR / NOT <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="02_Logical/04_xor.html">XOR <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="02_Logical/05_switch.html">SWITCH <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="02_Logical/06_iferror.html">IFERROR <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="02_Logical/07_ifna.html">IFNA <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="02_Logical/08_true.html">TRUE / FALSE <span class="status-dot">○</span></a>
         </div></div>
       </div>
       
       <div class="cat-card">
-        <a href="02_Math/index.html" class="cat-header-link">
-          <div class="cat-header-content"><div class="cat-icon">∑</div><span class="cat-title">Math & Trig</span></div>
+        <a href="03_Math/index.html" class="cat-header-link">
+          <div class="cat-header-content"><div class="cat-icon">∑</div><span class="cat-title">03. Math & Trig</span></div>
         </a>
         <div class="link-container"><div class="link-list">
-          <a class="lesson-btn" href="02_Math/01_sum.html">SUM <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="02_Math/02_sumif.html">SUMIF / SUMIFS <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="02_Math/03_product.html">PRODUCT <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="02_Math/04_quotient.html">QUOTIENT / MOD <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="02_Math/05_power.html">POWER / SQRT <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="02_Math/06_round.html">ROUND / UP / DOWN <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="02_Math/07_ceiling.html">CEILING / FLOOR <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="02_Math/08_int.html">INT <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="02_Math/09_abs.html">ABS <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="02_Math/10_rand.html">RAND / BETWEEN <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="03_Math/01_sum.html">SUM <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="03_Math/02_sumif.html">SUMIF / SUMIFS <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="03_Math/03_product.html">PRODUCT <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="03_Math/04_quotient.html">QUOTIENT / MOD <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="03_Math/05_power.html">POWER / SQRT <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="03_Math/06_round.html">ROUND / UP / DOWN <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="03_Math/07_ceiling.html">CEILING / FLOOR <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="03_Math/08_int.html">INT <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="03_Math/09_abs.html">ABS <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="03_Math/10_rand.html">RAND / BETWEEN <span class="status-dot">○</span></a>
         </div></div>
       </div>
 
       <div class="cat-card">
-        <a href="06_Statistical/index.html" class="cat-header-link">
-          <div class="cat-header-content"><div class="cat-icon">📊</div><span class="cat-title">Statistical</span></div>
+        <a href="04_Statistical/index.html" class="cat-header-link">
+          <div class="cat-header-content"><div class="cat-icon">📊</div><span class="cat-title">04. Statistical</span></div>
         </a>
         <div class="link-container"><div class="link-list">
-          <a class="lesson-btn" href="06_Statistical/01_average.html">AVERAGE / A <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Statistical/02_averageif.html">AVERAGEIF / S <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Statistical/03_count.html">COUNT / COUNTA <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Statistical/04_countblank.html">COUNTBLANK <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Statistical/05_countif.html">COUNTIF / S <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Statistical/06_min_max.html">MIN / MAX <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Statistical/07_large.html">LARGE / SMALL <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Statistical/08_median.html">MEDIAN / MODE <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Statistical/09_stdev.html">STDEV.P / .S <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Statistical/10_rank.html">RANK.EQ / .AVG <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="04_Statistical/01_average.html">AVERAGE / A <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="04_Statistical/02_averageif.html">AVERAGEIF / S <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="04_Statistical/03_count.html">COUNT / COUNTA <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="04_Statistical/04_countblank.html">COUNTBLANK <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="04_Statistical/05_countif.html">COUNTIF / S <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="04_Statistical/06_min_max.html">MIN / MAX <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="04_Statistical/07_large.html">LARGE / SMALL <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="04_Statistical/08_median.html">MEDIAN / MODE <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="04_Statistical/09_stdev.html">STDEV.P / .S <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="04_Statistical/10_rank.html">RANK.EQ / .AVG <span class="status-dot">○</span></a>
         </div></div>
       </div>
 
       <div class="cat-card">
-        <a href="03_Text/index.html" class="cat-header-link">
-          <div class="cat-header-content"><div class="cat-icon">Aa</div><span class="cat-title">Text Functions</span></div>
+        <a href="05_Text/index.html" class="cat-header-link">
+          <div class="cat-header-content"><div class="cat-icon">Aa</div><span class="cat-title">05. Text Functions</span></div>
         </a>
         <div class="link-container"><div class="link-list">
-          <a class="lesson-btn" href="03_Text/01_trim.html">TRIM / CLEAN <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="03_Text/02_left.html">LEFT / RIGHT <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="03_Text/03_mid.html">MID <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="03_Text/04_len.html">LEN <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="03_Text/05_find.html">FIND / SEARCH <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="03_Text/06_concat.html">CONCAT / TEXTJOIN <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="03_Text/07_substitute.html">SUBSTITUTE <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="03_Text/08_replace.html">REPLACE <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="03_Text/09_text.html">TEXT / VALUE <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="03_Text/10_upper.html">UPPER / LOWER <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="05_Text/01_trim.html">TRIM / CLEAN <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="05_Text/02_left.html">LEFT / RIGHT <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="05_Text/03_mid.html">MID <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="05_Text/04_len.html">LEN <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="05_Text/05_find.html">FIND / SEARCH <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="05_Text/06_concat.html">CONCAT / TEXTJOIN <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="05_Text/07_substitute.html">SUBSTITUTE <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="05_Text/08_replace.html">REPLACE <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="05_Text/09_text.html">TEXT / VALUE <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="05_Text/10_upper.html">UPPER / LOWER <span class="status-dot">○</span></a>
         </div></div>
       </div>
 
       <div class="cat-card">
-        <a href="05_Date/index.html" class="cat-header-link">
-          <div class="cat-header-content"><div class="cat-icon">📅</div><span class="cat-title">Date & Time</span></div>
+        <a href="06_Date/index.html" class="cat-header-link">
+          <div class="cat-header-content"><div class="cat-icon">📅</div><span class="cat-title">06. Date & Time</span></div>
         </a>
         <div class="link-container"><div class="link-list">
-          <a class="lesson-btn" href="05_Date/01_today.html">TODAY / NOW <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="05_Date/02_date.html">DATE / TIME <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="05_Date/03_parts.html">YEAR / MONTH <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="05_Date/04_timeparts.html">HOUR / MIN / SEC <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="05_Date/05_datedif.html">DATEDIF <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="05_Date/06_eomonth.html">EOMONTH / EDATE <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="05_Date/07_workday.html">WORKDAY / INTL <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="05_Date/08_network.html">NETWORKDAYS <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="05_Date/09_week.html">WEEKNUM / DAY <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="05_Date/10_text.html">TEXT (Date) <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="06_Date/01_today.html">TODAY / NOW <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="06_Date/02_date.html">DATE / TIME <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="06_Date/03_parts.html">YEAR / MONTH <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="06_Date/04_timeparts.html">HOUR / MIN / SEC <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="06_Date/05_datedif.html">DATEDIF <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="06_Date/06_eomonth.html">EOMONTH / EDATE <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="06_Date/07_workday.html">WORKDAY / INTL <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="06_Date/08_network.html">NETWORKDAYS <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="06_Date/09_week.html">WEEKNUM / DAY <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="06_Date/10_text.html">TEXT (Date) <span class="status-dot">○</span></a>
         </div></div>
       </div>
 
       <div class="cat-card">
         <a href="07_Financial/index.html" class="cat-header-link">
-          <div class="cat-header-content"><div class="cat-icon">💰</div><span class="cat-title">Financial</span></div>
+          <div class="cat-header-content"><div class="cat-icon">💰</div><span class="cat-title">07. Financial</span></div>
         </a>
         <div class="link-container"><div class="link-list">
           <a class="lesson-btn" href="07_Financial/01_pmt.html">PMT (Payments) <span class="status-dot">○</span></a>
@@ -381,7 +326,7 @@
 
       <div class="cat-card">
         <a href="08_Information/index.html" class="cat-header-link">
-          <div class="cat-header-content"><div class="cat-icon">ℹ️</div><span class="cat-title">Information</span></div>
+          <div class="cat-header-content"><div class="cat-icon">ℹ️</div><span class="cat-title">08. Information</span></div>
         </a>
         <div class="link-container"><div class="link-list">
           <a class="lesson-btn" href="08_Information/01_ischecks.html">ISNUMBER / TEXT <span class="status-dot">○</span></a>
@@ -393,28 +338,28 @@
       </div>
 
       <div class="cat-card">
-        <a href="06_Arrays/index.html" class="cat-header-link">
-          <div class="cat-header-content"><div class="cat-icon">🌊</div><span class="cat-title">Dynamic Arrays</span></div>
+        <a href="09_Arrays/index.html" class="cat-header-link">
+          <div class="cat-header-content"><div class="cat-icon">🌊</div><span class="cat-title">09. Dynamic Arrays</span></div>
         </a>
         <div class="link-container"><div class="link-list">
-          <a class="lesson-btn" href="06_Arrays/01_sequence.html">SEQUENCE <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Arrays/02_randarray.html">RANDARRAY <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Arrays/03_transpose.html">TRANSPOSE <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Arrays/04_vstack.html">VSTACK / HSTACK <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Arrays/05_tocol.html">TOCOL / TOROW <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Arrays/06_take.html">TAKE / DROP <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="06_Arrays/07_choosecols.html">CHOOSECOLS <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="09_Arrays/01_sequence.html">SEQUENCE <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="09_Arrays/02_randarray.html">RANDARRAY <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="09_Arrays/03_transpose.html">TRANSPOSE <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="09_Arrays/04_vstack.html">VSTACK / HSTACK <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="09_Arrays/05_tocol.html">TOCOL / TOROW <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="09_Arrays/06_take.html">TAKE / DROP <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="09_Arrays/07_choosecols.html">CHOOSECOLS <span class="status-dot">○</span></a>
         </div></div>
       </div>
       
       <div class="cat-card">
-        <a href="09_Engineering/index.html" class="cat-header-link">
-          <div class="cat-header-content"><div class="cat-icon">⚙️</div><span class="cat-title">Engineering</span></div>
+        <a href="10_Engineering/index.html" class="cat-header-link">
+          <div class="cat-header-content"><div class="cat-icon">⚙️</div><span class="cat-title">10. Engineering</span></div>
         </a>
         <div class="link-container"><div class="link-list">
-          <a class="lesson-btn" href="09_Engineering/01_conversions.html">BIN2DEC / DEC2BIN <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="09_Engineering/02_hex.html">HEX2DEC <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="09_Engineering/03_fact.html">FACT (Factorial) <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="10_Engineering/01_conversions.html">BIN2DEC / DEC2BIN <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="10_Engineering/02_hex.html">HEX2DEC <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="10_Engineering/03_fact.html">FACT (Factorial) <span class="status-dot">○</span></a>
         </div></div>
       </div>
 
@@ -474,8 +419,8 @@
           <a class="lesson-btn" href="Combined_Formulas/02_Text_Clean/06_breaks.html">06. Remove Line Breaks <span class="status-dot">○</span></a>
           <a class="lesson-btn" href="Combined_Formulas/02_Text_Clean/07_numbers.html">07. Extract Numbers Only <span class="status-dot">○</span></a>
           <a class="lesson-btn" href="Combined_Formulas/02_Text_Clean/08_split_rows.html">08. Split Cell to Rows <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="Combined_Formulas/02_Text_Clean/09_kpi.html">09. Dynamic KPI Sentence <span class="status-dot">○</span></a>
-          <a class="lesson-btn" href="Combined_Formulas/02_Text_Clean/10_email.html">10. Get Username from Email <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="Combined_Formulas/02_Text_Clean/09_kpi.html">09. KPI Sentence <span class="status-dot">○</span></a>
+          <a class="lesson-btn" href="Combined_Formulas/02_Text_Clean/10_email.html">10. Get Username <span class="status-dot">○</span></a>
           <a class="lesson-btn" href="Combined_Formulas/02_Text_Clean/11_mask.html">11. Mask Data (****) <span class="status-dot">○</span></a>
           <a class="lesson-btn" href="Combined_Formulas/02_Text_Clean/12_initials.html">12. Generate Initials <span class="status-dot">○</span></a>
           <a class="lesson-btn" href="Combined_Formulas/02_Text_Clean/13_reverse.html">13. Reverse Text <span class="status-dot">○</span></a>
@@ -550,7 +495,7 @@
     </div>
     
     <div style="margin-top: 4rem; text-align: center;">
-      <a href="../index.html" class="nav-link" style="display:inline-block; border:1px solid var(--border); padding: 1rem 2rem; font-size: 1rem; border-radius: 8px; text-decoration: none; color: #333; background: #fff;">
+      <a href="../index.html" class="nav-link" style="display:inline-block; border:1px solid var(--border); padding: 1rem 2rem; font-size: 1rem; border-radius: 8px; text-decoration: none; color: var(--text-main); background: var(--bg-card);">
         ⬅ Back to Main Home
       </a>
     </div>
@@ -574,17 +519,15 @@
 
         allButtons.forEach(btn => {
             const text = btn.textContent.toLowerCase();
-            // Show if match, Hide if not
             if(text.includes(term)) {
                 btn.style.display = 'flex';
-                // Also ensure the parent card is visible if it was hidden
                 btn.closest('.cat-card').style.display = 'flex';
             } else {
                 btn.style.display = 'none';
             }
         });
 
-        // Optional: Hide empty categories
+        // Hide empty categories
         document.querySelectorAll('.cat-card').forEach(card => {
             const visibleLinks = card.querySelectorAll('.lesson-btn[style="display: flex;"]');
             if(visibleLinks.length === 0 && term !== "") {

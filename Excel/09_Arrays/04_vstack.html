@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: VSTACK & HSTACK</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --arr1-color: #3b82f6; /* Blue */
+    --arr2-color: #f59e0b; /* Amber */
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .stack-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 400px; position: relative;
+    overflow: hidden;
+  }
+
+  /* Input Arrays Container */
+  .inputs-area {
+    display: flex; gap: 40px; margin-bottom: 20px;
+  }
+
+  .array-wrapper {
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .arr-label { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px; font-weight: bold; }
+
+  /* The Grids */
+  .grid-box {
+    display: grid; gap: 4px; padding: 5px;
+    background: rgba(0,0,0,0.2); border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  
+  .cell {
+    width: 40px; height: 40px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; color: #fff; font-family: monospace;
+    position: relative;
+  }
+  
+  .c-arr1 { background: var(--arr1-color); }
+  .c-arr2 { background: var(--arr2-color); }
+
+  /* Result Area */
+  .result-area {
+    min-width: 200px; min-height: 100px;
+    border: 2px dashed var(--border); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; padding: 10px; transition: all 0.3s;
+  }
+  .res-active { border-color: var(--accent); background: rgba(56, 189, 248, 0.05); }
+
+  /* Animation Ghosts */
+  .ghost-cell {
+    position: absolute; width: 40px; height: 40px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; color: #fff; font-family: monospace;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); z-index: 10;
+    transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Direction Arrows */
+  .stack-icon { font-size: 2rem; color: var(--text-dim); opacity: 0; transition: 0.3s; }
+  .icon-show { opacity: 1; transform: scale(1.2); color: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🧱 Array Combiner</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Combine two separate ranges into one list.<br>
+      <strong>VSTACK</strong> puts them on top of each other. <strong>HSTACK</strong> puts them side-by-side.
+    </p>
+
+    <div class="stack-stage" id="stage">
+      
+      <div class="inputs-area">
+        <div class="array-wrapper">
+          <div class="arr-label">Array 1 (Blue)</div>
+          <div class="grid-box" id="arr1" style="grid-template-columns: repeat(2, 1fr);">
+            <div class="cell c-arr1" id="a1-0">A</div><div class="cell c-arr1" id="a1-1">B</div>
+            <div class="cell c-arr1" id="a1-2">C</div><div class="cell c-arr1" id="a1-3">D</div>
+          </div>
+        </div>
+
+        <div class="stack-icon" id="iconArrow">⬇</div>
+
+        <div class="array-wrapper">
+          <div class="arr-label">Array 2 (Amber)</div>
+          <div class="grid-box" id="arr2" style="grid-template-columns: repeat(2, 1fr);">
+            <div class="cell c-arr2" id="a2-0">1</div><div class="cell c-arr2" id="a2-1">2</div>
+            <div class="cell c-arr2" id="a2-2">3</div><div class="cell c-arr2" id="a2-3">4</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="arr-label">Result Spill Range</div>
+      <div class="result-area" id="resultArea">
+        <span style="font-size:0.8rem; color:var(--text-dim);">(Result will spill here)</span>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnVstack">⬇ VSTACK (Vertical)</button>
+        <button class="action" id="btnHstack">➡ HSTACK (Horizontal)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-v">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">VSTACK</span>(array1, [array2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Action:</strong> Appends arrays vertically (Row-wise).</li>
+          <li><strong>Dimensions:</strong> Column counts must match or Excel pads with #N/A.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-h" style="display:none;">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">HSTACK</span>(array1, [array2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Action:</strong> Appends arrays horizontally (Column-wise).</li>
+          <li><strong>Dimensions:</strong> Row counts must match or Excel pads with #N/A.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Size:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Mismatched Sizes</div>
+          <div class="mistake-desc">
+            If you HSTACK a 2-row array with a 3-row array, Excel fills the missing cells with <code>#N/A</code> errors.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">💡 Combining Headers</div>
+          <div class="mistake-desc">
+            VSTACK is perfect for combining a Header row with a Data range: <code>=VSTACK(A1:C1, A2:C100)</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("VSTACK & HSTACK", "../../");
+
+  const stage = document.getElementById('stage');
+  const resultArea = document.getElementById('resultArea');
+  const iconArrow = document.getElementById('iconArrow');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // Data
+  const data1 = ["A","B","C","D"]; // 2x2
+  const data2 = ["1","2","3","4"]; // 2x2
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear ghosts and result
+    document.querySelectorAll('.ghost-cell').forEach(g => g.remove());
+    resultArea.innerHTML = '<span style="font-size:0.8rem; color:var(--text-dim);">(Result will spill here)</span>';
+    resultArea.classList.remove('res-active');
+    resultArea.style.gridTemplateColumns = "none";
+    resultArea.style.gridTemplateRows = "none";
+    resultArea.style.display = "flex"; // Reset to flex for text centering
+    
+    iconArrow.className = "stack-icon";
+    iconArrow.innerHTML = "⬇";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fn) {
+    if (fn === 'VSTACK') {
+        document.getElementById('syntax-v').style.display = 'block';
+        document.getElementById('syntax-h').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Stack vertically (Top to Bottom)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">VSTACK</span>( <span class="col">Arr1</span>, <span class="col">Arr2</span> )`;
+        iconArrow.innerHTML = "⬇";
+    } else {
+        document.getElementById('syntax-v').style.display = 'none';
+        document.getElementById('syntax-h').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Stack horizontally (Left to Right)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">HSTACK</span>( <span class="col">Arr1</span>, <span class="col">Arr2</span> )`;
+        iconArrow.innerHTML = "➡";
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // Helper: Create ghost from source element
+  function createGhost(id, val, colorClass) {
+    const src = document.getElementById(id);
+    const rect = src.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    
+    const g = document.createElement('div');
+    g.className = `ghost-cell ${colorClass}`;
+    g.textContent = val;
+    g.style.left = (rect.left - stageRect.left) + "px";
+    g.style.top = (rect.top - stageRect.top) + "px";
+    stage.appendChild(g);
+    return g;
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runStack(mode) {
+    updateUI(mode);
+    App.updateText(`Executing ${mode}... Combining Arrays.`);
+    await App.speak(`Combining arrays with ${mode}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Prepare Result Grid
+    resultArea.innerHTML = '';
+    resultArea.classList.add('res-active');
+    resultArea.style.display = "grid";
+    resultArea.style.gap = "4px";
+    
+    let rows, cols;
+    if (mode === 'VSTACK') {
+        // 2x2 + 2x2 = 4 rows, 2 cols
+        rows = 4; cols = 2;
+        resultArea.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
+        resultArea.style.gridTemplateRows = `repeat(${rows}, 40px)`;
+    } else {
+        // 2x2 + 2x2 = 2 rows, 4 cols
+        rows = 2; cols = 4;
+        resultArea.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
+        resultArea.style.gridTemplateRows = `repeat(${rows}, 40px)`;
+    }
+
+    // Create invisible placeholders in result area to get target coords
+    const targets = [];
+    for(let i=0; i<rows*cols; i++) {
+        const p = document.createElement('div');
+        p.style.width="40px"; p.style.height="40px";
+        resultArea.appendChild(p);
+        targets.push(p);
+    }
+
+    iconArrow.classList.add('icon-show');
+    await new Promise(r => setTimeout(r, 500));
+
+    // 2. Animate Array 1
+    // Array 1 is always first (0,1,2,3 -> Indices 0,1,2,3 in VSTACK or 0,1,4,5 in HSTACK?)
+    // Let's map indices logically.
+    // VSTACK: Arr1 (0,1,2,3) -> Res (0,1,2,3). Arr2 (0,1,2,3) -> Res (4,5,6,7). Simple.
+    // HSTACK: Res is 4 cols wide. 
+    // Arr1 (0,0) -> Res(0,0) [idx 0]
+    // Arr1 (0,1) -> Res(0,1) [idx 1]
+    // Arr1 (1,0) -> Res(1,0) [idx 4] -- Row 1 start
+    // Arr1 (1,1) -> Res(1,1) [idx 5]
+    
+    // Arr2 (0,0) -> Res(0,2) [idx 2]
+    // Arr2 (0,1) -> Res(0,3) [idx 3]
+    // Arr2 (1,0) -> Res(1,2) [idx 6]
+    // Arr2 (1,1) -> Res(1,3) [idx 7]
+
+    const ghosts = [];
+
+    // Process Arr1
+    for(let i=0; i<4; i++) {
+        const g = createGhost(`a1-${i}`, data1[i], 'c-arr1');
+        ghosts.push({ el: g, sourceIdx: i, arr: 1 });
+    }
+    // Process Arr2
+    for(let i=0; i<4; i++) {
+        const g = createGhost(`a2-${i}`, data2[i], 'c-arr2');
+        ghosts.push({ el: g, sourceIdx: i, arr: 2 });
+    }
+
+    // Move Em
+    for (let item of ghosts) {
+        if(shouldStop) return;
+        
+        let targetIdx = 0;
+        
+        if (mode === 'VSTACK') {
+            if (item.arr === 1) targetIdx = item.sourceIdx;
+            else targetIdx = item.sourceIdx + 4; // Arr2 starts after 4 cells of Arr1
+        } else {
+            // HSTACK Map
+            // Item sourceIdx 0 (0,0), 1 (0,1), 2 (1,0), 3 (1,1)
+            const r = Math.floor(item.sourceIdx / 2);
+            const c = item.sourceIdx % 2;
+            
+            if (item.arr === 1) {
+                // Cols 0, 1
+                targetIdx = (r * 4) + c; 
+            } else {
+                // Cols 2, 3
+                targetIdx = (r * 4) + (c + 2);
+            }
+        }
+
+        const targetEl = targets[targetIdx];
+        const tRect = targetEl.getBoundingClientRect();
+        const sRect = stage.getBoundingClientRect();
+
+        // Animate
+        item.el.style.left = (tRect.left - sRect.left) + "px";
+        item.el.style.top = (tRect.top - sRect.top) + "px";
+        
+        // Wait small staggering
+        await new Promise(r => setTimeout(r, 50));
+    }
+
+    await new Promise(r => setTimeout(r, 800));
+
+    // 3. Finalize
+    if(shouldStop) return;
+    
+    // Replace ghosts with real cells in grid
+    ghosts.forEach((item, i) => {
+        item.el.remove(); // Remove ghost
+        
+        // Find correct target index again (lazy recalc)
+        let targetIdx = 0;
+        if (mode === 'VSTACK') {
+            targetIdx = item.arr === 1 ? item.sourceIdx : item.sourceIdx + 4;
+        } else {
+            const r = Math.floor(item.sourceIdx / 2);
+            const c = item.sourceIdx % 2;
+            targetIdx = item.arr === 1 ? (r * 4) + c : (r * 4) + (c + 2);
+        }
+        
+        // Fill real cell
+        const realCell = targets[targetIdx];
+        realCell.className = `cell ${item.arr === 1 ? 'c-arr1' : 'c-arr2'}`;
+        realCell.textContent = item.el.textContent;
+    });
+
+    App.updateText("Stacking Complete!");
+    totalBubble.textContent = `${rows} x ${cols}`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnVstack').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runStack('VSTACK');
+    isRunning = false;
+  });
+
+  document.getElementById('btnHstack').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runStack('HSTACK');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: TAKE & DROP</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --keep-green: #4ade80;
+    --drop-red: #f87171;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .slice-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 450px; position: relative;
+    overflow: hidden;
+  }
+
+  /* Grid Layouts */
+  .grid-wrapper {
+    display: grid; gap: 4px; padding: 8px;
+    background: #0f172a; border-radius: 8px; border: 2px solid var(--border);
+    transition: all 0.5s; position: relative;
+  }
+  .grid-label {
+    text-align: center; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;
+    font-weight: bold; text-transform: uppercase;
+  }
+
+  /* Cells */
+  .cell {
+    width: 40px; height: 40px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-family: monospace; font-size: 0.9rem;
+    background: #334155; border: 1px solid var(--border);
+    position: relative; transition: all 0.3s;
+  }
+
+  /* Selection Box (The "Cutter") */
+  .selection-box {
+    position: absolute; border: 3px solid var(--accent);
+    background: rgba(56, 189, 248, 0.1);
+    border-radius: 6px; pointer-events: none;
+    transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    opacity: 0; box-shadow: 0 0 20px rgba(56, 189, 248, 0.3);
+    z-index: 10;
+  }
+
+  /* Highlighting States */
+  .dimmed { opacity: 0.2; transform: scale(0.9); }
+  .kept { background: var(--keep-green); color: #000; border-color: #fff; }
+  
+  /* Result Grid Animation */
+  .result-cell {
+    opacity: 0; transform: scale(0); 
+    background: var(--accent); color: #000;
+  }
+  .pop-in { animation: popIn 0.4s forwards; }
+
+  @keyframes popIn {
+    0% { opacity: 0; transform: scale(0); }
+    80% { transform: scale(1.1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>✂️ The Array Slicer</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Extract a subset of data.<br>
+      <strong>TAKE:</strong> Keeps rows/cols (Positive = From Start, Negative = From End).<br>
+      <strong>DROP:</strong> Removes rows/cols (Returns the rest).
+    </p>
+
+    <div class="slice-stage" id="stage">
+      
+      <div style="position:relative;">
+        <div class="grid-label">Source (5x5)</div>
+        <div class="grid-wrapper" id="sourceGrid">
+          <div class="selection-box" id="selector"></div>
+        </div>
+      </div>
+
+      <div style="font-size:2rem; color:var(--text-dim);">⬇</div>
+
+      <div>
+        <div class="grid-label">Result Spill Range</div>
+        <div class="grid-wrapper" id="targetGrid" style="border-style:dashed; border-color:var(--text-dim); min-width:100px; min-height:100px; display:flex; align-items:center; justify-content:center;">
+          <span style="font-size:0.8rem; color:var(--text-dim);">(Waiting...)</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnTakeTop">⬆ TAKE (Top 3)</button>
+        <button class="action" id="btnTakeBot">⬇ TAKE (Bottom 2)</button>
+        <button class="action" id="btnDropLeft">⬅ DROP (First 2 Cols)</button>
+        <button class="action" id="btnComplex">🔀 TAKE (Top 3, Right 2)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-take">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">TAKE</span>(array, rows, [columns])
+        </div>
+        <ul class="arg-list">
+          <li><strong>Rows:</strong> +N (Top N) or -N (Bottom N).</li>
+          <li><strong>Cols:</strong> +N (Left N) or -N (Right N).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-drop" style="display:none;">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">DROP</span>(array, rows, [columns])
+        </div>
+        <ul class="arg-list">
+          <li><strong>Rows:</strong> +N (Remove Top N) or -N (Remove Bottom N).</li>
+          <li><strong>Cols:</strong> +N (Remove Left N) or -N (Remove Right N).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Extract data</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">TAKE</span>( <span class="val">A1:E5</span>, <span class="val">3</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Size:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Logic Check</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">➕ Positive vs ➖ Negative</div>
+          <div class="mistake-desc">
+            <strong>Positive numbers</strong> count from the Start (Top/Left).<br>
+            <strong>Negative numbers</strong> count from the End (Bottom/Right).
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Empty Arguments</div>
+          <div class="mistake-desc">
+            If you omit the [columns] argument (or leave it blank), Excel assumes you want to keep <strong>all</strong> columns.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("TAKE & DROP", "../../");
+
+  const sourceGrid = document.getElementById('sourceGrid');
+  const targetGrid = document.getElementById('targetGrid');
+  const selector = document.getElementById('selector');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // Grid Data (5x5)
+  const rows = 5;
+  const cols = 5;
+  const data = []; // A1..E5
+
+  // Init Grid
+  function initGrid() {
+    sourceGrid.style.gridTemplateColumns = `repeat(${cols}, 40px)`;
+    sourceGrid.innerHTML = '<div class="selection-box" id="selector"></div>'; // Reset selector
+    
+    // Fill
+    let counter = 1;
+    for(let r=0; r<rows; r++) {
+        for(let c=0; c<cols; c++) {
+            const val = String.fromCharCode(65+c) + (r+1);
+            const div = document.createElement('div');
+            div.className = 'cell';
+            div.textContent = val;
+            div.id = `src-${r}-${c}`;
+            sourceGrid.appendChild(div);
+            data.push(val);
+        }
+    }
+  }
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Visuals
+    const sel = document.getElementById('selector');
+    sel.style.opacity = '0';
+    sel.style.width = '0'; sel.style.height = '0';
+    
+    document.querySelectorAll('.cell').forEach(c => {
+        c.className = 'cell'; // remove kept/dimmed
+    });
+    
+    targetGrid.innerHTML = '<span style="font-size:0.8rem; color:var(--text-dim);">(Waiting...)</span>';
+    targetGrid.style.gridTemplateColumns = "none";
+    targetGrid.style.display = "flex";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fn, r, c) {
+    if (fn === 'TAKE') {
+        document.getElementById('syntax-take').style.display = 'block';
+        document.getElementById('syntax-drop').style.display = 'none';
+    } else {
+        document.getElementById('syntax-take').style.display = 'none';
+        document.getElementById('syntax-drop').style.display = 'block';
+    }
+    
+    // Format formula string
+    let args = `<span class="val">A1:E5</span>, <span class="val">${r}</span>`;
+    if(c !== null) args += `, <span class="val">${c}</span>`;
+    
+    document.getElementById('line2').innerHTML = `=<span class="fn">${fn}</span>( ${args} )`;
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runSlice(fn, rArg, cArg, desc) {
+    updateUI(fn, rArg, cArg);
+    App.updateText(`Executing: ${desc}...`);
+    await App.speak(`Executing ${desc}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Calculate Ranges
+    // Default to taking/keeping ALL if arg is null
+    let startR = 0, endR = rows - 1;
+    let startC = 0, endC = cols - 1;
+
+    // Helper to calculate kept indices based on inputs
+    // returns {start, end} indices (inclusive)
+    function calcRange(total, val, isDrop) {
+        if (val === null) return { s: 0, e: total - 1 };
+        
+        if (!isDrop) { // TAKE
+            if (val > 0) return { s: 0, e: val - 1 }; // Top/Left N
+            if (val < 0) return { s: total + val, e: total - 1 }; // Bottom/Right N
+            return { s: 0, e: total - 1 }; // 0 case (usually error or all, treating as all for viz simplicity?) No, 0 returns calc error usually. Assuming valid input.
+        } else { // DROP
+            if (val > 0) return { s: val, e: total - 1 }; // Drop Top N -> Keep rest
+            if (val < 0) return { s: 0, e: total + val - 1 }; // Drop Bottom N -> Keep rest
+            return { s: 0, e: total - 1 }; // Drop 0 -> Keep all
+        }
+    }
+
+    const isDrop = (fn === 'DROP');
+    const rRange = calcRange(rows, rArg, isDrop);
+    const cRange = calcRange(cols, cArg, isDrop);
+
+    // 2. Highlight Source
+    const sel = document.getElementById('selector');
+    
+    // Find top-left and bottom-right cells of kept area
+    const tl = document.getElementById(`src-${rRange.s}-${cRange.s}`);
+    const br = document.getElementById(`src-${rRange.e}-${cRange.e}`);
+    
+    // Calculate Box Dimensions
+    const parentRect = sourceGrid.getBoundingClientRect();
+    const tlRect = tl.getBoundingClientRect();
+    const brRect = br.getBoundingClientRect();
+    
+    const top = tlRect.top - parentRect.top;
+    const left = tlRect.left - parentRect.left;
+    const width = brRect.right - tlRect.left; // Full span
+    const height = brRect.bottom - tlRect.top;
+
+    sel.style.top = `${top}px`;
+    sel.style.left = `${left}px`;
+    sel.style.width = `${width}px`;
+    sel.style.height = `${height}px`;
+    sel.style.opacity = '1';
+
+    // Dim others, Highlight Kept
+    for(let r=0; r<rows; r++) {
+        for(let c=0; c<cols; c++) {
+            const el = document.getElementById(`src-${r}-${c}`);
+            const isKept = (r >= rRange.s && r <= rRange.e) && (c >= cRange.s && c <= cRange.e);
+            
+            if(isKept) el.classList.add('kept');
+            else el.classList.add('dimmed');
+        }
+    }
+
+    App.updateText(isDrop ? "Dropping outside cells. Keeping green area." : "Taking the highlighted green area.");
+    await new Promise(r => setTimeout(r, 1000));
+
+    if(shouldStop) return;
+
+    // 3. Populate Result
+    targetGrid.innerHTML = '';
+    targetGrid.style.display = 'grid';
+    targetGrid.style.gap = '4px';
+    
+    const resRows = rRange.e - rRange.s + 1;
+    const resCols = cRange.e - cRange.s + 1;
+    
+    targetGrid.style.gridTemplateColumns = `repeat(${resCols}, 40px)`;
+    
+    // Loop kept range and create result
+    let delay = 0;
+    for(let r=rRange.s; r<=rRange.e; r++) {
+        for(let c=cRange.s; c<=cRange.e; c++) {
+            const val = document.getElementById(`src-${r}-${c}`).textContent;
+            
+            const div = document.createElement('div');
+            div.className = 'cell result-cell';
+            div.textContent = val;
+            div.style.animationDelay = `${delay}s`;
+            targetGrid.appendChild(div);
+            
+            // Trigger anim
+            setTimeout(() => div.classList.add('pop-in'), 50);
+            
+            delay += 0.05;
+        }
+    }
+
+    // Finish
+    await new Promise(r => setTimeout(r, delay * 1000 + 500));
+    
+    App.updateText(`Done! Result array is ${resRows} rows x ${resCols} columns.`);
+    
+    totalBubble.textContent = `${resRows} x ${resCols}`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnTakeTop').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // TAKE 3 rows, All cols
+    await runSlice('TAKE', 3, null, "Take Top 3 Rows");
+    isRunning = false;
+  });
+
+  document.getElementById('btnTakeBot').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // TAKE -2 rows, All cols
+    await runSlice('TAKE', -2, null, "Take Bottom 2 Rows");
+    isRunning = false;
+  });
+
+  document.getElementById('btnDropLeft').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // DROP 2 cols (from left) -> Keep rest
+    // Arg: Rows=null (keep all), Cols=2
+    // Wait, DROP(arr, rows, cols). If rows omitted, usually means 0? Or keep all?
+    // Actually DROP(arr, , 2) works.
+    await runSlice('DROP', 0, 2, "Drop First 2 Columns");
+    isRunning = false;
+  });
+
+  document.getElementById('btnComplex').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // TAKE Top 3 Rows, AND Right 2 Cols (-2)
+    await runSlice('TAKE', 3, -2, "Take Top 3 & Right 2");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initGrid();
+
+</script>
+</body>
+</html>

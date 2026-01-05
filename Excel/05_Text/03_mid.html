@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: MID Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Stage Container */
+  .string-stage {
+    position: relative;
+    display: flex; justify-content: center; gap: 4px;
+    margin-bottom: 2rem; padding: 20px 0;
+    overflow-x: auto;
+  }
+
+  /* Character Block */
+  .char-box {
+    width: 35px; height: 50px; flex-shrink: 0;
+    background: #334155; border: 1px solid var(--border);
+    border-radius: 4px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: monospace; position: relative; z-index: 1;
+  }
+  .char-val { font-size: 1.4rem; color: #fff; font-weight: bold; }
+  .char-idx { font-size: 0.6rem; color: var(--text-dim); position: absolute; bottom: 2px; }
+
+  /* The Sliding Scope (Selection Window) */
+  .scope-window {
+    position: absolute; top: 10px; left: 0; /* JS controls Left/Width */
+    height: 70px; width: 0px;
+    border: 3px solid var(--accent); border-radius: 8px;
+    background: rgba(34, 197, 94, 0.1);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+    opacity: 0; transition: all 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: 5; pointer-events: none;
+  }
+  .scope-label {
+    position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+    background: var(--accent); color: #000; font-size: 0.7rem; font-weight: bold;
+    padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+  }
+
+  /* Extraction Zone */
+  .extract-zone {
+    height: 60px; border: 2px dashed var(--border);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-family: monospace; font-size: 1.5rem; color: var(--accent);
+    background: rgba(0,0,0,0.2); gap: 2px;
+  }
+  
+  .extracted-char {
+    animation: dropIn 0.4s forwards; opacity: 0; transform: translateY(-20px);
+  }
+  @keyframes dropIn { to { opacity: 1; transform: translateY(0); } }
+
+  /* Active Character Highlight */
+  .highlighted { background: #4ade80; color: #000; border-color: #fff; }
+  .highlighted .char-val { color: #000; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>✂️ Extract from Middle</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Extract the numeric ID from the string.<br>
+      <strong>MID</strong> lets you start at any position and grab a specific length.
+    </p>
+
+    <div class="string-stage" id="stage">
+      <div class="scope-window" id="scope"><div class="scope-label">Start: ? | Len: ?</div></div>
+      </div>
+
+    <div class="extract-zone" id="resultZone">
+      <span style="font-size:0.9rem; color:var(--text-dim);">(Result appears here)</span>
+    </div>
+
+    <div class="calculation-box" id="calcBox" style="margin-top:1.5rem;">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnID">🆔 Get ID (9876)</button>
+        <button class="action" id="btnSuffix">🔤 Get Suffix (X)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">MID</span>(text, start_num, num_chars)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Text:</strong> The source string.</li>
+          <li><strong>2. Start Num:</strong> Position to start (1 = first char).</li>
+          <li><strong>3. Num Chars:</strong> How many characters to take.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Extract "9876"</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">MID</span>( "<span id="strRef">ID: 9876-X</span>", <span class="val" id="startVal">5</span>, <span class="val" id="lenVal">4</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Extracted Text:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Start Number is 0</div>
+          <div class="mistake-desc">
+            Excel positions start at <strong>1</strong>, not 0. If you enter Start_Num as 0 or a negative number, MID returns a #VALUE! error.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">✅ Dynamic Extraction</div>
+          <div class="mistake-desc">
+            Hardcoding the start position (e.g., 5) breaks if the ID length changes. Combine <strong>MID</strong> with <strong>FIND</strong> or <strong>SEARCH</strong> to locate the start position dynamically.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("MID Function", "../../");
+
+  // Input: "ID: 9876-X"
+  // Indices:
+  // I(1) D(2) :(3)  (4) 9(5) 8(6) 7(7) 6(8) -(9) X(10)
+  const inputStr = "ID: 9876-X";
+  const stage = document.getElementById('stage');
+  const scope = document.getElementById('scope');
+  const resultZone = document.getElementById('resultZone');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initStage() {
+    // Keep scope, clear chars
+    const scopeEl = scope; // Reference
+    stage.innerHTML = '';
+    stage.appendChild(scopeEl); // Put scope back
+
+    inputStr.split('').forEach((char, i) => {
+      const box = document.createElement('div');
+      box.className = 'char-box';
+      box.id = `char-${i+1}`; // 1-based ID
+      box.innerHTML = `<div class="char-val">${char}</div><div class="char-idx">${i+1}</div>`;
+      stage.appendChild(box);
+    });
+    
+    resultZone.innerHTML = `<span style="font-size:0.9rem; color:var(--text-dim);">(Result appears here)</span>`;
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.querySelectorAll('.char-box').forEach(b => b.classList.remove('highlighted'));
+    scope.style.opacity = '0';
+    scope.style.width = '0px';
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initStage();
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(start, len, desc) {
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- ${desc}</span>`;
+    document.getElementById('startVal').textContent = start;
+    document.getElementById('lenVal').textContent = len;
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runMid(start, len, desc) {
+    updateUI(start, len, desc);
+    App.updateText(`Locating Start Position: ${start}...`);
+    await App.speak(`First, I go to position ${start}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Move Scope to Start
+    // Calculate visual position.
+    // Each box is 35px + 4px gap = 39px (approx).
+    // Better: Get bounding rect of target start char relative to container
+    const startChar = document.getElementById(`char-${start}`);
+    const stageRect = stage.getBoundingClientRect();
+    const charRect = startChar.getBoundingClientRect();
+    
+    // Calculate relative left inside stage
+    const relativeLeft = charRect.left - stageRect.left + stage.scrollLeft; 
+    // +20 padding offset from container style? The container has padding: 20px 0. 
+    // Let's rely on offsetLeft if possible, but stage is flex.
+    
+    // Simpler: char-box offsetLeft includes gap? 
+    // Let's use relative math
+    const scopeLeft = startChar.offsetLeft;
+    
+    scope.style.left = `${scopeLeft - 4}px`; // Small visual buffer
+    scope.style.width = `43px`; // Initial width of 1 char (approx)
+    scope.style.opacity = '1';
+    scope.querySelector('.scope-label').textContent = `Pos: ${start}`;
+    
+    // Highlight Start
+    startChar.classList.add('highlighted');
+    
+    await new Promise(r => setTimeout(r, 800));
+
+    // 2. Expand Scope
+    App.updateText(`Expanding scope length to ${len} characters...`);
+    await App.speak(`Then, I select ${len} characters.`);
+    
+    // Calculate width for N characters
+    // (BoxWidth * N) + (Gap * (N-1))
+    // Box=35, Gap=4.
+    const finalWidth = (35 * len) + (4 * (len-1)) + 10; // +10 padding
+    scope.style.width = `${finalWidth}px`;
+    scope.querySelector('.scope-label').textContent = `Start: ${start} | Len: ${len}`;
+    
+    // Highlight Range
+    for(let i=0; i<len; i++) {
+        const idx = start + i;
+        const box = document.getElementById(`char-${idx}`);
+        if(box) box.classList.add('highlighted');
+        await new Promise(r => setTimeout(r, 100)); // Rippling highlight
+    }
+    
+    await new Promise(r => setTimeout(r, 600));
+
+    // 3. Extract
+    App.updateText("Extracting selection...");
+    resultZone.innerHTML = "";
+    let extractedStr = "";
+    
+    for(let i=0; i<len; i++) {
+        const idx = start + i;
+        const char = inputStr[idx-1]; // 0-based array access
+        extractedStr += char;
+        
+        const span = document.createElement('span');
+        span.textContent = char;
+        span.className = 'extracted-char';
+        span.style.animationDelay = `${i * 0.1}s`;
+        resultZone.appendChild(span);
+    }
+    
+    // Finish
+    App.updateText(`Done! Extracted: "${extractedStr}"`);
+    await App.speak(`The extracted text is ${extractedStr}.`);
+    
+    totalBubble.textContent = `"${extractedStr}"`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnID').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // ID starts at 5 ("9"), Length 4 ("9876")
+    await runMid(5, 4, 'Extract "9876"');
+    isRunning = false;
+  });
+
+  document.getElementById('btnSuffix').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // Suffix "X" is at 10, Length 1
+    await runMid(10, 1, 'Extract "X"');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initStage();
+
+</script>
+</body>
+</html>

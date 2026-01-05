@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: TODAY & NOW</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Clock Container */
+  .time-stage {
+    display: flex; flex-direction: column; gap: 1.5rem;
+    padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; position: relative;
+  }
+
+  /* Display Cards */
+  .date-card {
+    background: #334155; border: 2px solid var(--border);
+    border-radius: 8px; padding: 1rem;
+    display: flex; align-items: center; justify-content: space-between;
+    transition: all 0.3s;
+  }
+  .card-label {
+    font-size: 0.9rem; color: var(--text-dim); font-weight: bold;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .card-val {
+    font-size: 1.4rem; font-weight: 900; color: #fff; font-family: monospace;
+  }
+  
+  /* Serial Number Reveal */
+  .serial-reveal {
+    font-size: 0.8rem; color: var(--accent); margin-top: 5px;
+    font-family: monospace; opacity: 0; transition: opacity 0.5s;
+    text-align: right;
+  }
+  .show-serial .serial-reveal { opacity: 1; }
+
+  /* Recalculate Animation */
+  .recalc-flash {
+    animation: flash 0.4s ease-in-out;
+    border-color: #facc15; box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
+  }
+
+  @keyframes flash {
+    0% { background: #334155; }
+    50% { background: rgba(250, 204, 21, 0.2); }
+    100% { background: #334155; }
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>⌚ Dynamic Timestamps</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Get the current system date/time.<br>
+      These functions are <strong>Volatile</strong>: they update <em>every time</em> you make a change in the workbook.
+    </p>
+
+    <div class="time-stage">
+      
+      <div class="date-card" id="cardToday">
+        <div>
+          <div class="card-label">TODAY()</div>
+          <div class="serial-reveal" id="serialToday">Serial: -</div>
+        </div>
+        <div class="card-val" id="valToday">--/--/--</div>
+      </div>
+
+      <div class="date-card" id="cardNow">
+        <div>
+          <div class="card-label">NOW()</div>
+          <div class="serial-reveal" id="serialNow">Serial: -</div>
+        </div>
+        <div class="card-val" id="valNow">--:--:--</div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnUpdate">🔄 Recalculate Sheet</button>
+        <button class="action" id="btnReveal">🔢 Reveal Serial #</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-today">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">TODAY</span>()
+        </div>
+        <ul class="arg-list">
+          <li><strong>Args:</strong> None. Takes no input.</li>
+          <li><strong>Result:</strong> Current Date (Time is always 00:00).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-now" style="margin-top:1rem;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">NOW</span>()
+        </div>
+        <ul class="arg-list">
+          <li><strong>Args:</strong> None.</li>
+          <li><strong>Result:</strong> Current Date AND Time.</li>
+        </ul>
+      </div>
+
+      <div class="result-box" style="margin-top:2rem;">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Status:</span>
+        <div class="total-bubble" id="totalBubble">Live</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Static vs Dynamic</div>
+          <div class="mistake-desc">
+            These formulas will <strong>change tomorrow</strong>. If you want to stamp a date permanently (like an invoice date), press <kbd>Ctrl</kbd> + <kbd>;</kbd> instead.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">⚠️ Performance</div>
+          <div class="mistake-desc">
+            Having thousands of TODAY() formulas can slow down large sheets because they all recalculate constantly.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("TODAY & NOW", "../../");
+
+  const valToday = document.getElementById('valToday');
+  const valNow = document.getElementById('valNow');
+  const cardToday = document.getElementById('cardToday');
+  const cardNow = document.getElementById('cardNow');
+  const serialToday = document.getElementById('serialToday');
+  const serialNow = document.getElementById('serialNow');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let isSerialMode = false;
+
+  // Helper: Excel Serial Date Calculation (Approx)
+  // Excel base date: Dec 30, 1899 (mostly).
+  function getExcelSerial(date) {
+    const excelBase = new Date(1899, 11, 30);
+    const diffTime = Math.abs(date - excelBase);
+    const diffDays = diffTime / (1000 * 60 * 60 * 24);
+    return diffDays;
+  }
+
+  function updateTimes(animate = false) {
+    const now = new Date();
+    
+    // TODAY format: YYYY-MM-DD
+    const dateStr = now.toLocaleDateString('en-CA'); // ISO-ish
+    // NOW format: HH:MM:SS
+    const timeStr = now.toLocaleTimeString();
+    
+    valToday.textContent = dateStr;
+    valNow.textContent = `${dateStr} ${timeStr}`;
+
+    // Serial Numbers
+    // TODAY serial is Integer
+    const serialT = Math.floor(getExcelSerial(now));
+    // NOW serial is Decimal
+    const serialN = getExcelSerial(now).toFixed(5);
+
+    serialToday.textContent = `Serial: ${serialT}`;
+    serialNow.textContent = `Serial: ${serialN}`;
+
+    if (animate) {
+        cardToday.classList.add('recalc-flash');
+        cardNow.classList.add('recalc-flash');
+        setTimeout(() => {
+            cardToday.classList.remove('recalc-flash');
+            cardNow.classList.remove('recalc-flash');
+        }, 400);
+    }
+  }
+
+  function reset() {
+    isSerialMode = false;
+    cardToday.classList.remove('show-serial');
+    cardNow.classList.remove('show-serial');
+    updateTimes(false);
+    App.updateText("Ready...");
+  }
+
+  // --- LOGIC: RECALCULATE ---
+  async function runUpdate() {
+    App.updateText("Recalculating Sheet...");
+    await App.speak("Excel recalculates everything. The time updates.");
+    
+    updateTimes(true); // Animate
+    
+    totalBubble.textContent = "Updated";
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    setTimeout(() => totalBubble.classList.remove('show'), 1000);
+  }
+
+  // --- LOGIC: REVEAL SERIAL ---
+  async function toggleSerial() {
+    isSerialMode = !isSerialMode;
+    
+    if (isSerialMode) {
+        cardToday.classList.add('show-serial');
+        cardNow.classList.add('show-serial');
+        App.updateText("Revealing underlying numbers...");
+        await App.speak("Dates are just numbers. The integer is the day, the decimal is the time.");
+    } else {
+        cardToday.classList.remove('show-serial');
+        cardNow.classList.remove('show-serial');
+    }
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnUpdate').addEventListener('click', runUpdate);
+  
+  document.getElementById('btnReveal').addEventListener('click', toggleSerial);
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+  // Init
+  updateTimes();
+  // Auto update every second just for the clock visual?
+  // Excel doesn't do this, but for a "clock" demo it's nice.
+  // However, strict Excel behavior only updates on calc. 
+  // Let's stick to manual update to teach "Volatile".
+
+</script>
+</body>
+</html>

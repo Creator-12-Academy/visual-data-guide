@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: REPLACE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* String Container */
+  .string-stage {
+    display: flex; justify-content: center; align-items: center; gap: 4px;
+    min-height: 120px; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 2rem; padding: 20px; overflow-x: auto;
+  }
+
+  /* Character Block */
+  .char-box {
+    width: 35px; height: 50px; flex-shrink: 0;
+    background: #334155; border: 1px solid var(--border);
+    border-radius: 4px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: monospace; position: relative;
+    transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .char-val { font-size: 1.4rem; color: #fff; font-weight: bold; }
+  .char-idx { font-size: 0.6rem; color: var(--text-dim); position: absolute; bottom: 2px; }
+
+  /* Animation States */
+  .target-zone {
+    background: rgba(239, 68, 68, 0.2); border-color: #ef4444;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+  }
+  .target-zone .char-val { color: #ef4444; }
+
+  .removed {
+    width: 0px; margin: 0; opacity: 0; transform: scale(0); padding: 0; border: 0;
+  }
+
+  .inserted {
+    background: #4ade80; border-color: #fff;
+    animation: growIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .inserted .char-val { color: #000; }
+
+  @keyframes growIn {
+    from { width: 0px; opacity: 0; transform: scale(0); }
+    to { width: 35px; opacity: 1; transform: scale(1); }
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📍 Surgical Replacement</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Replace text based on its <strong>Position</strong>.<br>
+      Unlike <code>SUBSTITUTE</code> (which finds words), <code>REPLACE</code> counts characters.
+    </p>
+
+    <div class="string-stage" id="stage"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnYear">📅 Fix Year (Pos 7)</button>
+        <button class="action" id="btnLabel">🏷️ Fix Label (Pos 1)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">REPLACE</span>(old_text, start, num_chars, new_text)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Old Text:</strong> The source string.</li>
+          <li><strong>2. Start:</strong> Where to begin replacing (Index).</li>
+          <li><strong>3. Num Chars:</strong> How many characters to delete.</li>
+          <li><strong>4. New Text:</strong> What to insert in that gap.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Replace "2023" with "2025"</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">REPLACE</span>( <span class="col">A1</span>, <span class="val" id="codeStart">7</span>, <span class="val" id="codeLen">4</span>, <span class="str" id="codeNew">"2025"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final String:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Zero Length</div>
+          <div class="mistake-desc">
+            If <code>Num_Chars</code> is 0, REPLACE acts like "Insert". It deletes nothing and simply shoves the new text in at the Start position.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Start Number</div>
+          <div class="mistake-desc">
+            Counting starts at 1. If you count incorrectly (e.g. including/excluding spaces), you might overwrite the wrong part of the string.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("REPLACE Function", "../../");
+
+  // Initial: "Year: 2023"
+  // Indices:
+  // Y(1) e(2) a(3) r(4) :(5)  (6) 2(7) 0(8) 2(9) 3(10)
+  const initialStr = "Year: 2023";
+  const stage = document.getElementById('stage');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initStage() {
+    stage.innerHTML = '';
+    const chars = initialStr.split('');
+    
+    chars.forEach((char, i) => {
+      const box = document.createElement('div');
+      box.className = 'char-box';
+      box.id = `char-${i+1}`; 
+      box.innerHTML = `<div class="char-val">${char}</div><div class="char-idx">${i+1}</div>`;
+      stage.appendChild(box);
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initStage();
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(start, len, newTxt, desc) {
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- ${desc}</span>`;
+    document.getElementById('codeStart').textContent = start;
+    document.getElementById('codeLen').textContent = len;
+    document.getElementById('codeNew').textContent = `"${newTxt}"`;
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runReplace(start, len, newTxt, desc) {
+    updateUI(start, len, newTxt, desc);
+    App.updateText(`Locating position ${start}...`);
+    await App.speak(`Starting at position ${start}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Highlight Target Zone
+    let targetElements = [];
+    for(let i=0; i<len; i++) {
+        const idx = start + i;
+        const el = document.getElementById(`char-${idx}`);
+        if(el) {
+            el.classList.add('target-zone');
+            targetElements.push(el);
+        }
+        await new Promise(r => setTimeout(r, 100));
+    }
+
+    App.updateText(`Marked ${len} characters to remove.`);
+    await App.speak(`I will remove these ${len} characters.`);
+    
+    await new Promise(r => setTimeout(r, 800));
+
+    // 2. Remove Old
+    if(shouldStop) return;
+    targetElements.forEach(el => el.classList.add('removed'));
+    
+    await new Promise(r => setTimeout(r, 600));
+
+    // 3. Insert New
+    App.updateText(`Inserting "${newTxt}"...`);
+    await App.speak(`And insert the new text, ${newTxt}.`);
+    
+    // Find where to insert (before the next element, or at end)
+    // We insert after the element before 'start', or if start is 1, at beginning.
+    const newChars = newTxt.split('');
+    let refNode = null;
+    
+    // Find the next visible node to insert before
+    // Since we just hid elements, the 'next' node in DOM is `char-(start+len)`
+    const nextIdx = start + len;
+    const nextEl = document.getElementById(`char-${nextIdx}`);
+    
+    if (nextEl) {
+        refNode = nextEl;
+    } else {
+        // Appending to end or special case
+        // If we replaced the end, refNode is null (appendChild)
+    }
+
+    // Special case: Replacing start
+    if (start === 1) {
+       // Insert before whatever is first
+       // Since char-1...char-N are hidden, we insert before char-(len+1)
+       // This logic works with nextEl reference
+    }
+
+    for (let char of newChars) {
+        const newBox = document.createElement('div');
+        newBox.className = 'char-box inserted';
+        newBox.innerHTML = `<div class="char-val">${char}</div><div class="char-idx">new</div>`;
+        
+        if(refNode) {
+            stage.insertBefore(newBox, refNode);
+        } else {
+            stage.appendChild(newBox);
+        }
+        await new Promise(r => setTimeout(r, 150));
+    }
+
+    // Re-Index Logic (Optional visual cleanup)
+    // For simplicity, we just show result
+    
+    // Calculate final string
+    const pre = initialStr.substring(0, start-1);
+    const post = initialStr.substring(start-1 + len);
+    const finalStr = pre + newTxt + post;
+
+    App.updateText(`Done! Result: "${finalStr}"`);
+    await App.speak(`Done. The new string is ${finalStr}.`);
+    
+    totalBubble.textContent = `"${finalStr}"`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnYear').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "Year: 2023" -> Replace "2023" (Pos 7, Len 4) with "2025"
+    await runReplace(7, 4, "2025", "Update Year");
+    isRunning = false;
+  });
+
+  document.getElementById('btnLabel').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "Year: 2023" -> Replace "Year" (Pos 1, Len 4) with "Date"
+    await runReplace(1, 4, "Date", "Update Label");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initStage();
+
+</script>
+</body>
+</html>

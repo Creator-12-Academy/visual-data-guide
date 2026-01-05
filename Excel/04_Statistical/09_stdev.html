@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: STDEV Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Graph Container */
+  .graph-stage {
+    position: relative; height: 220px; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border-bottom: 2px solid var(--border);
+    display: flex; align-items: flex-end; padding: 0 40px;
+  }
+
+  /* Data Points */
+  .point {
+    position: absolute; bottom: 20px; width: 16px; height: 16px;
+    border-radius: 50%; background: #fff;
+    box-shadow: 0 0 10px rgba(255,255,255,0.3);
+    transition: all 0.5s; z-index: 10;
+  }
+  .point-label {
+    position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+    font-size: 0.8rem; color: var(--text-dim);
+  }
+
+  /* Mean Line */
+  .mean-line {
+    position: absolute; bottom: 0; width: 4px; height: 0%;
+    background: #facc15; left: 50%; /* JS sets left */
+    transition: height 0.5s, left 0.8s; opacity: 0.8; z-index: 5;
+  }
+  .mean-label {
+    position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+    color: #facc15; font-weight: bold; font-size: 0.9rem; white-space: nowrap;
+    opacity: 0; transition: 0.3s;
+  }
+
+  /* Deviation Bars (Distance from Mean) */
+  .dev-bar {
+    position: absolute; height: 4px; background: #ef4444;
+    bottom: 26px; opacity: 0; transition: width 0.5s, opacity 0.3s;
+  }
+
+  /* Math Steps Display */
+  .math-steps {
+    display: flex; gap: 10px; font-size: 0.9rem; color: var(--text-dim);
+    margin-bottom: 1rem; flex-wrap: wrap;
+  }
+  .step-active { color: #fff; font-weight: bold; color: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>〰️ Measure the Spread</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate Volatility (Standard Deviation).<br>
+      How far, on average, are the points from the center (Mean)?
+    </p>
+
+    <div class="graph-stage" id="graph">
+      <div class="mean-line" id="meanLine"><div class="mean-label">MEAN</div></div>
+      </div>
+
+    <div class="math-steps">
+      <span id="step1">1. Find Mean</span> <span>→</span>
+      <span id="step2">2. Measure Dist</span> <span>→</span>
+      <span id="step3">3. Square & Avg</span> <span>→</span>
+      <span id="step4">4. Root</span>
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnP">🌎 STDEV.P (Population)</button>
+        <button class="action" id="btnS">🧪 STDEV.S (Sample)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-p">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">STDEV.P</span>(number1, ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Logic:</strong> Use when you have ALL the data (Population).</li>
+          <li><strong>Math:</strong> Divides by <strong>N</strong> (Total count).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-s" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">STDEV.S</span>(number1, ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Logic:</strong> Use when you only have a SUBSET (Sample).</li>
+          <li><strong>Math:</strong> Divides by <strong>N - 1</strong> (Bessel's Correction). Results in a larger spread.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a mode...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Standard Deviation:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Old Function</div>
+          <div class="mistake-desc">
+            <code>STDEV</code> (without dot) is the old version of <code>STDEV.S</code>. It still works, but Microsoft recommends the new versions.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 P vs S</div>
+          <div class="mistake-desc">
+            Most real-world data is a <strong>Sample</strong> (STDEV.S). Only use <strong>Population</strong> (STDEV.P) if you have 100% of the data points available.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("STDEV.P vs .S", "../../");
+
+  // Data Points (0 to 100 scale)
+  const data = [10, 30, 50, 70, 90]; 
+  // Mean is 50.
+  // Distances: -40, -20, 0, 20, 40
+  // Squared: 1600, 400, 0, 400, 1600 = 4000 Total
+  // Pop (N=5): 4000/5 = 800. Sqrt(800) = ~28.28
+  // Sample (N=4): 4000/4 = 1000. Sqrt(1000) = ~31.62
+
+  const graph = document.getElementById('graph');
+  const meanLine = document.getElementById('meanLine');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initGraph() {
+    // Clear points but keep mean line
+    document.querySelectorAll('.point, .dev-bar').forEach(e => e.remove());
+    
+    data.forEach((val, i) => {
+      const point = document.createElement('div');
+      point.className = 'point';
+      point.id = `pt-${i}`;
+      point.style.left = `${val}%`; // Simple 0-100 mapping
+      point.innerHTML = `<div class="point-label">${val}</div>`;
+      graph.appendChild(point);
+    });
+    
+    meanLine.style.height = "0%";
+    meanLine.querySelector('.mean-label').style.opacity = "0";
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear Steps
+    document.querySelectorAll('.step-active').forEach(s => s.classList.remove('step-active'));
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initGraph();
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(mode) {
+    if (mode === 'P') {
+        document.getElementById('syntax-p').style.display = 'block';
+        document.getElementById('syntax-s').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Population (Divide by N)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">STDEV.P</span>( A2:E2 )`;
+    } else {
+        document.getElementById('syntax-p').style.display = 'none';
+        document.getElementById('syntax-s').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Sample (Divide by N-1)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">STDEV.S</span>( A2:E2 )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runStdev(mode) {
+    updateUI(mode);
+    App.updateText("Calculating Standard Deviation...");
+    await App.speak("Let's calculate the spread.");
+    
+    if(shouldStop) return;
+
+    // STEP 1: MEAN
+    document.getElementById('step1').classList.add('step-active');
+    const mean = data.reduce((a,b)=>a+b, 0) / data.length;
+    
+    App.updateText(`1. Average (Mean) is ${mean}.`);
+    await App.speak(`First, we find the center. The average is ${mean}.`);
+    
+    meanLine.style.left = `${mean}%`;
+    meanLine.style.height = "100%";
+    meanLine.querySelector('.mean-label').style.opacity = "1";
+    
+    await new Promise(r => setTimeout(r, 1000));
+
+    // STEP 2: DEVIATION
+    document.getElementById('step2').classList.add('step-active');
+    App.updateText(`2. Measuring distance from Mean...`);
+    await App.speak(`Now, we measure how far each point is from the center.`);
+    
+    let sumSq = 0;
+
+    for(let i=0; i<data.length; i++) {
+        if(shouldStop) return;
+        const val = data[i];
+        const diff = val - mean;
+        sumSq += diff * diff;
+
+        // Visual Bar
+        const bar = document.createElement('div');
+        bar.className = 'dev-bar';
+        
+        // Calculate width/left based on direction
+        const leftPos = Math.min(val, mean);
+        const width = Math.abs(diff);
+        
+        bar.style.left = `${leftPos}%`;
+        bar.style.width = `0%`; // Start 0
+        graph.appendChild(bar);
+        
+        // Animate Growth
+        setTimeout(() => {
+            bar.style.width = `${width}%`;
+            bar.style.opacity = "1";
+        }, 50);
+    }
+    
+    await new Promise(r => setTimeout(r, 1000));
+
+    // STEP 3: SQUARE & AVG (VARIANCE)
+    document.getElementById('step3').classList.add('step-active');
+    
+    let denominator = (mode === 'P') ? data.length : data.length - 1;
+    const variance = sumSq / denominator;
+    
+    const narration = mode === 'P' 
+        ? `Divide sum of squares by count (${data.length}).` 
+        : `Divide sum of squares by count minus 1 (${data.length-1}). This makes the result slightly larger.`;
+        
+    App.updateText(`3. Variance: ${sumSq} ÷ ${denominator} = ${variance}`);
+    await App.speak(narration);
+    
+    await new Promise(r => setTimeout(r, 1500));
+
+    // STEP 4: ROOT (STDEV)
+    document.getElementById('step4').classList.add('step-active');
+    const result = Math.sqrt(variance).toFixed(2);
+    
+    App.updateText(`4. Square Root of ${variance} is ${result}`);
+    await App.speak(`Finally, take the square root. The deviation is ${result}.`);
+    
+    totalBubble.textContent = result;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnP').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runStdev('P');
+    isRunning = false;
+  });
+
+  document.getElementById('btnS').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runStdev('S');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initGraph();
+
+</script>
+</body>
+</html>

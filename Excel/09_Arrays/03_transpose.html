@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: TRANSPOSE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --cell-bg: #0f172a;
+    --highlight: #facc15;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .trans-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 400px; position: relative;
+    overflow: hidden;
+  }
+
+  /* Grid Wrappers */
+  .grid-wrapper {
+    display: grid; gap: 5px; padding: 10px;
+    background: rgba(0,0,0,0.2); border-radius: 8px;
+    transition: all 0.5s;
+  }
+  .grid-label {
+    text-align: center; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;
+    font-weight: bold; text-transform: uppercase;
+  }
+
+  /* The Cell */
+  .data-cell {
+    width: 50px; height: 50px; background: var(--cell-bg);
+    border: 1px solid var(--border); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; color: #fff; font-family: monospace;
+    position: relative; z-index: 1;
+  }
+  
+  /* Animation Ghost Cell (The mover) */
+  .ghost-cell {
+    position: absolute; width: 50px; height: 50px;
+    background: var(--accent); color: #000; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-family: monospace;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    z-index: 10; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Arrow Icon */
+  .arrow-icon { font-size: 2rem; color: var(--text-dim); transform: rotate(90deg); transition: 0.3s; }
+  .arrow-spin { transform: rotate(0deg); color: var(--highlight); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔄 The Orientation Flipper</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Rotate data from rows to columns.<br>
+      <strong>TRANSPOSE</strong> swaps the X and Y coordinates. A 3x1 Vertical list becomes a 1x3 Horizontal row.
+    </p>
+
+    <div class="trans-stage" id="stage">
+      
+      <div>
+        <div class="grid-label">Input Array</div>
+        <div class="grid-wrapper" id="sourceGrid">
+          </div>
+      </div>
+
+      <div class="arrow-icon" id="arrow">⤵</div>
+
+      <div>
+        <div class="grid-label">Result Array</div>
+        <div class="grid-wrapper" id="targetGrid" style="opacity:0.3">
+          </div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnVert">↕️ Vertical to Horizontal</button>
+        <button class="action" id="btnHorz">↔️ Horizontal to Vertical</button>
+        <button class="action" id="btnMatrix">▦ Matrix (2x3 to 3x2)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">TRANSPOSE</span>(array)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Array:</strong> The range of cells to flip (e.g., A1:A5).</li>
+          <li><strong>Result:</strong> A dynamic spill range with swapped dimensions.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Flip the array</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">TRANSPOSE</span>( <span class="val" id="codeArr">A1:A3</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">New Dimensions:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Value Only</div>
+          <div class="mistake-desc">
+            TRANSPOSE creates a <strong>copy</strong> of the values. It does not link formatting (colors, bold text) from the original cells.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">💡 Paste Special</div>
+          <div class="mistake-desc">
+            If you want to transpose data <em>statically</em> (without a formula) and keep formatting, use <strong>Copy > Paste Special > Transpose</strong> instead.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("TRANSPOSE Function", "../../");
+
+  const sourceGrid = document.getElementById('sourceGrid');
+  const targetGrid = document.getElementById('targetGrid');
+  const arrow = document.getElementById('arrow');
+  const totalBubble = document.getElementById('totalBubble');
+  const codeArr = document.getElementById('codeArr');
+  const stage = document.getElementById('stage');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear ghosts
+    document.querySelectorAll('.ghost-cell').forEach(g => g.remove());
+    targetGrid.style.opacity = '0.3';
+    targetGrid.innerHTML = '';
+    arrow.classList.remove('arrow-spin');
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // Helper to build grid
+  function buildGrid(el, rows, cols, data) {
+    el.style.gridTemplateColumns = `repeat(${cols}, 50px)`;
+    el.innerHTML = '';
+    let cells = [];
+    for(let i=0; i<rows*cols; i++) {
+        const div = document.createElement('div');
+        div.className = 'data-cell';
+        div.textContent = data[i] || "";
+        div.id = `${el.id}-c${i}`;
+        el.appendChild(div);
+        cells.push(div);
+    }
+    return cells;
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runTranspose(rows, cols, data, desc, rangeName) {
+    codeArr.textContent = rangeName;
+    document.getElementById('line2').classList.add('active');
+    
+    App.updateText(`Transposing ${desc} (${rows}x${cols})...`);
+    await App.speak(`Flipping the ${desc}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Build Source
+    const srcCells = buildGrid(sourceGrid, rows, cols, data);
+    
+    // 2. Build Target (Empty layout)
+    // Transposed dims: cols x rows
+    const trgRows = cols;
+    const trgCols = rows;
+    buildGrid(targetGrid, trgRows, trgCols, Array(data.length).fill(""));
+    
+    // Calculate mapping: (r, c) -> (c, r)
+    // Source Index i: row = floor(i/cols), col = i%cols
+    // Target Index j: row = oldCol, col = oldRow
+    // Target Linear Index = oldCol * trgCols + oldRow
+    
+    await new Promise(r => setTimeout(r, 500));
+
+    // 3. Animate
+    arrow.classList.add('arrow-spin');
+    targetGrid.style.opacity = '1';
+
+    for(let i=0; i<data.length; i++) {
+        if(shouldStop) return;
+
+        const val = data[i];
+        
+        // Coords in Source
+        const sRow = Math.floor(i / cols);
+        const sCol = i % cols;
+        
+        // Coords in Target
+        const tRow = sCol;
+        const tCol = sRow;
+        const targetIndex = tRow * trgCols + tCol;
+
+        // Elements
+        const startEl = document.getElementById(`sourceGrid-c${i}`);
+        const endEl = document.getElementById(`targetGrid-c${targetIndex}`);
+        
+        // Create Ghost
+        const ghost = document.createElement('div');
+        ghost.className = 'ghost-cell';
+        ghost.textContent = val;
+        
+        // Position Ghost at Start
+        const startRect = startEl.getBoundingClientRect();
+        const stageRect = stage.getBoundingClientRect();
+        
+        ghost.style.left = (startRect.left - stageRect.left) + "px";
+        ghost.style.top = (startRect.top - stageRect.top) + "px";
+        
+        stage.appendChild(ghost);
+        
+        // Animate to End
+        // Force reflow
+        void ghost.offsetWidth;
+        
+        const endRect = endEl.getBoundingClientRect();
+        ghost.style.left = (endRect.left - stageRect.left) + "px";
+        ghost.style.top = (endRect.top - stageRect.top) + "px";
+        
+        // Clean up
+        setTimeout(() => {
+            if(endEl) endEl.textContent = val; // Fill target
+            ghost.remove(); // Remove ghost
+        }, 800);
+
+        await new Promise(r => setTimeout(r, 100)); // Stagger
+    }
+
+    await new Promise(r => setTimeout(r, 1000)); // Wait for all animations
+
+    App.updateText(`Done! Converted ${rows}x${cols} to ${trgRows}x${trgCols}.`);
+    await App.speak(`Finished. The dimensions are now swapped.`);
+    
+    totalBubble.textContent = `${trgRows} x ${trgCols}`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnVert').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 3 Rows, 1 Col
+    await runTranspose(3, 1, ["A", "B", "C"], "Vertical List", "A1:A3");
+    isRunning = false;
+  });
+
+  document.getElementById('btnHorz').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 1 Row, 3 Cols
+    await runTranspose(1, 3, ["1", "2", "3"], "Horizontal Row", "A1:C1");
+    isRunning = false;
+  });
+
+  document.getElementById('btnMatrix').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 2 Rows, 3 Cols
+    await runTranspose(2, 3, ["A", "B", "C", "D", "E", "F"], "Matrix", "A1:C2");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+  // Initial State
+  buildGrid(sourceGrid, 3, 1, ["A","B","C"]);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: SORT Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Moving Row Animation */
+  .moving-row {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid var(--accent);
+    border-radius: 4px;
+    margin-bottom: 4px;
+    opacity: 0; transform: translateX(-20px);
+    animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+
+  @keyframes slideIn {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Source Highlight */
+  .source-highlight {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid #facc15; /* Yellow highlight for source being picked */
+    transition: all 0.2s;
+  }
+
+  /* Column Indicator */
+  .col-active { background: rgba(34, 197, 94, 0.1); border-bottom: 2px solid var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔃 Dynamic Sorting</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Reorder the table automatically.<br>
+      <strong>SORT</strong> creates a <em>new</em> dynamic copy of your data in the requested order.
+    </p>
+
+    <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:0.5rem;">Source Data (A1:B5):</div>
+    <div id="dataTable" style="position:relative; margin-bottom: 1.5rem;"></div>
+
+    <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
+      <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:0.5rem; display:flex; justify-content:space-between;">
+        <span>Result (Spill Range):</span>
+      </div>
+      <div id="resultTable">
+        <div style="color:var(--text-dim); font-style:italic; padding:0.5rem;">(Select a sort option...)</div>
+      </div>
+    </div>
+
+    <div class="calculation-box" id="calcBox" style="margin-top: 1.5rem;">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnScore">📉 Sort by Score (Desc)</button>
+        <button class="action" id="btnName">🅰️ Sort by Name (Asc)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">SORT</span>(array, [sort_index], [sort_order])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Array:</strong> The range to sort (A2:B5).</li>
+          <li><strong>2. Sort Index:</strong> Which column number to sort by? (1 or 2).</li>
+          <li><strong>3. Sort Order:</strong> 1 = Ascending (A-Z), -1 = Descending (Z-A).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select an option...</span></div>
+        <div class="codeLine" id="line2">=<span class="fn">SORT</span>( ... )</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Top Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Sorting in Place</div>
+          <div class="mistake-desc">The SORT function does NOT change the original cells. It creates a <strong>new</strong> list elsewhere. To sort in place, use the Data tab filters.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 #SPILL! Error</div>
+          <div class="mistake-desc">Ensure the cells below the formula are empty so the data has room to expand.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("SORT Function", "../../");
+
+  const data = [
+    { id: 0, name: "Zara", score: 85 },
+    { id: 1, name: "Alex", score: 92 },
+    { id: 2, name: "Ben",  score: 74 },
+    { id: 3, name: "Cara", score: 85 } // Tie case
+  ];
+
+  const table = document.getElementById('dataTable');
+  const resultTable = document.getElementById('resultTable');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr;">
+        <div id="h-name">Name (Col 1)</div> <div id="h-score">Score (Col 2)</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="src-${i}" style="grid-template-columns: 1fr 1fr;">
+          <div>${d.name}</div>
+          <div class="cell-num">${d.score}</div>
+        </div>
+      `;
+    });
+    // Clear result
+    resultTable.innerHTML = `<div style="color:var(--text-dim); font-style:italic; padding:0.5rem;">(Select a sort option...)</div>`;
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.getElementById('h-name').classList.remove('col-active');
+    document.getElementById('h-score').classList.remove('col-active');
+    document.querySelectorAll('.source-highlight').forEach(e => e.classList.remove('source-highlight'));
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      document.getElementById('line1').innerHTML = '<span class="cmt">-- Select an option...</span>';
+      document.getElementById('line2').innerHTML = '=<span class="fn">SORT</span>( ... )';
+      totalBubble.textContent = "-";
+      totalBubble.classList.remove('show');
+    }, 100);
+  }
+
+  // --- LOGIC: RUN SORT ---
+  async function runSort(criteria) {
+    // 1. Setup UI & Logic
+    let sortedData = [...data];
+    let formulaHTML = "";
+    let narrateText = "";
+    
+    if (criteria === 'score') {
+        // Sort Descending by Score (Col 2)
+        sortedData.sort((a, b) => b.score - a.score);
+        formulaHTML = `=<span class="fn">SORT</span>( A2:B5, <span class="val">2</span>, <span class="val">-1</span> )`;
+        narrateText = "Sorting by Column 2, Descending. High scores first.";
+        
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- High Scores First</span>`;
+        document.getElementById('h-score').classList.add('col-active');
+    } else {
+        // Sort Ascending by Name (Col 1)
+        sortedData.sort((a, b) => a.name.localeCompare(b.name));
+        formulaHTML = `=<span class="fn">SORT</span>( A2:B5, <span class="val">1</span>, <span class="val">1</span> )`;
+        narrateText = "Sorting by Column 1, Ascending. Names A to Z.";
+        
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Alphabetical Order</span>`;
+        document.getElementById('h-name').classList.add('col-active');
+    }
+    
+    document.getElementById('line2').innerHTML = formulaHTML;
+    document.getElementById('line2').classList.add('active');
+    
+    App.updateText(narrateText);
+    await App.speak(narrateText);
+    
+    if(shouldStop) return;
+
+    // 2. Clear & Header Result
+    resultTable.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr;">
+        <div>Name</div> <div>Score</div>
+      </div>
+    `;
+
+    // 3. Animate Sorting
+    for (let i = 0; i < sortedData.length; i++) {
+        if(shouldStop) return;
+        
+        const item = sortedData[i];
+        const originalIndex = item.id; // We stored original ID in data
+        
+        // Highlight Source
+        const sourceRow = document.getElementById(`src-${originalIndex}`);
+        sourceRow.classList.add('source-highlight');
+        
+        App.updateText(`Position ${i+1}: Moving <b>${item.name}</b> (${item.score})...`);
+        
+        // Create Result Row
+        const newRow = document.createElement('div');
+        newRow.className = 'table-row moving-row';
+        newRow.style.gridTemplateColumns = "1.5fr 1fr";
+        newRow.style.animationDelay = "0s"; // Immediate trigger controlled by loop
+        newRow.innerHTML = `<div>${item.name}</div> <div class="cell-num">${item.score}</div>`;
+        
+        resultTable.appendChild(newRow);
+        
+        // Voice first item only
+        if(i === 0) {
+            await App.speak(`First is ${item.name} with ${item.score}.`);
+            totalBubble.textContent = item.name;
+            totalBubble.style.background = "var(--accent)";
+            totalBubble.classList.add('show');
+        } else {
+            await new Promise(r => setTimeout(r, 200));
+        }
+        
+        // Cleanup highlight
+        setTimeout(() => sourceRow.classList.remove('source-highlight'), 300);
+    }
+
+    App.updateText(`Done! Array spilled successfully.`);
+    await App.speak(`The list is reordered.`);
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnScore').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSort('score');
+    isRunning = false;
+  });
+
+  document.getElementById('btnName').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSort('name');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

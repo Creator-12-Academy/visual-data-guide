@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: QUOTIENT & MOD</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Item Visualization */
+  .item-pool {
+    display: flex; flex-wrap: wrap; gap: 5px; padding: 10px;
+    background: rgba(255,255,255,0.05); border-radius: 8px;
+    min-height: 60px; margin-bottom: 1rem; justify-content: center;
+  }
+  
+  .dot-item {
+    width: 20px; height: 20px; background: var(--text-dim);
+    border-radius: 50%; transition: all 0.4s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  /* Group Containers */
+  .group-container {
+    display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .group-box {
+    border: 2px dashed var(--accent); border-radius: 8px;
+    padding: 5px; min-width: 40px; min-height: 40px;
+    display: flex; gap: 2px; flex-wrap: wrap; align-items: center; justify-content: center;
+    opacity: 0; transform: scale(0.5);
+    animation: popIn 0.3s forwards;
+  }
+  
+  /* Leftover Box */
+  .mod-box {
+    border: 2px solid #facc15; border-radius: 8px;
+    padding: 5px; min-width: 40px; min-height: 40px;
+    display: flex; gap: 2px; flex-wrap: wrap; align-items: center; justify-content: center;
+    box-shadow: 0 0 10px rgba(250, 204, 21, 0.2);
+  }
+
+  /* Active Dot States */
+  .dot-grouped { background: #4ade80; }
+  .dot-leftover { background: #facc15; }
+
+  @keyframes popIn { to { opacity: 1; transform: scale(1); } }
+
+  /* Result Bubbles */
+  .res-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+  .res-label { font-size: 0.9rem; color: var(--text-dim); }
+  .res-val { font-weight: bold; font-size: 1.1rem; padding: 2px 8px; border-radius: 4px; }
+  .val-q { color: #4ade80; background: rgba(74, 222, 128, 0.1); }
+  .val-m { color: #facc15; background: rgba(250, 204, 21, 0.1); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>➗ Divide & Remainder</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Divide <span id="numTotal">10</span> items into groups of <span id="numGroup">3</span>.<br>
+      <strong>QUOTIENT</strong> counts full groups. <strong>MOD</strong> counts leftovers.
+    </p>
+
+    <div class="item-pool" id="pool"></div>
+    
+    <div id="visualArea" style="min-height: 100px;">
+        </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btn10_3">10 ÷ 3</button>
+        <button class="action" id="btn14_4">14 ÷ 4</button>
+        <button class="action" id="btnZero">5 ÷ 0</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" style="border-left: 3px solid #4ade80;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.3rem;">
+          =<span class="fn">QUOTIENT</span>(numerator, denominator)
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-dim);">Returns the integer portion (Whole Groups).</div>
+      </div>
+
+      <div class="syntax-box" style="border-left: 3px solid #facc15; margin-top:0.5rem;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.3rem;">
+          =<span class="fn">MOD</span>(number, divisor)
+        </div>
+        <div style="font-size:0.8rem; color:var(--text-dim);">Returns the remainder (Leftovers).</div>
+      </div>
+
+      <div id="codeDisplay" class="codeArea" style="margin-top:1rem;">
+        <div class="codeLine" id="line1"><span class="cmt">-- Calculate Groups & Leftovers</span></div>
+        <div class="codeLine" id="lineQ">=<span class="fn">QUOTIENT</span>( <span class="val" id="codeNum">10</span>, <span class="val" id="codeDen">3</span> )</div>
+        <div class="codeLine" id="lineM">=<span class="fn">MOD</span>( <span class="val">10</span>, <span class="val">3</span> )</div>
+      </div>
+
+      <div class="result-box" style="display:block;">
+        <div class="res-row">
+          <span class="res-label">Quotient (Groups):</span>
+          <span class="res-val val-q" id="resQ">-</span>
+        </div>
+        <div class="res-row">
+          <span class="res-label">Mod (Leftovers):</span>
+          <span class="res-val val-m" id="resM">-</span>
+        </div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Divide Symbol (/)</div>
+          <div class="mistake-desc">Using <code>=10/3</code> returns 3.333. Use QUOTIENT if you specifically want the integer (3) without rounding or decimals.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Zero Divisor</div>
+          <div class="mistake-desc">Dividing by zero causes a #DIV/0! error in both functions.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("QUOTIENT & MOD", "../../");
+
+  const pool = document.getElementById('pool');
+  const visArea = document.getElementById('visualArea');
+  const resQ = document.getElementById('resQ');
+  const resM = document.getElementById('resM');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initPool(count) {
+    pool.innerHTML = '';
+    visArea.innerHTML = '';
+    for(let i=0; i<count; i++) {
+        const dot = document.createElement('div');
+        dot.className = 'dot-item';
+        dot.id = `dot-${i}`;
+        pool.appendChild(dot);
+    }
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Texts
+    resQ.textContent = "-";
+    resM.textContent = "-";
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initPool(10); // Default
+      document.getElementById('numTotal').textContent = 10;
+      document.getElementById('numGroup').textContent = 3;
+      
+      document.getElementById('lineQ').classList.remove('active');
+      document.getElementById('lineM').classList.remove('active');
+      
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- MAIN LOGIC ---
+  async function runCalc(total, groupSize) {
+    // 1. Update UI Texts
+    initPool(total);
+    document.getElementById('numTotal').textContent = total;
+    document.getElementById('numGroup').textContent = groupSize;
+    
+    document.getElementById('codeNum').textContent = total;
+    document.getElementById('codeDen').textContent = groupSize;
+    document.querySelectorAll('#codeDisplay .val').forEach(el => {
+        if(el.textContent === "10") el.textContent = total;
+        if(el.textContent === "3") el.textContent = groupSize;
+    });
+
+    if (groupSize === 0) {
+        // ERROR CASE
+        App.updateText("Error: Cannot divide by zero.");
+        await App.speak("We cannot divide by zero. It is impossible.");
+        resQ.textContent = "#DIV/0!";
+        resM.textContent = "#DIV/0!";
+        resQ.style.color = "#ef4444";
+        return;
+    }
+
+    App.updateText(`Grouping ${total} items by ${groupSize}...`);
+    await App.speak(`Let's make groups of ${groupSize}.`);
+    
+    if(shouldStop) return;
+
+    // 2. Animate Grouping (Quotient)
+    document.getElementById('lineQ').classList.add('active');
+    
+    let groupsMade = 0;
+    let dotsProcessed = 0;
+    
+    // Create container for groups
+    const groupWrapper = document.createElement('div');
+    groupWrapper.className = 'group-container';
+    visArea.appendChild(groupWrapper);
+
+    while (dotsProcessed + groupSize <= total) {
+        if(shouldStop) return;
+        
+        // Create Visual Group Box
+        const box = document.createElement('div');
+        box.className = 'group-box';
+        groupWrapper.appendChild(box);
+        
+        // Move dots into it
+        for(let k=0; k<groupSize; k++) {
+            const dotId = dotsProcessed + k;
+            const originalDot = document.getElementById(`dot-${dotId}`);
+            
+            // Fade out original, create new in box
+            originalDot.style.opacity = '0';
+            
+            const newDot = document.createElement('div');
+            newDot.className = 'dot-item dot-grouped';
+            box.appendChild(newDot);
+        }
+        
+        dotsProcessed += groupSize;
+        groupsMade++;
+        
+        resQ.textContent = groupsMade;
+        
+        App.updateText(`Group ${groupsMade} created.`);
+        await new Promise(r => setTimeout(r, 400));
+    }
+
+    document.getElementById('lineQ').classList.remove('active');
+    
+    // 3. Handle Leftovers (Mod)
+    const leftovers = total - dotsProcessed;
+    document.getElementById('lineM').classList.add('active');
+    
+    if (leftovers > 0) {
+        App.updateText(`Creating Leftover pile...`);
+        await App.speak(`We cannot make another full group. These are the leftovers.`);
+        
+        const modBox = document.createElement('div');
+        modBox.className = 'mod-box';
+        visArea.appendChild(modBox); // Add to main area, distinct from groups
+        
+        for(let k=0; k<leftovers; k++) {
+            const dotId = dotsProcessed + k;
+            const originalDot = document.getElementById(`dot-${dotId}`);
+            originalDot.style.opacity = '0';
+            
+            const newDot = document.createElement('div');
+            newDot.className = 'dot-item dot-leftover';
+            modBox.appendChild(newDot);
+        }
+    } else {
+        App.updateText("No leftovers. Perfect division.");
+        await App.speak("No leftovers.");
+    }
+
+    resM.textContent = leftovers;
+    App.updateText(`Result: ${groupsMade} Groups, ${leftovers} Remainder.`);
+    await App.speak(`So, the Quotient is ${groupsMade}, and the Mod is ${leftovers}.`);
+    
+    document.getElementById('lineM').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btn10_3').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCalc(10, 3);
+    isRunning = false;
+  });
+
+  document.getElementById('btn14_4').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCalc(14, 4);
+    isRunning = false;
+  });
+
+  document.getElementById('btnZero').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCalc(5, 0); // Error
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initPool(10);
+</script>
+</body>
+</html>

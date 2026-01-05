@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: FACT Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --fact-pink: #f472b6;
+    --op-yellow: #facc15;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .fact-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 350px; position: relative;
+    overflow: hidden;
+  }
+
+  /* The Input Number */
+  .main-num {
+    font-size: 4rem; font-weight: 900; color: var(--fact-pink);
+    position: relative; transition: all 0.5s;
+  }
+  .bang { color: var(--op-yellow); } /* The exclamation mark */
+
+  /* The Expansion Row */
+  .sequence-row {
+    display: flex; gap: 10px; align-items: center; justify-content: center;
+    min-height: 60px; transition: opacity 0.5s;
+  }
+
+  /* Number Blocks */
+  .num-block {
+    width: 50px; height: 50px; background: #0f172a;
+    border: 2px solid var(--border); border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-family: monospace; font-size: 1.2rem;
+    opacity: 0; transform: translateY(-20px); transition: all 0.3s;
+  }
+  .num-block.show { opacity: 1; transform: translateY(0); }
+  .num-block.active { border-color: var(--accent); background: rgba(56, 189, 248, 0.2); transform: scale(1.1); }
+
+  /* Operators (x) */
+  .op-x { font-size: 1rem; color: var(--op-yellow); opacity: 0; }
+  .op-x.show { opacity: 1; }
+
+  /* Running Total */
+  .calc-display {
+    font-family: 'Courier New', monospace; font-size: 1.5rem; color: var(--text-dim);
+    margin-top: 20px; min-height: 40px;
+  }
+  .calc-highlight { color: #fff; font-weight: bold; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>❗ The Multiplier Cascade</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate the Factorial (n!).<br>
+      <strong>FACT</strong> multiplies a number by every integer below it, down to 1. (e.g., 5! = 5 × 4 × 3 × 2 × 1).
+    </p>
+
+    <div class="fact-stage">
+      
+      <div class="main-num" id="heroNum">0<span class="bang">!</span></div>
+
+      <div class="sequence-row" id="seqRow"></div>
+
+      <div class="calc-display" id="calcDisp">Waiting...</div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btn3">3! (Small)</button>
+        <button class="action" id="btn5">5! (Medium)</button>
+        <button class="action" id="btn7">7! (Large)</button>
+        <button class="action" id="btn0">0! (Special)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">FACT</span>(number)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Number:</strong> The non-negative integer to calculate.</li>
+          <li><strong>Note:</strong> Numbers containing decimals are truncated.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Calculate Factorial</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">FACT</span>( <span class="val" id="codeVal">5</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Product:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Mathematical Rules</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">0! = 1</div>
+          <div class="mistake-desc">
+            The factorial of 0 is defined as <strong>1</strong> (representing an empty product), not 0. This is a common math trick question!
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">📈 Rapid Growth</div>
+          <div class="mistake-desc">
+            Factorials grow incredibly fast. 10! is 3.6 million. Excel cannot handle factorials larger than 170! (it returns #NUM!).
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("FACT Function", "../../");
+
+  const heroNum = document.getElementById('heroNum');
+  const seqRow = document.getElementById('seqRow');
+  const calcDisp = document.getElementById('calcDisp');
+  const totalBubble = document.getElementById('totalBubble');
+  const codeVal = document.getElementById('codeVal');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    heroNum.style.opacity = '1';
+    heroNum.style.transform = 'scale(1)';
+    heroNum.innerHTML = `0<span class="bang">!</span>`;
+    
+    seqRow.innerHTML = '';
+    calcDisp.textContent = "Waiting...";
+    calcDisp.className = "calc-display";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runFact(n, desc) {
+    // UI Setup
+    heroNum.innerHTML = `${n}<span class="bang">!</span>`;
+    codeVal.textContent = n;
+    document.getElementById('line2').classList.add('active');
+    
+    App.updateText(`Calculating ${desc}...`);
+    await App.speak(`Calculating the factorial of ${n}.`);
+    
+    if(shouldStop) return;
+
+    // Special Case: 0!
+    if (n === 0) {
+        heroNum.style.transform = "scale(1.2)";
+        await new Promise(r => setTimeout(r, 500));
+        
+        calcDisp.innerHTML = `Definition: 0! = <span class="calc-highlight">1</span>`;
+        App.updateText("Special Case: The factorial of 0 is 1.");
+        await App.speak("By definition, zero factorial is one.");
+        
+        totalBubble.textContent = "1";
+        totalBubble.style.background = "var(--accent)";
+        totalBubble.classList.add('show');
+        return;
+    }
+
+    // 1. Expand
+    await new Promise(r => setTimeout(r, 600));
+    heroNum.style.opacity = '0.2'; // Dim source
+    heroNum.style.transform = 'scale(0.5)';
+
+    const blocks = [];
+    for(let i=n; i>=1; i--) {
+        // Number Block
+        const b = document.createElement('div');
+        b.className = 'num-block';
+        b.textContent = i;
+        b.id = `nb-${i}`;
+        seqRow.appendChild(b);
+        blocks.push(b);
+
+        // Operator (if not last)
+        if (i > 1) {
+            const op = document.createElement('div');
+            op.className = 'op-x';
+            op.textContent = '×';
+            seqRow.appendChild(op);
+        }
+    }
+
+    // Reveal sequence
+    document.querySelectorAll('.num-block, .op-x').forEach((el, i) => {
+        setTimeout(() => el.classList.add('show'), i * 100);
+    });
+
+    await new Promise(r => setTimeout(r, n * 100 + 500));
+
+    // 2. Collapse and Calculate
+    let runningTotal = 1;
+    calcDisp.textContent = `1`; // Start
+
+    // We iterate backwards through the blocks DOM (which is n..1)
+    // Wait, let's iterate visually from left (n) to right (1).
+    // Or better logic: Start with n, multiply by n-1...
+    
+    runningTotal = n;
+    calcDisp.innerHTML = `<span class="calc-highlight">${n}</span>`;
+    
+    // Highlight first block
+    if(blocks[0]) blocks[0].classList.add('active');
+    
+    await new Promise(r => setTimeout(r, 600));
+
+    for (let i = 1; i < blocks.length; i++) {
+        if(shouldStop) return;
+        
+        const nextVal = parseInt(blocks[i].textContent);
+        const prevTotal = runningTotal;
+        runningTotal *= nextVal;
+        
+        // Visuals
+        blocks[i].classList.add('active');
+        calcDisp.innerHTML = `${prevTotal} × ${nextVal} = <span class="calc-highlight">${runningTotal}</span>`;
+        
+        App.updateText(`Multiplying by ${nextVal}...`);
+        
+        await new Promise(r => setTimeout(r, 800));
+    }
+
+    // Finish
+    App.updateText(`Done! ${n}! = ${runningTotal.toLocaleString()}`);
+    await App.speak(`The result is ${runningTotal}.`);
+    
+    totalBubble.textContent = runningTotal.toLocaleString();
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btn3').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 3! = 6
+    await runFact(3, "3 Factorial");
+    isRunning = false;
+  });
+
+  document.getElementById('btn5').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 5! = 120
+    await runFact(5, "5 Factorial");
+    isRunning = false;
+  });
+
+  document.getElementById('btn7').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 7! = 5040
+    await runFact(7, "7 Factorial");
+    isRunning = false;
+  });
+
+  document.getElementById('btn0').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 0! = 1
+    await runFact(0, "0 Factorial");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

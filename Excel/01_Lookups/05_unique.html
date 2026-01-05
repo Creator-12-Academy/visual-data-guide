@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: UNIQUE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Unique Animation Items */
+  .unique-item {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid var(--accent);
+    color: #fff; padding: 0.5rem; border-radius: 4px;
+    margin-bottom: 4px; font-weight: bold;
+    opacity: 0; transform: translateX(-20px);
+    animation: slideIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  }
+
+  @keyframes slideIn {
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Status Indicators */
+  .status-new { color: #4ade80; font-weight: bold; text-shadow: 0 0 10px rgba(74, 222, 128, 0.3); }
+  .status-dup { color: #94a3b8; font-style: italic; text-decoration: line-through; opacity: 0.6; }
+  
+  /* Highlight Scanning */
+  .scan-row {
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 3px solid #facc15;
+    transition: all 0.2s;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>✨ Unique List Generator</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Get a list of distinct Departments.<br>
+      <strong>UNIQUE</strong> removes duplicates automatically and spills the result.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1.5rem;"></div>
+
+    <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
+      <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:0.5rem; display:flex; justify-content:space-between;">
+        <span>Result (Spill Range):</span>
+        <span id="countBadge" style="background:#334155; padding:2px 6px; border-radius:4px; font-size:0.7rem;">0 Found</span>
+      </div>
+      <div id="resultList" style="display:flex; flex-direction:column;">
+        <div style="color:var(--text-dim); font-style:italic; padding:0.5rem;">(Waiting...)</div>
+      </div>
+    </div>
+
+    <div class="calculation-box" id="calcBox" style="margin-top: 1.5rem;">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ Extract Unique</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">UNIQUE</span>(array, [by_col], [exactly_once])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Array:</strong> The range with duplicates (A2:A8).</li>
+          <li><strong>2. By Col:</strong> (Optional) FALSE = Rows (Default).</li>
+          <li><strong>3. Exactly Once:</strong> (Optional) FALSE = Distinct list (Default).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Extract unique Dept names</span></div>
+        <div class="codeLine" id="line2">=<span class="fn">UNIQUE</span>( <span class="col">A2:A8</span> )</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Status:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Dynamic Array Support</div>
+          <div class="mistake-desc">UNIQUE is only available in Excel 365, Excel 2021, and newer. Older versions need complex formulas.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Headers Included</div>
+          <div class="mistake-desc">Do not select the header row! Excel will treat "Department" as just another value.</div>
+          <div class="mistake-fix">✅ Fix: Start selection from row 2 (A2:A100).</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("UNIQUE Function", "../../");
+
+  // Raw data with duplicates
+  const data = [
+    "Sales", "HR", "Sales", "IT", "Marketing", "HR", "Sales"
+  ];
+
+  const table = document.getElementById('dataTable');
+  const resultList = document.getElementById('resultList');
+  const totalBubble = document.getElementById('totalBubble');
+  const countBadge = document.getElementById('countBadge');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 0.5fr 1.5fr 1fr;">
+        <div>#</div> <div>Department</div> <div>Check</div>
+      </div>
+    `;
+    data.forEach((dept, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 0.5fr 1.5fr 1fr;">
+          <div style="color:var(--text-dim);">${i+1}</div>
+          <div id="val-${i}"><b>${dept}</b></div>
+          <div id="status-${i}" style="font-size:0.85rem;">-</div>
+        </div>
+      `;
+    });
+    resultList.innerHTML = `<div style="color:var(--text-dim); font-style:italic; padding:0.5rem;">(Waiting...)</div>`;
+    countBadge.textContent = "0 Found";
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      
+      // Clear code highlights
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  // --- LOGIC: RUN UNIQUE ---
+  async function runUnique() {
+    document.getElementById('line2').classList.add('active');
+    App.updateText("Scanning list for distinct values...");
+    await App.speak("Okay, I will go through the list one by one. I'll keep the new ones and skip the duplicates.");
+    
+    if(shouldStop) return;
+
+    resultList.innerHTML = ""; // Clear placeholder
+    let seen = new Set();
+    let count = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      const val = data[i];
+      
+      row.classList.add('scan-row');
+      
+      // Wait slightly
+      await new Promise(r => setTimeout(r, App.voiceEnabled ? 200 : 150));
+
+      if (seen.has(val)) {
+        // DUPLICATE
+        statusCell.innerHTML = `<span class="status-dup">Duplicate</span>`;
+        row.style.opacity = "0.5";
+        App.updateText(`Row ${i+1}: "${val}" is a duplicate. Skip.`);
+      } else {
+        // NEW ITEM
+        seen.add(val);
+        count++;
+        
+        statusCell.innerHTML = `<span class="status-new">✨ KEEP</span>`;
+        
+        // Add to Result List
+        const item = document.createElement('div');
+        item.className = 'unique-item';
+        item.textContent = val;
+        item.style.animationDelay = "0.1s";
+        resultList.appendChild(item);
+        
+        countBadge.textContent = `${count} Found`;
+        
+        App.updateText(`Row ${i+1}: Found new item "${val}". Adding to list.`);
+        // Speak first 3 items only to save time
+        if(count <= 3) await App.speak(`Found ${val}. It's new, so I'll keep it.`);
+      }
+      
+      await new Promise(r => setTimeout(r, 100)); // Short pause
+      row.classList.remove('scan-row');
+    }
+
+    totalBubble.textContent = "Done";
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    App.updateText(`Finished! Found ${count} unique departments.`);
+    await App.speak(`All done. I found ${count} unique departments in total.`);
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runUnique();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

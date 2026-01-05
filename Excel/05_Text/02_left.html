@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: LEFT & RIGHT</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* String Container */
+  .char-container {
+    display: flex; justify-content: center; gap: 4px;
+    margin-bottom: 2rem; perspective: 600px;
+  }
+
+  /* Character Blocks */
+  .char-box {
+    width: 35px; height: 50px;
+    background: #334155; border: 1px solid var(--border);
+    border-radius: 4px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    font-family: monospace; position: relative;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .char-content { font-size: 1.5rem; color: #fff; font-weight: bold; }
+  .char-index { font-size: 0.6rem; color: var(--text-dim); position: absolute; bottom: 2px; }
+
+  /* Selection States */
+  .selected-left {
+    background: #4ade80; color: #000; border-color: #4ade80;
+    transform: translateY(-10px); box-shadow: 0 10px 20px rgba(74, 222, 128, 0.3);
+  }
+  .selected-left .char-content { color: #000; }
+  
+  .selected-right {
+    background: #facc15; color: #000; border-color: #facc15;
+    transform: translateY(-10px); box-shadow: 0 10px 20px rgba(250, 204, 21, 0.3);
+  }
+  .selected-right .char-content { color: #000; }
+
+  .dimmed { opacity: 0.2; transform: scale(0.9); }
+
+  /* Extraction Animation */
+  .extract-zone {
+    height: 60px; border: 2px dashed var(--border);
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-family: monospace; font-size: 1.5rem; color: var(--accent);
+    background: rgba(0,0,0,0.2);
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>✂️ Extract from Edges</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Extract specific characters from the string.<br>
+      <strong>LEFT:</strong> Starts at the beginning. <strong>RIGHT:</strong> Starts at the end.
+    </p>
+
+    <div class="char-container" id="stage"></div>
+
+    <div class="extract-zone" id="resultZone">
+      <span style="font-size:0.9rem; color:var(--text-dim);">(Result appears here)</span>
+    </div>
+
+    <div class="calculation-box" id="calcBox" style="margin-top:1.5rem;">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnLeft">⬅️ LEFT(3)</button>
+        <button class="action" id="btnRight">➡️ RIGHT(4)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-left">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">LEFT</span>(text, [num_chars])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Text:</strong> The string to extract from.</li>
+          <li><strong>2. Num Chars:</strong> How many to take from the left (Default is 1).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-right" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">RIGHT</span>(text, [num_chars])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Text:</strong> The string to extract from.</li>
+          <li><strong>2. Num Chars:</strong> How many to take from the right.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Extracted Text:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Numbers become Text</div>
+          <div class="mistake-desc">
+            The result of LEFT/RIGHT is always <strong>Text</strong>. If you extract "100", it is text "100", not number 100. Math might fail unless you convert it (e.g. using VALUE or --).
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Spaces Count</div>
+          <div class="mistake-desc">
+            Spaces are characters too! <code>RIGHT("A B", 2)</code> returns " B" (Space + B), not "AB".
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("LEFT & RIGHT", "../../");
+
+  const inputStr = "Excel-2025";
+  const stage = document.getElementById('stage');
+  const resultZone = document.getElementById('resultZone');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initStage() {
+    stage.innerHTML = '';
+    const chars = inputStr.split('');
+    
+    chars.forEach((char, i) => {
+      const box = document.createElement('div');
+      box.className = 'char-box';
+      box.id = `char-${i}`;
+      box.innerHTML = `<span class="char-content">${char}</span><span class="char-index">${i+1}</span>`;
+      stage.appendChild(box);
+    });
+    resultZone.innerHTML = `<span style="font-size:0.9rem; color:var(--text-dim);">(Result appears here)</span>`;
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.querySelectorAll('.char-box').forEach(b => {
+        b.className = 'char-box';
+    });
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initStage();
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fn, num) {
+    if (fn === 'LEFT') {
+        document.getElementById('syntax-left').style.display = 'block';
+        document.getElementById('syntax-right').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Extract first ${num} characters</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">LEFT</span>( "${inputStr}", <span class="val">${num}</span> )`;
+    } else {
+        document.getElementById('syntax-left').style.display = 'none';
+        document.getElementById('syntax-right').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Extract last ${num} characters</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">RIGHT</span>( "${inputStr}", <span class="val">${num}</span> )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runExtract(fn, num) {
+    updateUI(fn, num);
+    const chars = inputStr.split('');
+    let resultStr = "";
+    
+    // Determine indices
+    let targetIndices = [];
+    if (fn === 'LEFT') {
+        App.updateText(`Taking ${num} characters from the LEFT...`);
+        await App.speak(`Starting from the left, I will take the first ${num} characters.`);
+        for(let i=0; i<num; i++) targetIndices.push(i);
+    } else {
+        App.updateText(`Taking ${num} characters from the RIGHT...`);
+        await App.speak(`Starting from the right side, I will count back ${num} characters.`);
+        // Right(4) of Length 10 -> Indices 6,7,8,9
+        const start = chars.length - num;
+        for(let i=start; i<chars.length; i++) targetIndices.push(i);
+    }
+    
+    if(shouldStop) return;
+
+    // Dim non-selected
+    chars.forEach((c, i) => {
+        if(!targetIndices.includes(i)) {
+            document.getElementById(`char-${i}`).classList.add('dimmed');
+        }
+    });
+
+    // Highlight Loop
+    resultZone.innerHTML = ""; // Clear
+    
+    for (let idx of targetIndices) {
+        if(shouldStop) return;
+        
+        const box = document.getElementById(`char-${idx}`);
+        const char = chars[idx];
+        
+        // Add Class
+        box.classList.add(fn === 'LEFT' ? 'selected-left' : 'selected-right');
+        
+        // Add to Result Zone
+        const resChar = document.createElement('span');
+        resChar.textContent = char;
+        resChar.style.opacity = 0;
+        resChar.style.transition = "opacity 0.3s";
+        resultZone.appendChild(resChar);
+        
+        // Animate appearance
+        setTimeout(() => resChar.style.opacity = 1, 50);
+        
+        resultStr += char;
+        await new Promise(r => setTimeout(r, 400));
+    }
+
+    App.updateText(`Done! Extracted: "${resultStr}"`);
+    await App.speak(`The result is ${resultStr}.`);
+    
+    totalBubble.textContent = `"${resultStr}"`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnLeft').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runExtract('LEFT', 5); // "Excel"
+    isRunning = false;
+  });
+
+  document.getElementById('btnRight').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runExtract('RIGHT', 4); // "2025"
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initStage();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: Error Types</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --err-red: #f87171;
+    --warn-yellow: #facc15;
+    --term-bg: #0f172a;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .error-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.5rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 400px; position: relative;
+    overflow: hidden;
+  }
+
+  /* The Cell Display */
+  .cell-display {
+    width: 200px; height: 80px; background: #fff; color: #000;
+    border: 4px solid var(--border); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Segoe UI', sans-serif; font-size: 2rem; font-weight: bold;
+    position: relative; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    transition: all 0.3s;
+  }
+  .cell-display::before {
+    content: "A1"; position: absolute; top: -25px; left: 0;
+    color: var(--text-dim); font-size: 0.9rem; font-family: monospace;
+  }
+  
+  /* Error Indicator Triangle */
+  .err-triangle {
+    position: absolute; top: 0; left: 0; width: 0; height: 0;
+    border-top: 15px solid var(--err-red); border-right: 15px solid transparent;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .show-triangle .err-triangle { opacity: 1; }
+
+  /* Terminal / Log */
+  .terminal-box {
+    width: 90%; max-width: 400px; background: var(--term-bg);
+    border: 1px solid var(--border); border-radius: 6px; padding: 15px;
+    font-family: 'Courier New', monospace; font-size: 0.9rem;
+    min-height: 120px; display: flex; flex-direction: column; gap: 8px;
+  }
+  .term-line { opacity: 0; transform: translateX(-10px); animation: typeIn 0.3s forwards; }
+  .term-label { color: var(--accent); font-weight: bold; }
+  .term-warn { color: var(--warn-yellow); }
+  .term-err { color: var(--err-red); }
+
+  @keyframes typeIn { to { opacity: 1; transform: translateX(0); } }
+
+  /* Formula Bar Representation */
+  .formula-bar {
+    width: 90%; max-width: 400px; background: #fff; color: #333;
+    padding: 8px 12px; border-radius: 4px; font-family: monospace;
+    border: 1px solid var(--border); display: flex; gap: 10px; align-items: center;
+  }
+  .fx-icon { color: #999; font-weight: bold; font-style: italic; font-family: serif; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>⚠️ Error Decoder</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Identify and fix formula errors.<br>
+      Excel uses specific codes (starting with #) to tell you exactly what went wrong.
+    </p>
+
+    <div class="error-stage">
+      
+      <div class="formula-bar">
+        <span class="fx-icon">fx</span>
+        <span id="formulaText"></span>
+      </div>
+
+      <div class="cell-display" id="cellRes">
+        <div class="err-triangle"></div>
+        <span id="cellVal">-</span>
+      </div>
+
+      <div class="terminal-box" id="terminal">
+        <div class="term-line">> System Ready...</div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnDiv">➗ #DIV/0!</button>
+        <button class="action" id="btnNa">🔍 #N/A</button>
+        <button class="action" id="btnName">📛 #NAME?</button>
+        <button class="action" id="btnVal">🚫 #VALUE!</button>
+        <button class="action" id="btnRef">🔗 #REF!</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Error Library</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          ERROR CODES
+        </div>
+        <ul class="arg-list">
+          <li><strong style="color:var(--err-red)">#DIV/0!</strong>: Trying to divide by zero or an empty cell.</li>
+          <li><strong style="color:var(--err-red)">#N/A</strong>: Value Not Available (Lookup failed).</li>
+          <li><strong style="color:var(--err-red)">#NAME?</strong>: Excel doesn't recognize text (typo in function).</li>
+          <li><strong style="color:var(--err-red)">#VALUE!</strong>: Wrong type of argument (Math on text).</li>
+          <li><strong style="color:var(--err-red)">#REF!</strong>: Invalid cell reference (Cell deleted).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Debugging...</span></div>
+        <div class="codeLine" id="line2">Select an error to analyze.</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Status:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Quick Fixes</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🛡️ IFERROR</div>
+          <div class="mistake-desc">
+            Wrap risky formulas in <code>=IFERROR(Value, "Message")</code> to catch any error and display a clean message or 0 instead.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🔍 Trace Precedents</div>
+          <div class="mistake-desc">
+            Go to the <strong>Formulas Tab > Trace Precedents</strong> to see arrows pointing to the cells causing the error.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("Error Types", "../../");
+
+  const cellRes = document.getElementById('cellRes');
+  const cellVal = document.getElementById('cellVal');
+  const formulaText = document.getElementById('formulaText');
+  const terminal = document.getElementById('terminal');
+  const totalBubble = document.getElementById('totalBubble');
+  const line1 = document.getElementById('line1');
+  const line2 = document.getElementById('line2');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Visuals
+    cellRes.className = "cell-display";
+    cellVal.textContent = "-";
+    formulaText.textContent = "";
+    
+    terminal.innerHTML = '<div class="term-line">> System Ready...</div>';
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    line2.classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function log(msg, type='info') {
+    const div = document.createElement('div');
+    div.className = "term-line";
+    if (type==='error') div.innerHTML = `<span class="term-err">> ERROR:</span> ${msg}`;
+    else if (type==='warn') div.innerHTML = `<span class="term-warn">> DIAGNOSIS:</span> ${msg}`;
+    else if (type==='fix') div.innerHTML = `<span class="term-label">> FIX:</span> ${msg}`;
+    else div.textContent = `> ${msg}`;
+    
+    terminal.appendChild(div);
+    terminal.scrollTop = terminal.scrollHeight;
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runErrorSim(code, formula, cause, fix) {
+    line1.innerHTML = `<span class="cmt">-- Simulating ${code}</span>`;
+    line2.innerHTML = `<span class="fn">${formula}</span>`;
+    line2.classList.add('active');
+    
+    formulaText.textContent = formula;
+    
+    App.updateText(`Calculating formula...`);
+    
+    if(shouldStop) return;
+
+    // 1. Simulate Calc
+    log(`Executing: ${formula}`);
+    await new Promise(r => setTimeout(r, 600));
+    
+    // 2. Error Hit
+    log(`${code} Detected!`, 'error');
+    cellVal.textContent = code;
+    cellRes.classList.add('show-triangle');
+    cellRes.style.borderColor = "var(--err-red)";
+    
+    // Pulse effect
+    cellRes.animate([
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.1)' },
+        { transform: 'scale(1)' }
+    ], { duration: 300 });
+
+    App.updateText(`Error: ${code}`);
+    await App.speak(`Error detected: ${code.replace('#','').replace('!','').replace('?','').replace('/',' ')}.`); // Cleanup for speech
+    
+    await new Promise(r => setTimeout(r, 800));
+
+    // 3. Diagnosis
+    log(cause, 'warn');
+    await new Promise(r => setTimeout(r, 800));
+    
+    // 4. Fix
+    log(fix, 'fix');
+    
+    totalBubble.textContent = code;
+    totalBubble.style.background = "var(--err-red)";
+    totalBubble.style.color = "#fff";
+    totalBubble.classList.add('show');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnDiv').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runErrorSim(
+        "#DIV/0!", 
+        "=100 / 0", 
+        "Denominator is zero or empty.", 
+        "Check divisor or use IFERROR."
+    );
+    isRunning = false;
+  });
+
+  document.getElementById('btnNa').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runErrorSim(
+        "#N/A", 
+        '=VLOOKUP("X", A:B, 2, 0)', 
+        "Lookup value 'X' not found.", 
+        "Check data exists or use IFNA."
+    );
+    isRunning = false;
+  });
+
+  document.getElementById('btnName').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runErrorSim(
+        "#NAME?", 
+        '=SUMM(A1:A5)', 
+        "Function 'SUMM' does not exist.", 
+        "Check spelling (SUM vs SUMM)."
+    );
+    isRunning = false;
+  });
+
+  document.getElementById('btnVal').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runErrorSim(
+        "#VALUE!", 
+        '=10 + "ABC"', 
+        "Cannot do math on Text.", 
+        "Check input data types."
+    );
+    isRunning = false;
+  });
+
+  document.getElementById('btnRef').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runErrorSim(
+        "#REF!", 
+        '=A1 + #REF!', 
+        "Referenced cell was deleted.", 
+        "Undo deletion or fix reference."
+    );
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

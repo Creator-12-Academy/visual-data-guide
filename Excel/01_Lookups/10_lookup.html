@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: LOOKUP Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Scan Highlight */
+  .scan-row {
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s;
+  }
+  
+  /* Match Highlight */
+  .match-row {
+    background: rgba(34, 197, 94, 0.2);
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);
+    font-weight: bold;
+  }
+
+  /* Range Bar Visual */
+  .range-bar {
+    height: 4px; background: #334155; border-radius: 2px;
+    margin-top: 5px; position: relative; overflow: hidden;
+  }
+  .range-fill {
+    height: 100%; background: var(--accent); width: 0%;
+    transition: width 0.3s;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📜 The Legacy LOOKUP</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Assign a Grade based on a Score (Approximate Match).<br>
+      <strong>LOOKUP</strong> finds the largest value that is <em>less than or equal to</em> the lookup value.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1.5rem;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btn75">🎓 Score: 75</button>
+        <button class="action" id="btn45">🎓 Score: 45</button>
+        <button class="action" id="btn95">🎓 Score: 95</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">LOOKUP</span>(lookup_value, lookup_vector, result_vector)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Lookup Value:</strong> The value to test (e.g., 75).</li>
+          <li><strong>2. Lookup Vector:</strong> The range to search (Scores). ⚠️ Must be Sorted!</li>
+          <li><strong>3. Result Vector:</strong> The range to return from (Grades).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Determine Grade for Score</span></div>
+        <div class="codeLine" id="line2">=<span class="fn">LOOKUP</span>( <span class="val" id="scoreVal">75</span>, A2:A6, B2:B6 )</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Grade:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Unsorted Data = Errors</div>
+          <div class="mistake-desc">LOOKUP assumes the data is sorted Ascending (0, 60, 70...). If the data is not sorted, it returns unpredictable results.</div>
+          <div class="mistake-fix">✅ Fix: Sort your data or use XLOOKUP.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 No Exact Match Option</div>
+          <div class="mistake-desc">LOOKUP <em>always</em> uses approximate matching. You cannot turn this off.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("LOOKUP (Legacy)", "../../");
+
+  // Sorted Data for Approximate Match
+  const data = [
+    { score: 0,  grade: "F" },
+    { score: 60, grade: "D" },
+    { score: 70, grade: "C" },
+    { score: 80, grade: "B" },
+    { score: 90, grade: "A" }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 2fr;">
+        <div>Score (Sorted)</div> <div>Grade</div> <div>Logic</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 2fr;">
+          <div class="cell-num">${d.score}</div>
+          <div style="font-weight:bold;">${d.grade}</div>
+          <div id="logic-${i}" style="font-size:0.8rem; color:var(--text-dim);">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    // Clear styles
+    document.querySelectorAll('.table-row').forEach(r => r.className = 'table-row');
+    document.querySelectorAll('[id^="logic-"]').forEach(l => l.innerHTML = "-");
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      document.getElementById('scoreVal').textContent = "?";
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC: RUN LOOKUP ---
+  async function runLookup(target) {
+    document.getElementById('scoreVal').textContent = target;
+    App.updateText(`Looking for score <b>${target}</b>...`);
+    await App.speak(`I'm looking for the score ${target}. I need to find the highest value that is less than or equal to ${target}.`);
+    
+    if(shouldStop) return;
+
+    let bestMatchIndex = -1;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const logic = document.getElementById(`logic-${i}`);
+      const currentScore = data[i].score;
+      
+      row.classList.add('scan-row');
+      
+      // Check Condition
+      if (target >= currentScore) {
+        // Potentially valid
+        bestMatchIndex = i;
+        logic.innerHTML = `<span style="color:#4ade80">Yes (${currentScore} <= ${target})</span>`;
+        App.updateText(`Checking ${currentScore}: Fits! (Keep looking...)`);
+        await new Promise(r => setTimeout(r, 400));
+        
+        // Peek at next to see if we should stop
+        if (i < data.length - 1) {
+            const nextScore = data[i+1].score;
+            if (target < nextScore) {
+                // Next is too big, so THIS is the match
+                App.updateText(`Next value ${nextScore} is too high. Stopping here.`);
+                await App.speak(`The next score, ${nextScore}, is higher than ${target}. So we stop here.`);
+                break;
+            }
+        }
+      } else {
+        // Should not happen if sorted and logic is correct, 
+        // but acts as boundary check if we started low
+        logic.innerHTML = `<span style="color:#ef4444">No (> ${target})</span>`;
+        break; 
+      }
+      
+      row.classList.remove('scan-row');
+    }
+
+    if (bestMatchIndex !== -1) {
+        const row = document.getElementById(`row-${bestMatchIndex}`);
+        row.className = 'table-row match-row';
+        
+        const result = data[bestMatchIndex].grade;
+        totalBubble.textContent = result;
+        totalBubble.style.background = "var(--accent)";
+        totalBubble.classList.add('show');
+        
+        App.updateText(`Found! Closest match is <b>${data[bestMatchIndex].score}</b>. Grade: <b>${result}</b>`);
+        await App.speak(`Found it. The closest match is ${data[bestMatchIndex].score}, so the grade is ${result}.`);
+    } else {
+        totalBubble.textContent = "#N/A";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        App.updateText("Error: Value is lower than the lowest range.");
+    }
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btn75').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runLookup(75);
+    isRunning = false;
+  });
+
+  document.getElementById('btn45').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runLookup(45);
+    isRunning = false;
+  });
+
+  document.getElementById('btn95').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runLookup(95);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

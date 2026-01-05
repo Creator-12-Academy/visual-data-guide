@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: AVERAGE Functions</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Value Types */
+  .type-num { color: #fff; font-weight: bold; }
+  .type-text { color: #facc15; font-style: italic; }
+  .type-bool { color: #4ade80; font-weight: bold; }
+
+  /* Animation States */
+  .ignored { opacity: 0.3; text-decoration: line-through; transition: 0.3s; }
+  .included { 
+    background: rgba(34, 197, 94, 0.15); 
+    border: 1px solid var(--accent);
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+  }
+
+  /* Calculation Display */
+  .calc-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+    background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;
+    margin-top: 1rem;
+  }
+  .calc-item { display: flex; flex-direction: column; align-items: center; }
+  .calc-label { font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; }
+  .calc-val { font-size: 1.5rem; font-weight: bold; font-family: monospace; transition: 0.2s; }
+  
+  .pop { animation: popText 0.3s; color: var(--accent); }
+  @keyframes popText { 50% { transform: scale(1.4); } }
+
+  /* Formula Bar */
+  .formula-bar {
+    font-family: monospace; font-size: 1.1rem; padding: 10px;
+    background: #0f172a; border-bottom: 2px solid var(--accent);
+    margin-bottom: 1rem; color: var(--accent);
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📉 The Mean Machine</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate the average score.<br>
+      Watch how <strong>Text</strong> and <strong>Boolean</strong> (True/False) values are treated differently.
+    </p>
+
+    <div id="dataTable" style="position:relative;"></div>
+
+    <div class="calc-grid">
+      <div class="calc-item">
+        <span class="calc-label">Total Sum</span>
+        <span class="calc-val" id="sumDisplay">0</span>
+      </div>
+      <div class="calc-item">
+        <span class="calc-label">Count</span>
+        <span class="calc-val" id="countDisplay">0</span>
+      </div>
+    </div>
+
+    <div class="calculation-box" id="calcBox" style="margin-top:1rem;">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnAvg">📊 AVERAGE (Standard)</button>
+        <button class="action" id="btnAvgA">🅰️ AVERAGEA (All)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-avg">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">AVERAGE</span>(number1, [number2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Logic:</strong> Adds numbers. <span style="color:#facc15;">Ignores</span> Text and Logical values (True/False).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-avga" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">AVERAGEA</span>(value1, [value2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Logic:</strong> Text = 0. TRUE = 1. FALSE = 0.</li>
+          <li><strong>Use Case:</strong> When you want non-numbers to drag the average down.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Empty vs Zero</div>
+          <div class="mistake-desc">
+            An <strong>Empty Cell</strong> is ignored by both functions. <br>
+            A <strong>Zero (0)</strong> is counted by both. <br>
+            Be careful with blank cells vs cells containing "0".
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Numbers stored as Text</div>
+          <div class="mistake-desc">
+            AVERAGE ignores "10" (text). AVERAGEA treats "10" (text) as 0. <br>
+            Always convert text-numbers to real numbers first!
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("AVERAGE vs AVERAGEA", "../../");
+
+  const data = [
+    { label: "Score 1", val: 10, type: "num", desc: "Number" },
+    { label: "Score 2", val: 20, type: "num", desc: "Number" },
+    { label: "Score 3", val: "Absent", type: "text", desc: "Text" },
+    { label: "Bonus",   val: true, type: "bool", desc: "Boolean (TRUE)" },
+    { label: "Score 5", val: 30, type: "num", desc: "Number" }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const sumDisplay = document.getElementById('sumDisplay');
+  const countDisplay = document.getElementById('countDisplay');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1.5fr;">
+        <div>Item</div> <div>Value</div> <div>Type</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      let valDisplay = d.val;
+      let typeClass = `type-${d.type}`;
+      if(d.val === true) valDisplay = "TRUE";
+      
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1.5fr;">
+          <div>${d.label}</div>
+          <div class="${typeClass}" id="val-${i}">${valDisplay}</div>
+          <div style="font-size:0.8rem; color:var(--text-dim);">${d.desc}</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.querySelectorAll('.table-row').forEach(r => r.className = 'table-row');
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    sumDisplay.textContent = "0";
+    countDisplay.textContent = "0";
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  function updateUI(mode) {
+    if (mode === 'AVERAGE') {
+        document.getElementById('syntax-avg').style.display = 'block';
+        document.getElementById('syntax-avga').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Standard Average (Ignore Text/Bool)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">AVERAGE</span>( A2:A6 )`;
+    } else {
+        document.getElementById('syntax-avg').style.display = 'none';
+        document.getElementById('syntax-avga').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Average All (Text=0, True=1)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">AVERAGEA</span>( A2:A6 )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runCalc(mode) {
+    updateUI(mode);
+    App.updateText(`Running ${mode}...`);
+    await App.speak(`Starting ${mode}. Let's see what gets counted.`);
+    
+    if(shouldStop) return;
+
+    let currentSum = 0;
+    let currentCount = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const item = data[i];
+      let valueToAdd = 0;
+      let isCounted = false;
+      let narrate = "";
+
+      // Logic Branching
+      if (item.type === 'num') {
+          // Numbers always count
+          valueToAdd = item.val;
+          isCounted = true;
+          narrate = `Found number ${item.val}. Adding it.`;
+      } 
+      else if (mode === 'AVERAGE') {
+          // AVERAGE ignores Text & Bool
+          isCounted = false;
+          narrate = `Skipping ${item.desc}. AVERAGE ignores this.`;
+      } 
+      else { 
+          // AVERAGEA Logic
+          isCounted = true;
+          if (item.type === 'text') {
+              valueToAdd = 0;
+              narrate = `Text counts as Zero in AVERAGE A.`;
+          } else if (item.type === 'bool') {
+              valueToAdd = item.val ? 1 : 0;
+              narrate = `True counts as One in AVERAGE A.`;
+          }
+      }
+
+      // Visual Update
+      row.scrollIntoView({ behavior: "smooth", block: "center" });
+      
+      if (isCounted) {
+          row.classList.add('included');
+          
+          currentSum += valueToAdd;
+          currentCount++;
+          
+          sumDisplay.textContent = currentSum;
+          countDisplay.textContent = currentCount;
+          sumDisplay.classList.add('pop');
+          countDisplay.classList.add('pop');
+          
+          App.updateText(`Row ${i+1}: ${narrate}`);
+          // Don't speak every single number, just special cases or first ones
+          if (i < 2 || item.type !== 'num') await App.speak(narrate);
+          else await new Promise(r => setTimeout(r, 400));
+
+          setTimeout(() => {
+            sumDisplay.classList.remove('pop');
+            countDisplay.classList.remove('pop');
+          }, 300);
+
+      } else {
+          row.classList.add('ignored');
+          App.updateText(`Row ${i+1}: Ignored.`);
+          await App.speak(narrate);
+          await new Promise(r => setTimeout(r, 500));
+      }
+    }
+
+    // Final Calc
+    if (currentCount > 0) {
+        const avg = currentSum / currentCount;
+        App.updateText(`Calculation: ${currentSum} ÷ ${currentCount} = ${avg.toFixed(2)}`);
+        await App.speak(`Total is ${currentSum}, divided by ${currentCount} items. The average is ${avg.toFixed(2)}.`);
+        
+        totalBubble.textContent = avg.toFixed(2);
+        totalBubble.style.background = "var(--accent)";
+        totalBubble.classList.add('show');
+    } else {
+        App.updateText("Error: Count is 0 (#DIV/0!)");
+        totalBubble.textContent = "#DIV/0!";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+    }
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnAvg').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCalc('AVERAGE');
+    isRunning = false;
+  });
+
+  document.getElementById('btnAvgA').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCalc('AVERAGEA');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

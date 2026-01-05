@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: CEILING & FLOOR</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Vertical Ruler Container */
+  .ruler-stage {
+    position: relative; height: 250px; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 1.5rem; display: flex; justify-content: center;
+    overflow: hidden;
+  }
+
+  /* The Grid Lines (Significance) */
+  .grid-line {
+    position: absolute; left: 0; right: 0; height: 2px;
+    background: #334155; width: 100%;
+    display: flex; align-items: center; padding-left: 10px;
+  }
+  .grid-label {
+    background: var(--bg-card); padding: 2px 6px; border-radius: 4px;
+    font-size: 0.8rem; color: var(--text-dim); font-family: monospace;
+  }
+  .grid-line.active-grid { background: #facc15; z-index: 5; }
+  .grid-line.active-grid .grid-label { color: #facc15; font-weight: bold; }
+
+  /* The Moving Item */
+  .price-tag {
+    position: absolute; left: 50%; width: 120px; height: 40px;
+    background: var(--accent); color: #000;
+    border-radius: 20px; font-weight: bold; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    transform: translate(-50%, -50%); /* Center on Y point */
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    transition: top 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275), background 0.3s;
+    z-index: 10;
+  }
+  .price-tag::before { content: 'Price: '; font-size: 0.8rem; opacity: 0.7; margin-right: 5px; }
+
+  /* Arrow Indicators */
+  .snap-arrow {
+    position: absolute; left: 50%; width: 2px; background: #facc15;
+    transform: translateX(-50%); transition: all 0.3s; opacity: 0;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🧱 Snap to Multiples</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Round the price <strong>$22.35</strong> to the nearest <strong>$5.00</strong> bill.<br>
+      <strong>CEILING</strong> snaps UP to the multiple. <strong>FLOOR</strong> snaps DOWN.
+    </p>
+
+    <div class="ruler-stage" id="stage">
+      <div class="snap-arrow" id="arrow"></div>
+      <div class="price-tag" id="tag">$22.35</div>
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnCeiling">⬆️ CEILING (Up)</button>
+        <button class="action" id="btnFloor">⬇️ FLOOR (Down)</button>
+        <button class="action" id="btnMround">↔️ MROUND (Nearest)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn" id="fnName">CEILING</span>(number, significance)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Number:</strong> The value to round (22.35).</li>
+          <li><strong>2. Significance:</strong> The multiple to snap to (5).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Round UP to nearest $5</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn" id="codeFn">CEILING</span>( <span class="val">22.35</span>, <span class="val">5</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Price:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Significance vs Digits</div>
+          <div class="mistake-desc">
+            <code>ROUND</code> uses decimal places (0, 1, 2).<br>
+            <code>CEILING</code> uses multiples (0.05, 1, 5, 10).<br>
+            Use CEILING for pricing logic (e.g., psychological pricing ending in .99 or .95).
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Negative Numbers</div>
+          <div class="mistake-desc">Older Excel versions have bugs with negative numbers in CEILING. Use the modern <code>CEILING.MATH</code> function for consistent behavior.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("CEILING & FLOOR", "../../");
+
+  // Config: Display range from 15 to 30
+  const rangeMin = 15;
+  const rangeMax = 30;
+  const rangeSpan = rangeMax - rangeMin;
+  const startVal = 22.35;
+  const significance = 5;
+
+  const stage = document.getElementById('stage');
+  const tag = document.getElementById('tag');
+  const arrow = document.getElementById('arrow');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function toPct(val) {
+    // Convert value to bottom % (inverse of top)
+    // Value 15 = 0%, Value 30 = 100%
+    return ((val - rangeMin) / rangeSpan) * 100;
+  }
+
+  function initGrid() {
+    // Generate Lines every 5
+    // 15, 20, 25, 30
+    stage.innerHTML = `<div class="snap-arrow" id="arrow"></div><div class="price-tag" id="tag">$${startVal}</div>`;
+    
+    // We want visual ticks
+    const multiples = [15, 20, 25, 30];
+    
+    multiples.forEach(m => {
+        const pct = toPct(m);
+        const line = document.createElement('div');
+        line.className = 'grid-line';
+        line.id = `line-${m}`;
+        line.style.bottom = `${pct}%`;
+        line.innerHTML = `<span class="grid-label">$${m}</span>`;
+        stage.appendChild(line);
+    });
+
+    // Set Initial Tag Pos
+    const startPct = toPct(startVal);
+    document.getElementById('tag').style.bottom = `${startPct}%`;
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear highlights
+    document.querySelectorAll('.active-grid').forEach(el => el.classList.remove('active-grid'));
+    const t = document.getElementById('tag');
+    t.style.bottom = `${toPct(startVal)}%`;
+    t.style.background = "var(--accent)";
+    t.innerHTML = `$${startVal}`;
+    
+    const arr = document.getElementById('arrow');
+    arr.style.opacity = "0";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fnName, desc) {
+    document.getElementById('fnName').textContent = fnName;
+    document.getElementById('codeFn').textContent = fnName;
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- ${desc}</span>`;
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC: RUN CEILING/FLOOR ---
+  async function runSnap(mode) {
+    let targetVal, narration;
+    const arrowEl = document.getElementById('arrow');
+    const tagEl = document.getElementById('tag');
+
+    if (mode === 'CEILING') {
+        updateUI("CEILING", "Round UP to nearest $5");
+        targetVal = Math.ceil(startVal / significance) * significance; // 25
+        narration = "Ceiling pushes the price UP to the next roof. The next multiple of 5 is 25.";
+    } else if (mode === 'FLOOR') {
+        updateUI("FLOOR", "Round DOWN to nearest $5");
+        targetVal = Math.floor(startVal / significance) * significance; // 20
+        narration = "Floor pushes the price DOWN to the floor. The previous multiple of 5 is 20.";
+    } else {
+        // MROUND
+        updateUI("MROUND", "Round to NEAREST $5");
+        targetVal = Math.round(startVal / significance) * significance; // 20 (22.35 is closer to 20 than 25)
+        narration = "M Round snaps to whichever multiple is closest. 22.35 is closer to 20 than 25.";
+    }
+
+    App.updateText(`Value: ${startVal}. Significance: ${significance}.`);
+    await App.speak(narration);
+    
+    if(shouldStop) return;
+
+    // 1. Highlight Target Line
+    const targetLine = document.getElementById(`line-${targetVal}`);
+    if(targetLine) targetLine.classList.add('active-grid');
+
+    // 2. Show Arrow Trace
+    const startPct = toPct(startVal);
+    const endPct = toPct(targetVal);
+    
+    // Position Arrow between start and end
+    const arrowBottom = Math.min(startPct, endPct);
+    const arrowHeight = Math.abs(endPct - startPct);
+    
+    arrowEl.style.bottom = `${arrowBottom}%`;
+    arrowEl.style.height = `${arrowHeight}%`;
+    arrowEl.style.opacity = "1";
+    
+    await new Promise(r => setTimeout(r, 500));
+
+    // 3. Move Tag
+    tagEl.style.bottom = `${endPct}%`;
+    tagEl.style.background = "#facc15"; // Flash yellow
+    tagEl.textContent = `$${targetVal}`; // Update text mid-flight? Or after? Let's do after.
+    
+    App.updateText(`Snapping to ${targetVal}...`);
+    
+    await new Promise(r => setTimeout(r, 600));
+    
+    // Result
+    totalBubble.textContent = `$${targetVal}`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    App.updateText(`Final Result: $${targetVal}`);
+    await App.speak(`Snapped to ${targetVal}.`);
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnCeiling').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSnap('CEILING');
+    isRunning = false;
+  });
+
+  document.getElementById('btnFloor').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSnap('FLOOR');
+    isRunning = false;
+  });
+
+  document.getElementById('btnMround').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSnap('MROUND');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initGrid();
+
+</script>
+</body>
+</html>

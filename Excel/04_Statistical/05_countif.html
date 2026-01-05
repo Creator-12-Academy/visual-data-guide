@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: COUNTIF & COUNTIFS</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Visual Status Dots */
+  .status-dot {
+    display: inline-block; width: 12px; height: 12px; border-radius: 50%;
+    background: #334155; margin-right: 6px; transition: all 0.3s;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .dot-pass { background: #4ade80; box-shadow: 0 0 8px #4ade80; transform: scale(1.2); }
+  .dot-fail { background: #ef4444; opacity: 0.4; }
+
+  /* Counter Box */
+  .counter-box {
+    background: #0f172a; border: 2px solid var(--border);
+    border-radius: 8px; padding: 1rem; margin-top: 1rem;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .counter-label { color: var(--text-dim); font-size: 0.9rem; text-transform: uppercase; }
+  .counter-val { 
+    font-size: 2.5rem; font-weight: 900; color: #fff; font-family: monospace;
+    transition: transform 0.2s;
+  }
+  
+  .pulse-count { animation: pulseGreen 0.3s; color: #4ade80; }
+  @keyframes pulseGreen {
+    50% { transform: scale(1.3); }
+  }
+
+  /* Row Highlight */
+  .row-match {
+    background: rgba(34, 197, 94, 0.15); border: 1px solid var(--accent);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2); font-weight: bold;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔎 The Headcounter</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Count how many orders match the criteria.<br>
+      <strong>COUNTIF:</strong> One Rule. <strong>COUNTIFS:</strong> Multiple Rules.
+    </p>
+
+    <div id="dataTable" style="position:relative;"></div>
+
+    <div class="counter-box">
+      <div class="counter-label">Matches Found</div>
+      <div class="counter-val" id="dispCount">0</div>
+    </div>
+
+    <div class="calculation-box" id="calcBox" style="margin-top:1rem;">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnIf">▶️ COUNTIF ("North")</button>
+        <button class="action" id="btnIfs">▶️ COUNTIFS ("North" + "Widget")</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-if">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">COUNTIF</span>(range, criteria)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Range:</strong> Where to look (Regions).</li>
+          <li><strong>2. Criteria:</strong> What to count ("North").</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-ifs" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">COUNTIFS</span>(range1, crit1, [range2, crit2]...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Range 1:</strong> First check (Regions).</li>
+          <li><strong>2. Crit 1:</strong> "North".</li>
+          <li><strong>3. Range 2:</strong> Second check (Products).</li>
+          <li><strong>4. Crit 2:</strong> "Widget".</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a scenario...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Count:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Range Size Mismatch</div>
+          <div class="mistake-desc">
+            In COUNTIFS, all ranges (Range 1, Range 2) must be the <strong>exact same size</strong> (e.g., A2:A10 and B2:B10). If they differ, you get a #VALUE! error.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">✅ Counting Logic</div>
+          <div class="mistake-desc">
+            Use quotes for text (<code>"North"</code>) and logic (<code>">100"</code>). Numbers alone don't need quotes (<code>100</code>).
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("COUNTIF & COUNTIFS", "../../");
+
+  const data = [
+    { reg: "North", prod: "Widget" }, // Pass Both
+    { reg: "South", prod: "Widget" }, // Fail Reg
+    { reg: "North", prod: "Gadget" }, // Fail Prod
+    { reg: "North", prod: "Widget" }, // Pass Both
+    { reg: "East",  prod: "Gadget" }  // Fail Both
+  ];
+
+  const table = document.getElementById('dataTable');
+  const dispCount = document.getElementById('dispCount');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 0.5fr;">
+        <div>Region</div> <div>Product</div> <div>Check</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 0.5fr;">
+          <div id="c1-${i}">${d.reg}</div>
+          <div id="c2-${i}">${d.prod}</div>
+          <div id="dots-${i}" style="display:flex; align-items:center;">
+            <span class="status-dot" id="dot1-${i}"></span>
+            <span class="status-dot" id="dot2-${i}" style="display:none"></span>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear UI
+    dispCount.textContent = "0";
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    // Reset Rows
+    document.querySelectorAll('.table-row').forEach(r => {
+        r.style.opacity = "1";
+        r.classList.remove('row-highlight', 'row-match');
+    });
+    document.querySelectorAll('.status-dot').forEach(d => {
+        d.className = 'status-dot';
+        d.style.display = 'none'; // Hide 2nd dot by default
+    });
+    // Show 1st dot always
+    document.querySelectorAll('[id^="dot1-"]').forEach(d => d.style.display = "inline-block");
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  // --- LOGIC: COUNTIF (Single) ---
+  async function runIf() {
+    // UI Setup
+    document.getElementById('syntax-if').style.display = 'block';
+    document.getElementById('syntax-ifs').style.display = 'none';
+    
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- Count if Region is "North"</span>`;
+    document.getElementById('line2').innerHTML = 
+      `=<span class="fn">COUNTIF</span>( <span class="col">A2:A6</span>, <span class="str">"North"</span> )`;
+    document.getElementById('line2').classList.add('active');
+
+    App.updateText("Counting matches for Region = 'North'...");
+    await App.speak("I am counting how many times North appears in the region list.");
+    
+    if(shouldStop) return;
+
+    let count = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      row.classList.add('row-highlight');
+      
+      await new Promise(r => setTimeout(r, 250));
+
+      if (data[i].reg === "North") {
+        // MATCH
+        document.getElementById(`dot1-${i}`).classList.add('dot-pass');
+        row.classList.add('row-match');
+        
+        count++;
+        updateCounter(count);
+        
+        App.updateText(`Row ${i+1}: Match!`);
+        await new Promise(r => setTimeout(r, 400));
+
+      } else {
+        // FAIL
+        document.getElementById(`dot1-${i}`).classList.add('dot-fail');
+        row.style.opacity = "0.4";
+      }
+      row.classList.remove('row-highlight');
+    }
+
+    finish(count);
+  }
+
+  // --- LOGIC: COUNTIFS (Multi) ---
+  async function runIfs() {
+    // UI Setup
+    document.getElementById('syntax-if').style.display = 'none';
+    document.getElementById('syntax-ifs').style.display = 'block';
+    
+    // Show second dot
+    document.querySelectorAll('[id^="dot2-"]').forEach(d => d.style.display = "inline-block");
+    
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- Count if "North" AND "Widget"</span>`;
+    document.getElementById('line2').innerHTML = 
+      `=<span class="fn">COUNTIFS</span>( <span class="col">A2:A6</span>, <span class="str">"North"</span>, <span class="col">B2:B6</span>, <span class="str">"Widget"</span> )`;
+    document.getElementById('line2').classList.add('active');
+
+    App.updateText("Counting: Region='North' AND Product='Widget'...");
+    await App.speak("Now checking two rules. It must be North, AND it must be a Widget.");
+    
+    if(shouldStop) return;
+
+    let count = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      row.classList.add('row-highlight');
+      
+      // Check 1: Region
+      await new Promise(r => setTimeout(r, 200));
+      if (data[i].reg === "North") {
+         document.getElementById(`dot1-${i}`).classList.add('dot-pass');
+      } else {
+         document.getElementById(`dot1-${i}`).classList.add('dot-fail');
+         failRow(i, row); continue;
+      }
+
+      // Check 2: Product
+      await new Promise(r => setTimeout(r, 200));
+      if (data[i].prod === "Widget") {
+         document.getElementById(`dot2-${i}`).classList.add('dot-pass');
+         row.classList.add('row-match');
+         
+         count++;
+         updateCounter(count);
+         
+         App.updateText(`Row ${i+1}: Both Match! Counting it.`);
+         await new Promise(r => setTimeout(r, 400));
+
+      } else {
+         document.getElementById(`dot2-${i}`).classList.add('dot-fail');
+         failRow(i, row);
+      }
+      
+      row.classList.remove('row-highlight');
+    }
+
+    finish(count);
+  }
+
+  function failRow(i, row) {
+    row.style.opacity = "0.4";
+    row.classList.remove('row-highlight');
+  }
+
+  function updateCounter(val) {
+    dispCount.textContent = val;
+    dispCount.classList.add('pulse-count');
+    setTimeout(() => dispCount.classList.remove('pulse-count'), 300);
+  }
+
+  async function finish(count) {
+    App.updateText(`Done! Found ${count} matching items.`);
+    await App.speak(`Finished. I found ${count} items.`);
+    
+    totalBubble.textContent = count;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnIf').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runIf();
+    isRunning = false;
+  });
+
+  document.getElementById('btnIfs').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runIfs();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

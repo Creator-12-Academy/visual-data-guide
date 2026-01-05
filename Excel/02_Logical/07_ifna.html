@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: IFNA Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Status Badges */
+  .badge-na {
+    background: #f59e0b; color: #000; font-weight: bold;
+    padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.4);
+  }
+  .badge-err {
+    background: #ef4444; color: #fff; font-weight: bold;
+    padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;
+    animation: shake 0.4s ease-in-out;
+  }
+  .badge-ok {
+    background: #4ade80; color: #000; font-weight: bold;
+    padding: 2px 6px; border-radius: 4px; font-size: 0.8rem;
+  }
+
+  /* Scan Line Animation */
+  .scan-row {
+    border: 2px solid var(--accent);
+    background: rgba(34, 197, 94, 0.1);
+    transition: all 0.2s;
+  }
+
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+
+  /* Filter Net Animation */
+  .net-catcher {
+    position: absolute; right: 10px; font-size: 1.5rem; opacity: 0;
+    transition: all 0.3s; transform: scale(0.5);
+  }
+  .net-active { opacity: 1; transform: scale(1.2); }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🎯 Targeted Error Handler</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Handle missing lookups gracefully.<br>
+      <strong>IFNA</strong> catches <code>#N/A</code> (Not Found) but ignores other errors (like <code>#DIV/0!</code>), alerting you to calculation issues.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1rem;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ Run Lookup</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">IFNA</span>(value, value_if_na)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Value:</strong> The formula to check (usually a VLOOKUP).</li>
+          <li><strong>2. If N/A:</strong> What to display if the item isn't found.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Catch Missing Items, Ignore Real Errors</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">IFNA</span>( <span class="fn">VLOOKUP</span>(...), <span class="str">"Not Found"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+        <div class="net-catcher" id="netIcon">🥅</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Why use IFNA vs IFERROR?</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">✅ Precision</div>
+          <div class="mistake-desc">
+            Use <strong>IFNA</strong> when you expect data to be missing.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Safety</div>
+          <div class="mistake-desc">
+            Use <strong>IFERROR</strong> only if you want to hide crashes (like #REF!). IFNA lets crashes through so you can fix them.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("IFNA Function", "../../");
+
+  // Data simulates lookup results
+  const lookups = [
+    { search: "Apple",  val: "$10", type: "ok" },
+    { search: "Mango",  val: "#N/A", type: "na" },      // Missing item
+    { search: "Banana", val: "$5",  type: "ok" },
+    { search: "Error!", val: "#DIV/0!", type: "err" }   // Calc error in source
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const netIcon = document.getElementById('netIcon');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1.5fr;">
+        <div>Search For</div> <div>VLOOKUP</div> <div>IFNA Result</div>
+      </div>
+    `;
+    lookups.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1.5fr;">
+          <div>${d.search}</div>
+          <div id="raw-${i}" style="font-family:monospace; color:var(--text-dim);">-</div>
+          <div id="res-${i}" style="display:flex; align-items:center;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.textContent = "-";
+      totalBubble.classList.remove('show');
+      netIcon.classList.remove('net-active');
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  // --- LOGIC: IFNA ---
+  async function runLogic() {
+    document.getElementById('line2').classList.add('active');
+    App.updateText("Starting Lookup Safety Check...");
+    await App.speak("Let's process the list. IFNA will catch missing items, but let real errors pass through.");
+    
+    if(shouldStop) return;
+
+    for (let i = 0; i < lookups.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const rawCell = document.getElementById(`raw-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      const item = lookups[i];
+      
+      row.classList.add('scan-row');
+      
+      // 1. Reveal VLOOKUP Result
+      rawCell.textContent = item.val;
+      if (item.type === 'na') rawCell.style.color = "#facc15";
+      if (item.type === 'err') rawCell.style.color = "#ef4444";
+      if (item.type === 'ok') rawCell.style.color = "#fff";
+
+      App.updateText(`Checking: "${item.search}" returned ${item.val}`);
+      await new Promise(r => setTimeout(r, 500));
+
+      // 2. Evaluate IFNA
+      if (item.type === 'ok') {
+        // NORMAL
+        resCell.innerHTML = `<span class="badge-ok">${item.val}</span>`;
+        totalBubble.textContent = item.val;
+        totalBubble.style.background = "var(--accent)";
+        
+      } else if (item.type === 'na') {
+        // N/A DETECTED -> CATCH IT
+        netIcon.classList.add('net-active'); // Show Net
+        App.updateText(`🥅 Caught #N/A! Handling cleanly.`);
+        await App.speak(`Caught an N A error. The item is missing, so we show Not Found.`);
+        
+        await new Promise(r => setTimeout(r, 500));
+        
+        resCell.innerHTML = `<span class="badge-na">Not Found</span>`;
+        totalBubble.textContent = "Not Found";
+        totalBubble.style.background = "#f59e0b";
+        
+        await new Promise(r => setTimeout(r, 400));
+        netIcon.classList.remove('net-active');
+
+      } else {
+        // OTHER ERROR -> PASS THROUGH
+        App.updateText(`⚠️ Critical Error ${item.val}! IFNA ignores this.`);
+        await App.speak(`Warning! This is a divide by zero error. IFNA ignores it so you can fix the root cause.`);
+        
+        resCell.innerHTML = `<span class="badge-err">${item.val}</span>`;
+        totalBubble.textContent = item.val;
+        totalBubble.style.background = "#ef4444";
+      }
+      
+      totalBubble.classList.add('show');
+      await new Promise(r => setTimeout(r, 800));
+      
+      row.classList.remove('scan-row');
+      totalBubble.classList.remove('show');
+    }
+
+    App.updateText("Done.");
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runLogic();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

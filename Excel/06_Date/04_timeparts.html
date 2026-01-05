@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: HOUR, MINUTE, SECOND</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Digital Clock Container */
+  .clock-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 250px;
+  }
+
+  /* Source Time Display */
+  .source-time {
+    background: #000; color: #4ade80; border: 4px solid #334155;
+    padding: 10px 20px; border-radius: 8px; font-family: 'Courier New', monospace;
+    font-size: 2.5rem; font-weight: bold; text-shadow: 0 0 10px rgba(74, 222, 128, 0.5);
+    letter-spacing: 4px; position: relative;
+  }
+
+  /* Component Boxes */
+  .parts-row {
+    display: flex; gap: 15px; width: 100%; justify-content: center;
+  }
+  .part-box {
+    background: #334155; border: 1px solid var(--border);
+    border-radius: 8px; width: 80px; height: 100px;
+    display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+    padding: 10px; position: relative;
+  }
+  .part-label { font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; }
+  .part-val { 
+    font-size: 2rem; font-weight: bold; color: #fff; font-family: monospace; 
+    opacity: 0; transform: scale(0.5); transition: all 0.4s; margin-bottom: 10px;
+  }
+  
+  /* Active State */
+  .active-part { border-color: var(--accent); box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); }
+  .active-part .part-val { opacity: 1; transform: scale(1); }
+
+  /* Selection Highlight in Source */
+  .highlight-span {
+    color: #fff; background: var(--accent); border-radius: 4px; padding: 0 2px;
+    text-shadow: none; box-shadow: 0 0 10px var(--accent);
+  }
+
+  /* PM Indicator */
+  .pm-light {
+    width: 8px; height: 8px; border-radius: 50%; background: #333;
+    position: absolute; top: 10px; right: 10px;
+  }
+  .pm-on { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
+  .pm-label { 
+    position: absolute; top: 10px; right: 22px; font-size: 0.6rem; color: #555; font-weight:bold; 
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>⏱️ Time Deconstructor</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Break a timestamp into parts.<br>
+      Note: Excel stores time as a decimal (0.5 = Noon). These functions extract the readable integers.
+    </p>
+
+    <div class="clock-stage">
+      
+      <div class="source-time" id="sourceDisplay">
+        <span id="srcH">18</span>:<span id="srcM">45</span>:<span id="srcS">30</span>
+        <div class="pm-label">PM</div>
+        <div class="pm-light pm-on"></div>
+      </div>
+
+      <div class="parts-row">
+        <div class="part-box" id="boxH">
+          <div class="part-label">HOUR()</div>
+          <div class="part-val" id="resH">18</div>
+        </div>
+        <div class="part-box" id="boxM">
+          <div class="part-label">MINUTE()</div>
+          <div class="part-val" id="resM">45</div>
+        </div>
+        <div class="part-box" id="boxS">
+          <div class="part-label">SECOND()</div>
+          <div class="part-val" id="resS">30</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">⚡ Extract Parts</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">HOUR</span>(serial_number)
+        </div>
+        <div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem;">
+          Returns hour (0-23). <strong>Note:</strong> 6 PM returns 18.
+        </div>
+      </div>
+
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">MINUTE</span>(serial_number)
+        </div>
+        <div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem;">
+          Returns minute (0-59).
+        </div>
+      </div>
+
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">SECOND</span>(serial_number)
+        </div>
+        <div style="font-size:0.85rem; color:var(--text-dim);">
+          Returns second (0-59).
+        </div>
+      </div>
+
+      <div id="codeDisplay" class="codeArea" style="margin-top:1rem;">
+        <div class="codeLine" id="line1"><span class="cmt">-- Extracting...</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">HOUR</span>(<span class="col">A1</span>), <span class="fn">MINUTE</span>(<span class="col">A1</span>)...
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Output:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 12 vs 24 Hour</div>
+          <div class="mistake-desc">
+            <code>HOUR()</code> always returns 24-hour format. If you want "6" instead of "18", you need to use logic: <code>=IF(HOUR(A1)>12, HOUR(A1)-12, HOUR(A1))</code>.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Decimal Precision</div>
+          <div class="mistake-desc">
+            Since Excel stores time as decimals, floating point errors can sometimes make a Second appear as 59 instead of 00. Rounding usually fixes this.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("HOUR, MINUTE, SECOND", "../../");
+
+  // Elements
+  const srcH = document.getElementById('srcH');
+  const srcM = document.getElementById('srcM');
+  const srcS = document.getElementById('srcS');
+  
+  const boxH = document.getElementById('boxH');
+  const boxM = document.getElementById('boxM');
+  const boxS = document.getElementById('boxS');
+  
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    [srcH, srcM, srcS].forEach(el => el.className = '');
+    [boxH, boxM, boxS].forEach(el => el.classList.remove('active-part'));
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runExtract() {
+    document.getElementById('line2').classList.add('active');
+    
+    // Values
+    const h = "18";
+    const m = "45";
+    const s = "30";
+
+    App.updateText("Deconstructing Time Serial...");
+    await App.speak("Let's break down the time.");
+    
+    if(shouldStop) return;
+
+    // 1. HOUR
+    App.updateText("Extracting Hour (24h format)...");
+    srcH.className = 'highlight-span';
+    
+    await new Promise(r => setTimeout(r, 500));
+    boxH.classList.add('active-part');
+    await App.speak(`The hour is 18. Note that it is 24-hour format.`);
+    
+    await new Promise(r => setTimeout(r, 800));
+    srcH.className = ''; // Remove highlight
+
+    if(shouldStop) return;
+
+    // 2. MINUTE
+    App.updateText("Extracting Minute...");
+    srcM.className = 'highlight-span';
+    
+    await new Promise(r => setTimeout(r, 500));
+    boxM.classList.add('active-part');
+    await App.speak(`The minute is 45.`);
+
+    await new Promise(r => setTimeout(r, 800));
+    srcM.className = '';
+
+    if(shouldStop) return;
+
+    // 3. SECOND
+    App.updateText("Extracting Second...");
+    srcS.className = 'highlight-span';
+    
+    await new Promise(r => setTimeout(r, 500));
+    boxS.classList.add('active-part');
+    await App.speak(`The second is 30.`);
+    
+    await new Promise(r => setTimeout(r, 800));
+    srcS.className = '';
+
+    // Finish
+    App.updateText("Extraction Complete.");
+    totalBubble.textContent = "Done";
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runExtract();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

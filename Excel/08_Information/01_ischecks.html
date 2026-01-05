@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: ISNUMBER & ISTEXT</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --pass-green: #4ade80;
+    --fail-red: #f87171;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .scan-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 300px; position: relative;
+    overflow: hidden;
+  }
+
+  /* The Conveyor Belt */
+  .conveyor {
+    width: 100%; height: 4px; background: var(--border);
+    position: relative; margin-top: 50px;
+  }
+
+  /* The Item (Data Block) */
+  .data-block {
+    width: 80px; height: 80px; background: #fff; color: #000;
+    border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 1.2rem; font-family: monospace;
+    position: absolute; bottom: 0; left: 10%; /* Start pos */
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    transition: left 1s cubic-bezier(0.45, 0.05, 0.55, 0.95);
+    z-index: 10;
+  }
+  .block-text { border: 2px dashed #000; } /* Visual cue for text */
+  .block-num { border: 2px solid var(--accent); color: var(--accent); background: #0f172a; }
+
+  /* The Scanner Gate */
+  .scanner-gate {
+    position: absolute; left: 50%; transform: translateX(-50%); bottom: -20px;
+    width: 140px; height: 160px; border: 4px solid var(--text-dim);
+    border-bottom: none; border-radius: 12px 12px 0 0;
+    display: flex; flex-direction: column; align-items: center; padding-top: 10px;
+    background: rgba(30, 41, 59, 0.8); z-index: 5;
+  }
+  .scan-beam {
+    width: 100%; height: 2px; background: var(--accent);
+    box-shadow: 0 0 15px var(--accent);
+    animation: scanMove 1s infinite linear; opacity: 0.5;
+  }
+  @keyframes scanMove { 0% { transform: translateY(0); } 50% { transform: translateY(100px); } 100% { transform: translateY(0); } }
+
+  /* Indicator Lights */
+  .indicator-panel {
+    display: flex; gap: 20px; margin-top: 10px;
+  }
+  .indicator {
+    background: #0f172a; padding: 10px; border-radius: 6px;
+    border: 2px solid var(--border); text-align: center; width: 100px;
+    transition: all 0.3s;
+  }
+  .ind-label { font-size: 0.6rem; color: var(--text-dim); margin-bottom: 5px; }
+  .ind-val { font-weight: bold; font-family: monospace; font-size: 1rem; color: #666; }
+
+  /* Active States */
+  .ind-true { border-color: var(--pass-green); background: rgba(74, 222, 128, 0.1); }
+  .ind-true .ind-val { color: var(--pass-green); text-shadow: 0 0 10px var(--pass-green); }
+  
+  .ind-false { border-color: var(--fail-red); background: rgba(248, 113, 113, 0.1); }
+  .ind-false .ind-val { color: var(--fail-red); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔍 The Data Type Scanner</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Check the data type of a cell.<br>
+      <strong>ISNUMBER:</strong> Returns TRUE for real numbers.<br>
+      <strong>ISTEXT:</strong> Returns TRUE for any text string.
+    </p>
+
+    <div class="scan-stage">
+      
+      <div class="indicator-panel">
+        <div class="indicator" id="indNum">
+          <div class="ind-label">ISNUMBER()</div>
+          <div class="ind-val" id="valNum">-</div>
+        </div>
+        <div class="indicator" id="indText">
+          <div class="ind-label">ISTEXT()</div>
+          <div class="ind-val" id="valText">-</div>
+        </div>
+      </div>
+
+      <div class="conveyor">
+        <div class="scanner-gate"><div class="scan-beam"></div></div>
+        <div class="data-block" id="block">?</div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnReal">🔢 Real Number (100)</button>
+        <button class="action" id="btnString">🔤 Text ("ABC")</button>
+        <button class="action" id="btnFake">⚠️ Text Number ("100")</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">ISNUMBER</span>(value)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Check:</strong> Is it a valid numeric value? (Includes Dates & Percentages).</li>
+          <li><strong>Result:</strong> TRUE or FALSE.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" style="margin-top:1rem;">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">ISTEXT</span>(value)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Check:</strong> Is it a text string?</li>
+          <li><strong>Includes:</strong> "Text Numbers", Spaces, Symbols.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea" style="margin-top:1rem;">
+        <div class="codeLine" id="line1"><span class="cmt">-- Check Cell A1</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">ISNUMBER</span>( <span class="val" id="codeVal">A1</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Logic Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Numbers as Text</div>
+          <div class="mistake-desc">
+            A cell containing <code>"123"</code> (note the quotes or green triangle) is <strong>Text</strong>. 
+            <code>ISNUMBER</code> will return <strong>FALSE</strong>. This breaks math formulas like SUM.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">✅ Fixing It</div>
+          <div class="mistake-desc">
+            Use the <strong>VALUE</strong> function or multiply by 1 (<code>A1*1</code>) to force text-numbers back into real numbers.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("ISNUMBER & ISTEXT", "../../");
+
+  const block = document.getElementById('block');
+  const indNum = document.getElementById('indNum');
+  const indText = document.getElementById('indText');
+  const valNum = document.getElementById('valNum');
+  const valText = document.getElementById('valText');
+  const totalBubble = document.getElementById('totalBubble');
+  const codeVal = document.getElementById('codeVal');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Block
+    block.style.left = "10%";
+    block.textContent = "?";
+    block.className = "data-block";
+    
+    // Reset Indicators
+    indNum.className = "indicator"; valNum.textContent = "-";
+    indText.className = "indicator"; valText.textContent = "-";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runScan(val, type, label) {
+    // Setup Visuals
+    if (type === 'num') {
+        block.className = 'data-block block-num';
+        block.textContent = val;
+        codeVal.textContent = val;
+    } else if (type === 'text') {
+        block.className = 'data-block block-text';
+        block.textContent = `"${val}"`;
+        codeVal.textContent = `"${val}"`;
+    } else { // Fake Number
+        block.className = 'data-block block-text'; // Visual text
+        block.style.color = "#facc15"; // Warning yellow text
+        block.textContent = `"${val}"`;
+        codeVal.textContent = `"${val}"`;
+    }
+
+    document.getElementById('line2').classList.add('active');
+    App.updateText(`Scanning value: ${label}...`);
+    await App.speak(`Scanning the value.`);
+    
+    if(shouldStop) return;
+
+    // 1. Move to Scanner
+    block.style.left = "50%"; // Center
+    block.style.transform = "translateX(-50%)"; // Center alignment
+    
+    await new Promise(r => setTimeout(r, 1000));
+
+    // 2. Perform Checks
+    let isNum = (type === 'num');
+    let isTxt = (type === 'text' || type === 'fake'); // Fake nums are text
+
+    // Update ISNUMBER
+    if (isNum) {
+        indNum.classList.add('ind-true');
+        valNum.textContent = "TRUE";
+    } else {
+        indNum.classList.add('ind-false');
+        valNum.textContent = "FALSE";
+    }
+    
+    await new Promise(r => setTimeout(r, 400));
+
+    // Update ISTEXT
+    if (isTxt) {
+        indText.classList.add('ind-true');
+        valText.textContent = "TRUE";
+    } else {
+        indText.classList.add('ind-false');
+        valText.textContent = "FALSE";
+    }
+
+    // 3. Move Out
+    await new Promise(r => setTimeout(r, 600));
+    block.style.left = "90%";
+    
+    // Result
+    let resultMsg = "";
+    if (type === 'fake') {
+        resultMsg = "It looks like a number, but it's Text!";
+        totalBubble.style.background = "#facc15"; // Warning
+        totalBubble.style.color = "#000";
+    } else if (isNum) {
+        resultMsg = "Valid Number.";
+        totalBubble.style.background = "var(--pass-green)";
+        totalBubble.style.color = "#000";
+    } else {
+        resultMsg = "Text String.";
+        totalBubble.style.background = "var(--accent)";
+        totalBubble.style.color = "#fff";
+    }
+
+    App.updateText(resultMsg);
+    await App.speak(resultMsg);
+    
+    totalBubble.textContent = isNum ? "NUMBER" : "TEXT";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnReal').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runScan(100, 'num', "Real Number");
+    isRunning = false;
+  });
+
+  document.getElementById('btnString').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runScan("ABC", 'text', "Text String");
+    isRunning = false;
+  });
+
+  document.getElementById('btnFake').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runScan(100, 'fake', "Number Stored as Text");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

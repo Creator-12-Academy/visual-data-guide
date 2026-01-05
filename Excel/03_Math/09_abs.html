@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: ABS Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Number Line Container */
+  .number-line {
+    position: relative; height: 80px; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 2rem; display: flex; align-items: center;
+    overflow: hidden;
+  }
+
+  /* Center Zero Line */
+  .zero-mark {
+    position: absolute; left: 50%; height: 100%; width: 2px;
+    background: #fff; opacity: 0.3;
+  }
+  .zero-label {
+    position: absolute; left: 50%; bottom: 5px; transform: translateX(-50%);
+    color: var(--text-dim); font-size: 0.8rem;
+  }
+
+  /* Moving Ball */
+  .abs-ball {
+    position: absolute; width: 40px; height: 40px; border-radius: 50%;
+    background: #ef4444; color: #fff; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.4);
+    left: 50%; /* Start at 0 */
+    transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.3s;
+    z-index: 10;
+  }
+  .abs-ball.positive {
+    background: #4ade80; color: #000;
+    box-shadow: 0 4px 10px rgba(74, 222, 128, 0.4);
+  }
+
+  /* Mirror Effect */
+  .mirror-wall {
+    position: absolute; left: 50%; height: 100%; width: 100px;
+    background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
+    pointer-events: none; opacity: 0; transition: opacity 0.3s;
+  }
+  .mirror-active { opacity: 1; }
+
+  /* Calculation Row */
+  .calc-display {
+    display: flex; gap: 10px; align-items: center; justify-content: center;
+    font-family: monospace; font-size: 1.2rem; margin-bottom: 1rem;
+  }
+  .minus-sign { color: #ef4444; font-weight: bold; display: inline-block; transition: all 0.5s; }
+  .poof { opacity: 0; transform: scale(2); filter: blur(4px); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>↔️ Absolute Distance</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find the Deviation (Difference) from the target.<br>
+      <strong>ABS</strong> converts negative numbers to positive. Distance is never negative.
+    </p>
+
+    <div class="number-line" id="stage">
+      <div class="zero-mark"></div>
+      <div class="zero-label">0</div>
+      <div class="mirror-wall" id="mirror"></div>
+      <div class="abs-ball" id="ball">0</div>
+    </div>
+
+    <div class="calc-display" id="mathRow">
+      <span style="color:var(--text-dim)">Diff: </span>
+      <span id="rawVal">-50</span>
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnNeg">📉 Low (-50)</button>
+        <button class="action" id="btnPos">📈 High (+50)</button>
+        <button class="action" id="btnDiff">🔢 Formula</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">ABS</span>(number)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Number:</strong> The value to convert.</li>
+          <li><strong>Effect:</strong> Removes the (-) sign. Positive numbers stay positive.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Calculate Variance (Always Positive)</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">ABS</span>( <span class="val" id="codeVal">-50</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Don't use for Banking</div>
+          <div class="mistake-desc">In finance, negative often means "Credit" or "Spending". Removing the sign might mess up your totals (Summing withdrawals as deposits).</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("ABS Function", "../../");
+
+  const ball = document.getElementById('ball');
+  const mirror = document.getElementById('mirror');
+  const totalBubble = document.getElementById('totalBubble');
+  const rawValEl = document.getElementById('rawVal');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset positions
+    ball.style.left = "50%";
+    ball.textContent = "0";
+    ball.className = "abs-ball";
+    mirror.className = "mirror-wall";
+    rawValEl.innerHTML = "0";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC: ABS ---
+  async function runAbs(val, isFormulaMode = false) {
+    document.getElementById('line2').classList.add('active');
+    
+    let displayVal = val;
+    let formulaText = val;
+    
+    if (isFormulaMode) {
+        // Demonstrate ABS(Actual - Plan)
+        // Let's say Actual=80, Plan=100. Diff = -20.
+        displayVal = -20;
+        formulaText = "80-100";
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Variance: Actual (80) - Plan (100)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">ABS</span>( <span class="val">80-100</span> )`;
+    } else {
+        document.getElementById('codeVal').textContent = val;
+    }
+
+    // 1. Initial State
+    const maxRange = 100;
+    // Map -100 to 0%, 0 to 50%, 100 to 100%
+    // Formula: 50 + (val / max * 50)
+    let startPos = 50 + (displayVal / maxRange * 40); // 40 scaling to keep padding
+    
+    ball.style.left = `${startPos}%`;
+    ball.textContent = Math.abs(displayVal);
+    ball.className = displayVal < 0 ? "abs-ball" : "abs-ball positive";
+    
+    rawValEl.innerHTML = displayVal < 0 
+        ? `<span class="minus-sign">-</span>${Math.abs(displayVal)}`
+        : `+${displayVal}`;
+
+    App.updateText(`Input Value: ${displayVal}`);
+    await App.speak(`The starting value is ${displayVal}.`);
+    
+    if(shouldStop) return;
+
+    // 2. Check Negative
+    if (displayVal < 0) {
+        App.updateText("Negative detected. Applying ABS...");
+        await App.speak("It is negative. ABS needs to fix that.");
+        
+        // Show Mirror
+        mirror.classList.add('mirror-active');
+        await new Promise(r => setTimeout(r, 600));
+        
+        // Animate Flip
+        const endPos = 50 + (Math.abs(displayVal) / maxRange * 40);
+        ball.style.left = `${endPos}%`;
+        ball.className = "abs-ball positive"; // Turn Green
+        
+        // Animate Math Text
+        const minus = document.querySelector('.minus-sign');
+        if(minus) minus.classList.add('poof'); // Disappear effect
+        
+        App.updateText(`Flipping to Positive: ${Math.abs(displayVal)}`);
+        await App.speak(`It strips the negative sign. Now it is positive ${Math.abs(displayVal)}.`);
+        
+        await new Promise(r => setTimeout(r, 800));
+        mirror.classList.remove('mirror-active');
+
+    } else {
+        // Positive
+        App.updateText("Already Positive. No change needed.");
+        await App.speak("It is already positive. ABS does nothing.");
+        await new Promise(r => setTimeout(r, 500));
+    }
+
+    // Result
+    totalBubble.textContent = Math.abs(displayVal);
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    App.updateText(`Final Result: ${Math.abs(displayVal)}`);
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnNeg').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runAbs(-50);
+    isRunning = false;
+  });
+
+  document.getElementById('btnPos').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runAbs(50);
+    isRunning = false;
+  });
+
+  document.getElementById('btnDiff').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runAbs(-20, true); // Formula Mode
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

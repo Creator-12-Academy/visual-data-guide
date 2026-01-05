@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: TEXT Function (Dates)</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Format Stage */
+  .format-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.5rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 250px; position: relative;
+  }
+
+  /* Input Card (Raw Serial) */
+  .data-card {
+    background: #334155; padding: 1rem 2rem; border-radius: 8px;
+    font-family: monospace; font-size: 1.2rem; font-weight: bold;
+    min-width: 180px; text-align: center; color: #fff;
+    border: 2px solid var(--border); position: relative;
+  }
+  .card-label {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    font-size: 0.7rem; background: var(--bg-card); padding: 0 5px;
+    color: var(--text-dim); text-transform: uppercase;
+  }
+
+  /* Format Code Bubble */
+  .fmt-bubble {
+    border: 2px dashed var(--accent); padding: 0.5rem 1rem;
+    border-radius: 20px; color: var(--accent); font-family: monospace;
+    font-weight: bold; font-size: 1.1rem; opacity: 0.5; transition: all 0.3s;
+  }
+  .fmt-active {
+    opacity: 1; transform: scale(1.1); background: rgba(34, 197, 94, 0.1);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+  }
+
+  /* Output Card */
+  .result-card {
+    background: #0f172a; padding: 1rem 2rem; border-radius: 8px;
+    font-family: monospace; font-size: 1.5rem; font-weight: bold;
+    min-width: 180px; text-align: center; color: #fff;
+    border: 2px solid var(--border); transition: all 0.5s;
+  }
+  
+  /* Morph Animation */
+  .morphing {
+    animation: flashGreen 0.6s ease-in-out;
+  }
+  @keyframes flashGreen {
+    0% { transform: scale(1); border-color: var(--border); }
+    50% { transform: scale(1.1); border-color: #facc15; color: #facc15; }
+    100% { transform: scale(1); border-color: var(--border); color: #fff; }
+  }
+
+  /* Cheat Sheet Grid */
+  .cheat-sheet {
+    display: grid; grid-template-columns: auto 1fr; gap: 8px;
+    background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;
+    font-size: 0.85rem; margin-top: 1rem;
+  }
+  .cs-code { font-family: monospace; color: var(--accent); font-weight: bold; }
+  .cs-desc { color: var(--text-dim); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🎨 Date Formatter</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Turn a date serial number into readable text.<br>
+      <strong>TEXT</strong> creates a <em>String</em>, meaning you can concatenate it with other words easily.
+    </p>
+
+    <div class="format-stage">
+      
+      <div class="data-card">
+        <span class="card-label">Raw Serial (Oct 25)</span>
+        <span id="rawVal">45955</span>
+      </div>
+
+      <div style="font-size:1.5rem; color:var(--text-dim);">⬇</div>
+
+      <div class="fmt-bubble" id="fmtCode">"dd-mmm-yy"</div>
+
+      <div style="font-size:1.5rem; color:var(--text-dim);">⬇</div>
+
+      <div class="result-card" id="resVal">-</div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnDay">📅 Day Name ("dddd")</button>
+        <button class="action" id="btnMon">🗓️ Month Year ("mmm-yy")</button>
+        <button class="action" id="btnFull">📝 Verbose ("d mmmm, yyyy")</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">TEXT</span>(value, format_text)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Value:</strong> The date serial number (or cell reference).</li>
+          <li><strong>2. Format Text:</strong> The pattern string (e.g., "dd/mm/yy").</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Format Date as Text</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">TEXT</span>( <span class="val">45955</span>, <span class="str" id="codeFmt">"dd-mmm-yy"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Text:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">ℹ️ Date Codes Cheat Sheet</h3>
+      <div class="cheat-sheet">
+        <div class="cs-code">d</div> <div class="cs-desc">Day number (1-31)</div>
+        <div class="cs-code">dd</div> <div class="cs-desc">Day w/ zero (01-31)</div>
+        <div class="cs-code">ddd</div> <div class="cs-desc">Short Day (Mon)</div>
+        <div class="cs-code">dddd</div> <div class="cs-desc">Full Day (Monday)</div>
+        <div class="cs-code">mmm</div> <div class="cs-desc">Short Month (Oct)</div>
+        <div class="cs-code">yyyy</div> <div class="cs-desc">Full Year (2025)</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("TEXT (Dates)", "../../");
+
+  // Serial 45955 = Oct 25, 2025 (Saturday)
+  const serialVal = 45955; 
+  const baseDate = new Date(2025, 9, 25); // Oct is index 9
+
+  const rawVal = document.getElementById('rawVal');
+  const fmtCode = document.getElementById('fmtCode');
+  const resVal = document.getElementById('resVal');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset visuals
+    fmtCode.textContent = '"-"';
+    fmtCode.className = 'fmt-bubble';
+    resVal.textContent = "-";
+    resVal.classList.remove('morphing');
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fmt, desc) {
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- ${desc}</span>`;
+    document.getElementById('codeFmt').textContent = `"${fmt}"`;
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runFormat(fmt, desc) {
+    updateUI(fmt, desc);
+    
+    fmtCode.textContent = `"${fmt}"`;
+    App.updateText(`Applying format: "${fmt}" to serial ${serialVal}...`);
+    await App.speak(`Applying the format code.`);
+    
+    if(shouldStop) return;
+
+    // 1. Activate Code
+    fmtCode.classList.add('fmt-active');
+    await new Promise(r => setTimeout(r, 600));
+
+    // 2. Calculate Result (Simulated)
+    let resultStr = "";
+    if (fmt === "dddd") resultStr = "Saturday";
+    else if (fmt === "mmm-yy") resultStr = "Oct-25";
+    else if (fmt === "d mmmm, yyyy") resultStr = "25 October, 2025";
+    
+    // 3. Transform
+    resVal.classList.add('morphing');
+    resVal.textContent = resultStr;
+    
+    App.updateText(`Transformed! Result is text.`);
+    await new Promise(r => setTimeout(r, 600));
+
+    totalBubble.textContent = `"${resultStr}"`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    App.updateText(`Result: "${resultStr}"`);
+    await App.speak(`The result is ${resultStr}.`);
+    
+    document.getElementById('line2').classList.remove('active');
+    fmtCode.classList.remove('fmt-active');
+    setTimeout(() => resVal.classList.remove('morphing'), 500);
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnDay').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runFormat("dddd", "Show Full Day Name");
+    isRunning = false;
+  });
+
+  document.getElementById('btnMon').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runFormat("mmm-yy", "Show Month & Year");
+    isRunning = false;
+  });
+
+  document.getElementById('btnFull').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runFormat("d mmmm, yyyy", "Verbose Date");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

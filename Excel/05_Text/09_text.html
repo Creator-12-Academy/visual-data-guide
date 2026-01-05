@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: TEXT Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* The Machine Container */
+  .format-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.5rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; position: relative;
+  }
+
+  /* Input/Output Boxes */
+  .data-box {
+    background: #334155; padding: 1rem 2rem; border-radius: 8px;
+    font-family: monospace; font-size: 1.5rem; font-weight: bold;
+    min-width: 150px; text-align: center; color: #fff;
+    border: 2px solid var(--border); transition: all 0.5s;
+    position: relative;
+  }
+  .data-label {
+    position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    font-size: 0.7rem; background: var(--bg-card); padding: 0 5px;
+    color: var(--text-dim); text-transform: uppercase;
+  }
+
+  /* The Format "Lens" */
+  .lens-box {
+    border: 2px dashed var(--accent); padding: 0.8rem 1.5rem;
+    border-radius: 20px; color: var(--accent); font-family: monospace;
+    font-weight: bold; position: relative;
+    opacity: 0.5; transition: all 0.3s;
+  }
+  .lens-active {
+    opacity: 1; transform: scale(1.1);
+    background: rgba(34, 197, 94, 0.1); box-shadow: 0 0 15px rgba(34, 197, 94, 0.2);
+  }
+
+  /* Arrows */
+  .arrow-down { font-size: 1.5rem; color: var(--text-dim); animation: bounceSmall 1s infinite; }
+
+  @keyframes bounceSmall {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(5px); }
+  }
+
+  /* Transformation Animation */
+  .morph-anim { animation: flashTransform 0.6s ease-in-out; }
+  
+  @keyframes flashTransform {
+    0% { transform: scale(1); background: #334155; }
+    50% { transform: scale(1.2); background: #facc15; color: #000; border-color: #fff; }
+    100% { transform: scale(1); background: #334155; color: #fff; }
+  }
+
+  /* Common Formats Grid */
+  .fmt-grid {
+    display: grid; grid-template-columns: auto 1fr; gap: 8px;
+    font-size: 0.85rem; background: rgba(0,0,0,0.2); padding: 10px;
+    border-radius: 6px; margin-top: 1rem;
+  }
+  .fmt-code { font-family: monospace; color: var(--accent); font-weight: bold; }
+  .fmt-desc { color: var(--text-dim); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🎨 The Format Painter</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Convert a raw number into a specific text format.<br>
+      <strong>TEXT</strong> changes the <em>value</em> into a string, unlike Cell Formatting which only changes the <em>appearance</em>.
+    </p>
+
+    <div class="format-stage">
+      
+      <div class="data-box" id="inputBox">
+        <span class="data-label">Raw Number</span>
+        <span id="inVal">-</span>
+      </div>
+
+      <div class="arrow-down">⬇</div>
+
+      <div class="lens-box" id="formatLens">Format Code: "-"</div>
+
+      <div class="arrow-down">⬇</div>
+
+      <div class="data-box" id="outputBox">
+        <span class="data-label">Text String</span>
+        <span id="outVal">-</span>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnDate">📅 Date</button>
+        <button class="action" id="btnPct">Percent (%)</button>
+        <button class="action" id="btnMoney">Currency ($)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">TEXT</span>(value, format_text)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Value:</strong> The number to format (e.g., 45285).</li>
+          <li><strong>2. Format Text:</strong> The pattern code in quotes (e.g., "mmm-yy").</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Apply formatting</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">TEXT</span>( <span class="val" id="codeVal">A1</span>, <span class="str" id="codeFmt">"General"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">ℹ️ Cheat Sheet</h3>
+      <div class="fmt-grid">
+        <div class="fmt-code">0</div> <div class="fmt-desc">Digit (shows 0 if empty)</div>
+        <div class="fmt-code">#</div> <div class="fmt-desc">Digit (hides if empty)</div>
+        <div class="fmt-code">mmm</div> <div class="fmt-desc">Short Month (Jan)</div>
+        <div class="fmt-code">dddd</div> <div class="fmt-desc">Full Day (Monday)</div>
+        <div class="fmt-code">@</div> <div class="fmt-desc">Text Placeholder</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("TEXT Function", "../../");
+
+  const inputBox = document.getElementById('inputBox');
+  const outputBox = document.getElementById('outputBox');
+  const inVal = document.getElementById('inVal');
+  const outVal = document.getElementById('outVal');
+  const lens = document.getElementById('formatLens');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    inVal.textContent = "-";
+    outVal.textContent = "-";
+    lens.textContent = 'Format Code: "-"';
+    lens.className = "lens-box";
+    outputBox.classList.remove('morph-anim');
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(val, fmt, desc) {
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- ${desc}</span>`;
+    document.getElementById('codeVal').textContent = val;
+    document.getElementById('codeFmt').textContent = `"${fmt}"`;
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runFormat(raw, fmt, result, desc) {
+    updateUI(raw, fmt, desc);
+    
+    inVal.textContent = raw;
+    outVal.textContent = "-"; // Reset output
+    lens.textContent = `"${fmt}"`;
+    
+    App.updateText(`Input Raw Value: ${raw}`);
+    await App.speak(`Taking the raw number ${raw}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Activate Lens
+    lens.classList.add('lens-active');
+    App.updateText(`Applying format code: "${fmt}"`);
+    await App.speak(`Applying the format code.`);
+    
+    await new Promise(r => setTimeout(r, 800));
+
+    // 2. Transform Output
+    outputBox.classList.add('morph-anim');
+    outVal.textContent = result;
+    
+    App.updateText(`Transformation Complete!`);
+    await new Promise(r => setTimeout(r, 600)); // wait for anim peak
+    
+    totalBubble.textContent = `"${result}"`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    App.updateText(`Result: "${result}" (This is now Text)`);
+    await App.speak(`The result is ${result}. Note that this is now text, not a number.`);
+    
+    document.getElementById('line2').classList.remove('active');
+    lens.classList.remove('lens-active');
+    setTimeout(() => outputBox.classList.remove('morph-anim'), 500);
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnDate').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 45290 = Dec 25, 2023
+    await runFormat("45290", "dd-mmm-yyyy", "25-Dec-2023", "Format Serial Date");
+    isRunning = false;
+  });
+
+  document.getElementById('btnPct').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 0.753
+    await runFormat("0.753", "0.0%", "75.3%", "Format Percentage");
+    isRunning = false;
+  });
+
+  document.getElementById('btnMoney').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 12500.5
+    await runFormat("12500.5", "$#,##0.00", "$12,500.50", "Format Currency");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

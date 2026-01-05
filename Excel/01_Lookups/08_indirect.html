@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: INDIRECT Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Grid Map */
+  .grid-container {
+    display: grid;
+    grid-template-columns: 30px repeat(3, 1fr); /* Header + 3 Cols */
+    gap: 4px;
+    margin-bottom: 1.5rem;
+  }
+
+  .grid-cell {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    height: 50px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; position: relative;
+    transition: all 0.3s;
+  }
+
+  .col-header { font-weight: bold; color: var(--accent); display:flex; align-items:end; justify-content:center; padding-bottom:5px; }
+  .row-header { font-weight: bold; color: var(--accent); display:flex; align-items:center; justify-content:end; padding-right:8px; }
+
+  /* Specific Styling for the "Pointer" cell */
+  .pointer-cell {
+    border: 2px solid #facc15; /* Yellow */
+    color: #facc15;
+    font-weight: bold;
+    background: rgba(250, 204, 21, 0.1);
+  }
+  .pointer-cell::after { content: '📍'; position: absolute; top:-8px; right:-8px; font-size: 0.8rem; }
+
+  /* Target Highlight */
+  .target-cell {
+    background: var(--accent) !important;
+    color: #000 !important; font-weight: bold;
+    transform: scale(1.1); z-index: 10;
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+  }
+
+  /* Connector Line */
+  .indirect-line {
+    position: absolute; height: 2px; background: #facc15;
+    transform-origin: left center; opacity: 0; z-index: 20;
+    box-shadow: 0 0 5px #facc15; transition: opacity 0.3s;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔗 The Text-to-Ref Converter</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Fetch the value from the address written in cell <strong>A1</strong>.<br>
+      <strong>INDIRECT</strong> reads text (e.g., "C3") and turns it into a valid reference.
+    </p>
+
+    <div id="gridMount" class="grid-container" style="position:relative;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnC3">📍 Go to "C3"</button>
+        <button class="action" id="btnB2">📍 Go to "B2"</button>
+        <button class="action" id="btnError">🚫 "Hello" (Error)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">INDIRECT</span>(ref_text, [a1])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Ref Text:</strong> A text string that <em>looks like</em> an address (e.g., "C3").</li>
+          <li><strong>2. A1:</strong> (Optional) True = A1 style, False = R1C1 style.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Read address in A1, fetch that value</span></div>
+        <div class="codeLine" id="line2">=<span class="fn">INDIRECT</span>( <span class="col" id="refCell">A1</span> )</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Value:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Volatile Function</div>
+          <div class="mistake-desc">INDIRECT recalculates <em>every single time</em> you change ANY cell in the workbook. Use sparingly to avoid slow performance.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 #REF! Error</div>
+          <div class="mistake-desc">If the text inside A1 is not a valid address (e.g., "Hello"), Excel cannot find it and returns #REF!.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="connector" class="indirect-line"></div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("INDIRECT Function", "../../");
+
+  // Grid Data: 3x3
+  // We use 1-based indexing for display (Row 1..3, Col A..C)
+  const gridData = [
+    { pos: "A1", val: "C3", type: "pointer" }, // The Pointer
+    { pos: "B1", val: "—", type: "empty" },
+    { pos: "C1", val: "—", type: "empty" },
+    
+    { pos: "A2", val: "—", type: "empty" },
+    { pos: "B2", val: "🏆 Gold", type: "target" },
+    { pos: "C2", val: "—", type: "empty" },
+    
+    { pos: "A3", val: "—", type: "empty" },
+    { pos: "B3", val: "—", type: "empty" },
+    { pos: "C3", val: "💎 Diamond", type: "target" }
+  ];
+
+  const gridMount = document.getElementById('gridMount');
+  const totalBubble = document.getElementById('totalBubble');
+  const connector = document.getElementById('connector');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initGrid() {
+    gridMount.innerHTML = `<div></div>`; // Top-left corner
+    ['A','B','C'].forEach(c => gridMount.innerHTML += `<div class="col-header">${c}</div>`);
+
+    let rowNum = 1;
+    let colCount = 0;
+    
+    // Start Row 1
+    gridMount.innerHTML += `<div class="row-header">1</div>`;
+
+    gridData.forEach((cell) => {
+      // New Row Logic
+      if(colCount === 3) {
+        rowNum++;
+        colCount = 0;
+        gridMount.innerHTML += `<div class="row-header">${rowNum}</div>`;
+      }
+      
+      let classes = "grid-cell";
+      if(cell.type === "pointer") classes += " pointer-cell";
+      
+      gridMount.innerHTML += `<div id="cell-${cell.pos}" class="${classes}">${cell.val}</div>`;
+      colCount++;
+    });
+  }
+
+  function drawLine(startEl, endEl) {
+    const r1 = startEl.getBoundingClientRect();
+    const r2 = endEl.getBoundingClientRect();
+    
+    const x1 = r1.left + (r1.width / 2);
+    const y1 = r1.top + (r1.height / 2);
+    const x2 = r2.left + (r2.width / 2);
+    const y2 = r2.top + (r2.height / 2);
+
+    const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+    connector.style.width = `${length}px`;
+    connector.style.left = `${x1}px`;
+    connector.style.top = `${y1}px`;
+    connector.style.transform = `rotate(${angle}deg)`;
+    connector.style.opacity = "1";
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    connector.style.opacity = "0";
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      // Reset A1 text to default
+      const a1 = gridData.find(c => c.pos === "A1");
+      a1.val = "C3"; 
+      initGrid();
+      
+      totalBubble.textContent = "-";
+      totalBubble.classList.remove('show');
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC: RUN INDIRECT ---
+  async function runIndirect(targetText) {
+    // 1. Update A1 Content
+    const a1Obj = gridData.find(c => c.pos === "A1");
+    a1Obj.val = targetText;
+    initGrid(); // Re-render to show new text in A1
+
+    App.updateText(`1. Look inside cell <b>A1</b>...`);
+    await App.speak(`First, I look inside cell A1 to see what address is written there.`);
+    
+    if(shouldStop) return;
+
+    // 2. Highlight Pointer (A1)
+    const ptrCell = document.getElementById('cell-A1');
+    ptrCell.style.transform = "scale(1.1)";
+    await new Promise(r => setTimeout(r, 600));
+    
+    // 3. Parse Text
+    if (!["B2", "C3"].includes(targetText)) {
+        // ERROR CASE
+        App.updateText(`❌ "${targetText}" is not a valid address.`);
+        await App.speak(`The text ${targetText} is not a valid cell address. Returning Reference Error.`);
+        
+        ptrCell.style.borderColor = "#ef4444";
+        ptrCell.style.color = "#ef4444";
+        
+        totalBubble.textContent = "#REF!";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        return;
+    }
+
+    App.updateText(`2. Found text "<b>${targetText}</b>". Redirecting...`);
+    await App.speak(`I found the text ${targetText}. Now I will go to that cell.`);
+    
+    // 4. Draw Line & Find Target
+    const targetCell = document.getElementById(`cell-${targetText}`);
+    drawLine(ptrCell, targetCell);
+    
+    await new Promise(r => setTimeout(r, 800));
+    
+    // 5. Highlight Target & Fetch
+    targetCell.classList.add('target-cell');
+    
+    // Find value in our data array
+    const targetVal = gridData.find(c => c.pos === targetText).val;
+    
+    App.updateText(`3. Arrived at <b>${targetText}</b>. Value: "${targetVal}"`);
+    await App.speak(`I have arrived at ${targetText}. The value inside is ${targetVal}.`);
+
+    totalBubble.textContent = targetVal;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    await new Promise(r => setTimeout(r, 1500));
+    connector.style.opacity = "0";
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnC3').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 150));
+    await runIndirect("C3");
+    isRunning = false;
+  });
+
+  document.getElementById('btnB2').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 150));
+    await runIndirect("B2");
+    isRunning = false;
+  });
+
+  document.getElementById('btnError').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 150));
+    await runIndirect("Hello");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initGrid();
+</script>
+</body>
+</html>

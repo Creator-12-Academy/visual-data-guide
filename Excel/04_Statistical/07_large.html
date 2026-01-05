@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: LARGE & SMALL</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Podium Container */
+  .podium-stage {
+    display: flex; align-items: flex-end; justify-content: center; gap: 10px;
+    height: 180px; padding-bottom: 20px; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border-bottom: 2px solid var(--border);
+    position: relative;
+  }
+
+  /* Podium Blocks */
+  .podium-block {
+    width: 60px; background: #334155; border-radius: 4px 4px 0 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    padding-bottom: 10px; position: relative; transition: all 0.5s;
+    opacity: 0.5; transform: translateY(20px);
+  }
+  
+  /* Rank Label (1st, 2nd, 3rd) */
+  .rank-label {
+    font-size: 1.5rem; font-weight: 900; color: rgba(255,255,255,0.2);
+    position: absolute; bottom: 5px;
+  }
+
+  /* Value Bubble */
+  .podium-val {
+    background: var(--bg-card); padding: 4px 8px; border-radius: 4px;
+    font-weight: bold; margin-bottom: 10px; font-size: 0.9rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); opacity: 0; transition: 0.3s;
+  }
+
+  /* Active States */
+  .active-rank {
+    opacity: 1; transform: translateY(0); background: #475569;
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+  }
+  .highlight-rank {
+    background: var(--accent); color: #000;
+    box-shadow: 0 0 20px var(--accent);
+  }
+  .highlight-rank .rank-label { color: rgba(0,0,0,0.4); }
+  .highlight-rank .podium-val { opacity: 1; transform: scale(1.1); }
+
+  /* Medal Icon */
+  .medal {
+    position: absolute; top: -30px; font-size: 1.5rem; 
+    opacity: 0; transition: 0.3s; transform: scale(0);
+  }
+  .show-medal { opacity: 1; transform: scale(1); animation: bounce 0.5s; }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🏅 Ranking Finder</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find specific ranked values (e.g., 2nd Highest, 3rd Lowest).<br>
+      <strong>LARGE:</strong> Top-down ranking. <strong>SMALL:</strong> Bottom-up ranking.
+    </p>
+
+    <div class="podium-stage" id="stage">
+      <div class="podium-block" style="height: 100px;" id="block-2">
+        <div class="medal" id="medal-2">🥈</div>
+        <div class="podium-val" id="val-2">-</div>
+        <div class="rank-label">2</div>
+      </div>
+      <div class="podium-block" style="height: 140px;" id="block-1">
+        <div class="medal" id="medal-1">🥇</div>
+        <div class="podium-val" id="val-1">-</div>
+        <div class="rank-label">1</div>
+      </div>
+      <div class="podium-block" style="height: 70px;" id="block-3">
+        <div class="medal" id="medal-3">🥉</div>
+        <div class="podium-val" id="val-3">-</div>
+        <div class="rank-label">3</div>
+      </div>
+    </div>
+
+    <div style="text-align:center; font-family:monospace; color:var(--text-dim); margin-bottom:1rem;">
+      Data Set: { <span id="dataSet">10, 50, 85, 90, 20</span> }
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnLarge2">📉 LARGE (2nd Highest)</button>
+        <button class="action" id="btnSmall1">📈 SMALL (1st Lowest)</button>
+        <button class="action" id="btnLarge3">🥉 LARGE (3rd Highest)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-large">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">LARGE</span>(array, k)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Array:</strong> The data range.</li>
+          <li><strong>2. K:</strong> The position to find (1 = Max, 2 = 2nd Largest, etc).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-small" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">SMALL</span>(array, k)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Array:</strong> The data range.</li>
+          <li><strong>2. K:</strong> The position to find (1 = Min, 2 = 2nd Smallest, etc).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a ranking...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Value Found:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 K > N Error</div>
+          <div class="mistake-desc">
+            If you have 5 items and ask for the <strong>6th</strong> largest (K=6), Excel returns a #NUM! error. You can't rank what doesn't exist.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">✅ Duplicates Count</div>
+          <div class="mistake-desc">
+            If your data is {10, 10, 5}, the 1st Largest is 10, and the 2nd Largest is ALSO 10. They take up two ranking spots.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("LARGE & SMALL", "../../");
+
+  const rawData = [10, 50, 85, 90, 20];
+  const sortedDesc = [...rawData].sort((a,b) => b-a); // 90, 85, 50, 20, 10
+  const sortedAsc  = [...rawData].sort((a,b) => a-b); // 10, 20, 50, 85, 90
+
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Podium
+    document.querySelectorAll('.podium-block').forEach(b => {
+        b.className = 'podium-block'; // Remove active/highlight
+        b.querySelector('.podium-val').textContent = "-";
+        b.querySelector('.medal').className = "medal";
+    });
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fn, k, desc) {
+    if (fn === 'LARGE') {
+        document.getElementById('syntax-large').style.display = 'block';
+        document.getElementById('syntax-small').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Find ${desc} Largest</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">LARGE</span>( A2:E2, <span class="val">${k}</span> )`;
+    } else {
+        document.getElementById('syntax-large').style.display = 'none';
+        document.getElementById('syntax-small').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Find ${desc} Smallest</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">SMALL</span>( A2:E2, <span class="val">${k}</span> )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runRank(fn, k) {
+    let sortedList, targetVal;
+    
+    if (fn === 'LARGE') {
+        sortedList = sortedDesc;
+        updateUI('LARGE', k, k === 1 ? "1st" : (k===2 ? "2nd" : "3rd"));
+        App.updateText(`Sorting High to Low... Finding #${k}`);
+        await App.speak(`LARGE function sorts numbers from highest to lowest, then picks the ${k === 1 ? 'first' : (k===2 ? 'second' : 'third')} one.`);
+    } else {
+        sortedList = sortedAsc;
+        updateUI('SMALL', k, k === 1 ? "1st" : (k===2 ? "2nd" : "3rd"));
+        App.updateText(`Sorting Low to High... Finding #${k}`);
+        await App.speak(`SMALL function sorts from lowest to highest, then picks position ${k}.`);
+    }
+    
+    if(shouldStop) return;
+
+    // 1. Reveal Podium Blocks one by one
+    // We only have 3 blocks visually (1, 2, 3)
+    const displayCount = Math.min(3, sortedList.length);
+    
+    for(let i=1; i<=displayCount; i++) {
+        const block = document.getElementById(`block-${i}`);
+        const valBox = document.getElementById(`val-${i}`);
+        const medal = document.getElementById(`medal-${i}`);
+        
+        block.classList.add('active-rank');
+        valBox.textContent = sortedList[i-1]; // Index 0 based
+        
+        await new Promise(r => setTimeout(r, 300));
+        
+        if (i === k) {
+            // TARGET FOUND
+            targetVal = sortedList[i-1];
+            block.classList.add('highlight-rank');
+            medal.classList.add('show-medal');
+            
+            App.updateText(`Rank ${k}: Found <b>${targetVal}</b>.`);
+            await App.speak(`Here it is. Rank ${k} is ${targetVal}.`);
+            
+            totalBubble.textContent = targetVal;
+            totalBubble.style.background = "var(--accent)";
+            totalBubble.classList.add('show');
+        }
+        await new Promise(r => setTimeout(r, 200));
+    }
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnLarge2').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runRank('LARGE', 2);
+    isRunning = false;
+  });
+
+  document.getElementById('btnLarge3').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runRank('LARGE', 3);
+    isRunning = false;
+  });
+
+  document.getElementById('btnSmall1').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runRank('SMALL', 1);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

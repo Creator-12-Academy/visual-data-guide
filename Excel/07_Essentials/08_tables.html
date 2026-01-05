@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: Structured References (Tables)</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --tbl-header: #0ea5e9;
+    --tbl-row-odd: #334155;
+    --tbl-row-even: #1e293b;
+    --highlight: #facc15;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .table-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 400px; position: relative;
+    overflow: hidden;
+  }
+
+  /* The Excel Table */
+  .smart-table {
+    display: grid; grid-template-columns: 80px 80px 100px; gap: 1px;
+    background: var(--border); border: 2px solid var(--border);
+    border-radius: 6px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    transition: all 0.3s;
+  }
+
+  /* Table Parts */
+  .th-cell {
+    background: var(--tbl-header); color: #fff; font-weight: bold;
+    padding: 10px; text-align: center; font-size: 0.9rem;
+    position: relative;
+  }
+  .td-cell {
+    padding: 10px; text-align: center; font-family: monospace; font-size: 0.9rem;
+    color: var(--text-main); position: relative; transition: background 0.2s;
+  }
+  
+  /* Zebra Striping */
+  .row-odd .td-cell { background: var(--tbl-row-odd); }
+  .row-even .td-cell { background: var(--tbl-row-even); }
+
+  /* Highlight Logic */
+  .hl-col { background: rgba(250, 204, 21, 0.2) !important; border: 1px solid var(--highlight); }
+  .hl-cell { background: rgba(250, 204, 21, 0.4) !important; color: #fff; font-weight: bold; }
+
+  /* Formula Bar */
+  .formula-bar {
+    width: 90%; background: #0f172a; border: 1px solid var(--accent);
+    padding: 10px 15px; border-radius: 4px; font-family: monospace;
+    font-size: 1rem; color: var(--accent); display: flex; align-items: center; gap: 10px;
+  }
+  .fx-icon { font-style: italic; font-weight: bold; color: #666; }
+
+  /* Tags */
+  .ref-tag {
+    position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+    background: var(--highlight); color: #000; font-size: 0.7rem; font-weight: bold;
+    padding: 2px 6px; border-radius: 4px; opacity: 0; pointer-events: none;
+    white-space: nowrap; transition: opacity 0.2s; z-index: 10;
+  }
+  .show-tag .ref-tag { opacity: 1; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🏗️ Structured References</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Reference data by Name, not Address.<br>
+      Excel Tables allow you to use readable names like <code>[@Price]</code> instead of abstract coordinates like <code>B2</code>.
+    </p>
+
+    <div class="table-stage">
+      
+      <div class="formula-bar">
+        <span class="fx-icon">fx</span>
+        <span id="liveFormula">Select a mode...</span>
+      </div>
+
+      <div style="position:relative;">
+        <div class="smart-table" id="grid">
+          <div class="th-cell" id="h-item">Item</div>
+          <div class="th-cell" id="h-price">Price</div>
+          <div class="th-cell" id="h-total">Total</div>
+
+          <div class="td-cell row-odd">Apple</div>
+          <div class="td-cell row-odd" id="c-price-1">1.00</div>
+          <div class="td-cell row-odd" id="c-total-1">-</div>
+
+          <div class="td-cell row-even">Banana</div>
+          <div class="td-cell row-even" id="c-price-2">0.50</div>
+          <div class="td-cell row-even" id="c-total-2">-</div>
+
+          <div class="td-cell row-odd">Cherry</div>
+          <div class="td-cell row-odd" id="c-price-3">2.00</div>
+          <div class="td-cell row-odd" id="c-total-3">-</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnStruct">🏗️ Table Syntax ([@Price])</button>
+        <button class="action" id="btnStd">📍 A1 Syntax (B2*2)</button>
+        <button class="action" id="btnCol">📊 Full Column (Table1[Price])</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="synStruct">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =[@Price] * 2
+        </div>
+        <ul class="arg-list">
+          <li><strong>[@Column]:</strong> Refers to the cell in "This Row" of that column.</li>
+          <li><strong>Benefit:</strong> Reads like plain English. Auto-fills down the entire column.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="synStd" style="display:none;">
+        <div style="font-family: monospace; color: #f87171; margin-bottom: 0.5rem;">
+          =B2 * 2
+        </div>
+        <ul class="arg-list">
+          <li><strong>B2:</strong> Standard reference.</li>
+          <li><strong>Drawback:</strong> Harder to read. Doesn't automatically fill new rows if the table expands.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="synCol" style="display:none;">
+        <div style="font-family: monospace; color: var(--highlight); margin-bottom: 0.5rem;">
+          =SUM(Table1[Price])
+        </div>
+        <ul class="arg-list">
+          <li><strong>Table1[Price]:</strong> Refers to the ENTIRE data column (excluding header).</li>
+          <li><strong>Benefit:</strong> Dynamic ranges. If you add rows, the SUM automatically includes them.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Current Operation</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Visual:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Syntax Tip</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🔠 Using Space</div>
+          <div class="mistake-desc">
+            If a column name has a space (e.g., "Unit Price"), you MUST use brackets: <code>[Unit Price]</code>. If no space, brackets are still good practice but strictly required only for special chars.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("Structured References", "../../");
+
+  const liveFormula = document.getElementById('liveFormula');
+  const totalBubble = document.getElementById('totalBubble');
+  const codeDisplay = document.getElementById('codeDisplay');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.querySelectorAll('.td-cell, .th-cell').forEach(c => {
+        c.classList.remove('hl-cell', 'hl-col', 'show-tag');
+        // Clear calculated values
+        if(c.id.startsWith('c-total')) c.textContent = "-";
+    });
+    
+    liveFormula.textContent = "";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(mode) {
+    ['synStruct', 'synStd', 'synCol'].forEach(id => document.getElementById(id).style.display = 'none');
+    
+    if (mode === 'STRUCT') {
+        document.getElementById('synStruct').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Calculate Row Total</span>`;
+        document.getElementById('line2').innerHTML = `=[@Price] * 2`;
+    } else if (mode === 'STD') {
+        document.getElementById('synStd').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Standard Cell Math</span>`;
+        document.getElementById('line2').innerHTML = `=B2 * 2`;
+    } else {
+        document.getElementById('synCol').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Sum Entire Column</span>`;
+        document.getElementById('line2').innerHTML = `=SUM(Table1[Price])`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runTableRef(mode) {
+    updateUI(mode);
+    
+    // Define logic
+    const prices = [1.00, 0.50, 2.00];
+    const qty = 2; // Simulated multiplier
+    
+    if (mode === 'COL') {
+        // SUM Column
+        App.updateText("Referencing entire 'Price' column...");
+        await App.speak("Summing the entire price column.");
+        liveFormula.textContent = "=SUM(Table1[Price])";
+        
+        // Highlight Column
+        document.getElementById('h-price').classList.add('hl-col');
+        for(let i=1; i<=3; i++) document.getElementById(`c-price-${i}`).classList.add('hl-col');
+        
+        await new Promise(r => setTimeout(r, 1000));
+        
+        const sum = prices.reduce((a,b)=>a+b,0);
+        App.updateText(`Result: ${sum.toFixed(2)}`);
+        
+        totalBubble.textContent = sum.toFixed(2);
+        totalBubble.style.background = "var(--highlight)";
+        totalBubble.style.color = "#000";
+        totalBubble.classList.add('show');
+        
+    } else {
+        // Row by Row Calculation
+        const isStruct = (mode === 'STRUCT');
+        App.updateText(isStruct ? "Using Structured Reference: [@Price]..." : "Using Standard Reference: B2...");
+        await App.speak(isStruct ? "Using structured references." : "Using standard references.");
+        
+        for(let i=1; i<=3; i++) {
+            if(shouldStop) return;
+            
+            const pCell = document.getElementById(`c-price-${i}`);
+            const tCell = document.getElementById(`c-total-${i}`);
+            const val = prices[i-1];
+            const res = (val * qty).toFixed(2);
+            
+            // Highlight Source
+            pCell.classList.add('hl-cell');
+            
+            // Show Formula
+            if (isStruct) {
+                liveFormula.textContent = `=[@Price] * ${qty}`;
+                // Add Tag
+                if(!pCell.querySelector('.ref-tag')) {
+                    pCell.innerHTML += `<div class="ref-tag">[@Price]</div>`;
+                }
+                pCell.classList.add('show-tag');
+            } else {
+                liveFormula.textContent = `=B${i+1} * ${qty}`;
+            }
+            
+            await new Promise(r => setTimeout(r, 600));
+            
+            // Show Result
+            tCell.textContent = res;
+            tCell.style.color = "var(--accent)";
+            tCell.style.fontWeight = "bold";
+            
+            // Clear Highlight
+            pCell.classList.remove('hl-cell');
+            pCell.classList.remove('show-tag');
+            
+            await new Promise(r => setTimeout(r, 200));
+        }
+        
+        App.updateText("Auto-fill Complete.");
+        totalBubble.textContent = "Done";
+        totalBubble.style.background = "var(--accent)";
+        totalBubble.style.color = "#000";
+        totalBubble.classList.add('show');
+    }
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnStruct').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runTableRef('STRUCT');
+    isRunning = false;
+  });
+
+  document.getElementById('btnStd').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runTableRef('STD');
+    isRunning = false;
+  });
+
+  document.getElementById('btnCol').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runTableRef('COL');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

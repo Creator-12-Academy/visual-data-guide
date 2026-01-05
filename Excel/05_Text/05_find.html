@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: FIND & SEARCH</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* String Container */
+  .scan-stage {
+    display: flex; justify-content: center; gap: 2px;
+    margin-bottom: 2rem; padding: 20px 0; overflow-x: auto;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; position: relative;
+  }
+
+  /* Character Block */
+  .char-box {
+    width: 35px; height: 50px; background: #334155;
+    border: 1px solid var(--border); border-radius: 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative; transition: all 0.2s;
+  }
+  .char-val { font-size: 1.4rem; color: #fff; font-weight: bold; font-family: monospace; }
+  .char-idx { font-size: 0.6rem; color: var(--text-dim); position: absolute; bottom: 2px; }
+
+  /* Scanner Overlay */
+  .scanner-head {
+    position: absolute; top: 10px; left: 0; width: 35px; height: 70px;
+    border: 3px solid #facc15; border-radius: 6px;
+    background: rgba(250, 204, 21, 0.15);
+    box-shadow: 0 0 15px rgba(250, 204, 21, 0.3);
+    opacity: 0; transition: left 0.3s ease-in-out, opacity 0.2s;
+    z-index: 10; pointer-events: none;
+  }
+  .scanner-label {
+    position: absolute; top: -25px; left: 50%; transform: translateX(-50%);
+    background: #facc15; color: #000; font-size: 0.7rem; font-weight: bold;
+    padding: 2px 6px; border-radius: 4px; white-space: nowrap;
+  }
+
+  /* Match/Fail States */
+  .match-found {
+    background: #4ade80; border-color: #fff; transform: scale(1.1);
+    box-shadow: 0 0 20px #4ade80; z-index: 5;
+  }
+  .match-found .char-val { color: #000; }
+
+  .scan-fail { opacity: 0.3; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔎 Position Locator</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find the numeric position of a specific character.<br>
+      <strong>FIND:</strong> Exact Match (Case-Sensitive).<br>
+      <strong>SEARCH:</strong> Flexible Match (Case-Insensitive).
+    </p>
+
+    <div class="scan-stage" id="stage">
+      <div class="scanner-head" id="scanner"><div class="scanner-label">Scanning...</div></div>
+      </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnFind">🅰️ FIND("d")</button>
+        <button class="action" id="btnSearch">🔡 SEARCH("d")</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-find">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">FIND</span>(find_text, within_text, [start])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Find Text:</strong> What to look for (e.g. "d").</li>
+          <li><strong>2. Within:</strong> The source string.</li>
+          <li><strong>Rule:</strong> <span style="color:#ef4444; font-weight:bold;">Case-Sensitive</span> ("D" ≠ "d").</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-search" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">SEARCH</span>(find_text, within_text, [start])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Find Text:</strong> What to look for.</li>
+          <li><strong>Rule:</strong> <span style="color:#4ade80; font-weight:bold;">Case-Insensitive</span> ("D" = "d").</li>
+          <li><strong>Bonus:</strong> Supports wildcards (*, ?).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Position Found:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 #VALUE! Error</div>
+          <div class="mistake-desc">
+            If the text is not found (or if FIND case doesn't match), Excel returns a #VALUE! error. Wrap in <strong>IFERROR</strong> to handle this gracefully.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">1️⃣ First Match Only</div>
+          <div class="mistake-desc">
+            These functions stop at the <strong>first</strong> match they find. To find the second match, use the optional <code>[start_num]</code> argument to skip the first one.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("FIND & SEARCH", "../../");
+
+  const inputStr = "Data_2025";
+  const stage = document.getElementById('stage');
+  const scanner = document.getElementById('scanner');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initStage() {
+    // Keep scanner, clear chars
+    const scanEl = scanner; 
+    stage.innerHTML = '';
+    stage.appendChild(scanEl);
+
+    inputStr.split('').forEach((char, i) => {
+      const box = document.createElement('div');
+      box.className = 'char-box';
+      box.id = `char-${i+1}`; 
+      box.innerHTML = `<div class="char-val">${char}</div><div class="char-idx">${i+1}</div>`;
+      stage.appendChild(box);
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.querySelectorAll('.char-box').forEach(b => {
+        b.className = 'char-box';
+    });
+    scanner.style.opacity = '0';
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initStage();
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fn, target) {
+    if (fn === 'FIND') {
+        document.getElementById('syntax-find').style.display = 'block';
+        document.getElementById('syntax-search').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Case-Sensitive Search for "${target}"</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">FIND</span>( "<span class="str">${target}</span>", <span class="col">A1</span> )`;
+    } else {
+        document.getElementById('syntax-find').style.display = 'none';
+        document.getElementById('syntax-search').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Case-Insensitive Search for "${target}"</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">SEARCH</span>( "<span class="str">${target}</span>", <span class="col">A1</span> )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runScan(fn, target) {
+    updateUI(fn, target);
+    App.updateText(`Scanning for "${target}"...`);
+    await App.speak(`Looking for the character ${target}.`);
+    
+    if(shouldStop) return;
+
+    const chars = inputStr.split('');
+    let matchIndex = -1;
+
+    // Show Scanner
+    scanner.style.opacity = '1';
+    
+    for (let i = 0; i < chars.length; i++) {
+        if(shouldStop) return;
+        
+        const char = chars[i];
+        const box = document.getElementById(`char-${i+1}`);
+        const boxLeft = box.offsetLeft;
+        
+        // Move Scanner
+        scanner.style.left = `${boxLeft}px`;
+        
+        // Check Logic
+        let isMatch = false;
+        if (fn === 'FIND') {
+            isMatch = (char === target); // Exact
+        } else {
+            isMatch = (char.toLowerCase() === target.toLowerCase()); // Case Insensitive
+        }
+
+        // Visualize Check
+        if (isMatch) {
+            // FOUND!
+            matchIndex = i + 1;
+            box.classList.add('match-found');
+            
+            App.updateText(`Match found at Position ${matchIndex}!`);
+            await App.speak(`Found it at position ${matchIndex}.`);
+            
+            totalBubble.textContent = matchIndex;
+            totalBubble.style.background = "#4ade80"; // Success Green
+            totalBubble.classList.add('show');
+            break; // Stop scanning
+        } else {
+            // NO MATCH
+            box.classList.add('scan-fail');
+            
+            // Brief pause for visual tracking
+            await new Promise(r => setTimeout(r, 250));
+        }
+    }
+
+    if (matchIndex === -1) {
+        // Not Found
+        App.updateText(`Error: "${target}" not found. Returns #VALUE!`);
+        await App.speak(`I could not find it. This returns a Value Error.`);
+        
+        totalBubble.textContent = "#VALUE!";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        scanner.style.borderColor = "#ef4444";
+        scanner.style.backgroundColor = "rgba(239, 68, 68, 0.2)";
+    }
+    
+    document.getElementById('line2').classList.remove('active');
+}
+
+  // --- BUTTONS ---
+  document.getElementById('btnFind').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // FIND("d") in "Data..." -> Fails ("D" != "d")
+    await runScan('FIND', 'd');
+    isRunning = false;
+  });
+
+  document.getElementById('btnSearch').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // SEARCH("d") in "Data..." -> Matches Index 1 ("D" == "d")
+    await runScan('SEARCH', 'd');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initStage();
+
+</script>
+</body>
+</html>

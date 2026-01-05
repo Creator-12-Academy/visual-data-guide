@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: MIN & MAX</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Bar Chart Container */
+  .chart-stage {
+    display: flex; align-items: flex-end; justify-content: center; gap: 15px;
+    height: 200px; padding: 20px; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border-bottom: 2px solid var(--border);
+    position: relative;
+  }
+
+  /* Bars */
+  .bar-container {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    height: 100%; width: 40px; position: relative;
+  }
+  .bar {
+    width: 100%; background: #334155; border-radius: 4px 4px 0 0;
+    transition: all 0.3s; position: relative;
+  }
+  .bar-label {
+    margin-top: 10px; font-size: 0.8rem; color: var(--text-dim); font-weight: bold;
+  }
+  .bar-val {
+    position: absolute; top: -25px; width: 100%; text-align: center;
+    font-weight: bold; color: #fff; font-size: 0.9rem;
+    opacity: 0; transition: opacity 0.3s;
+  }
+
+  /* Scan Highlight */
+  .scanning .bar { background: #facc15; } /* Yellow scan */
+  .scanning .bar-val { opacity: 1; color: #facc15; }
+
+  /* Winner Highlight */
+  .is-winner .bar { background: var(--accent); box-shadow: 0 0 15px var(--accent); }
+  .is-winner .bar-val { opacity: 1; color: var(--accent); transform: scale(1.2); }
+
+  /* "Current Best" Marker */
+  .crown-icon {
+    position: absolute; top: -45px; left: 50%; transform: translateX(-50%);
+    font-size: 1.5rem; opacity: 0; transition: all 0.4s;
+  }
+  .show-crown { opacity: 1; animation: bounce 0.5s; }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateX(-50%) translateY(0); }
+    50% { transform: translateX(-50%) translateY(-10px); }
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📏 Extremes Finder</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find the extremes in the dataset.<br>
+      <strong>MIN:</strong> Lowest number. <strong>MAX:</strong> Highest number.
+    </p>
+
+    <div class="chart-stage" id="chart"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnMax">📈 Find MAX (Highest)</button>
+        <button class="action" id="btnMin">📉 Find MIN (Lowest)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-max">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">MAX</span>(number1, [number2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Logic:</strong> Returns the largest value.</li>
+          <li><strong>Ignores:</strong> Text and Empty cells.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-min" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">MIN</span>(number1, [number2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Logic:</strong> Returns the smallest value.</li>
+          <li><strong>Ignores:</strong> Text and Empty cells.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Zero is not Empty</div>
+          <div class="mistake-desc">
+            MIN will count <strong>0</strong> as a value. If you have "0" for missing data, MIN might return 0 instead of the real lowest score.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Dates are Numbers</div>
+          <div class="mistake-desc">
+            Since dates are numbers (e.g., 45000), MAX can find the <strong>latest</strong> date, and MIN can find the <strong>earliest</strong> date.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("MIN & MAX", "../../");
+
+  const data = [15, 80, 45, 10, 95];
+  const chart = document.getElementById('chart');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initChart() {
+    chart.innerHTML = '';
+    const maxVal = 100; // Visual scale cap
+
+    data.forEach((val, i) => {
+      const heightPct = (val / maxVal) * 100;
+      
+      chart.innerHTML += `
+        <div class="bar-container" id="col-${i}">
+          <div class="bar" style="height:${heightPct}%"></div>
+          <div class="bar-val">${val}</div>
+          <div class="bar-label">${i+1}</div>
+          <div class="crown-icon" id="crown-${i}">👑</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.querySelectorAll('.bar-container').forEach(c => {
+        c.className = 'bar-container'; // remove scanning/winner
+    });
+    document.querySelectorAll('.crown-icon').forEach(c => c.classList.remove('show-crown'));
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  function updateUI(mode) {
+    if (mode === 'MAX') {
+        document.getElementById('syntax-max').style.display = 'block';
+        document.getElementById('syntax-min').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Find the Highest Value</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">MAX</span>( A2:E2 )`;
+    } else {
+        document.getElementById('syntax-max').style.display = 'none';
+        document.getElementById('syntax-min').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Find the Lowest Value</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">MIN</span>( A2:E2 )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runMinMax(mode) {
+    updateUI(mode);
+    const startText = mode === 'MAX' ? "Scanning for the Highest number..." : "Scanning for the Lowest number...";
+    App.updateText(startText);
+    await App.speak(startText);
+    
+    if(shouldStop) return;
+
+    let currentBestVal = data[0];
+    let currentBestIdx = 0;
+
+    // Highlight First
+    document.getElementById(`col-0`).classList.add('scanning');
+    document.getElementById(`crown-0`).classList.add('show-crown'); // First is default champ
+    
+    App.updateText(`Start with ${data[0]}. Current ${mode}: ${data[0]}`);
+    await new Promise(r => setTimeout(r, 800));
+    document.getElementById(`col-0`).classList.remove('scanning');
+
+    // Loop rest
+    for (let i = 1; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const col = document.getElementById(`col-${i}`);
+      const val = data[i];
+      const prevCrown = document.getElementById(`crown-${currentBestIdx}`);
+      const newCrown = document.getElementById(`crown-${i}`);
+      
+      col.classList.add('scanning');
+      
+      let isNewBest = false;
+      if (mode === 'MAX' && val > currentBestVal) isNewBest = true;
+      if (mode === 'MIN' && val < currentBestVal) isNewBest = true;
+
+      if (isNewBest) {
+          // New Champion
+          App.updateText(`${val} is ${mode === 'MAX' ? 'greater' : 'smaller'} than ${currentBestVal}. New ${mode}!`);
+          
+          prevCrown.classList.remove('show-crown'); // Remove old crown
+          newCrown.classList.add('show-crown'); // Add new crown
+          
+          currentBestVal = val;
+          currentBestIdx = i;
+          
+          await App.speak(`Found a new ${mode}. It is ${val}.`);
+          await new Promise(r => setTimeout(r, 600));
+      } else {
+          // No Change
+          App.updateText(`${val} is not ${mode === 'MAX' ? 'greater' : 'smaller'}. Ignoring.`);
+          await new Promise(r => setTimeout(r, 300));
+      }
+      
+      col.classList.remove('scanning');
+    }
+
+    // Finish
+    const winnerCol = document.getElementById(`col-${currentBestIdx}`);
+    winnerCol.classList.add('is-winner');
+    
+    App.updateText(`Done! The ${mode} is ${currentBestVal}.`);
+    await App.speak(`Finished. The result is ${currentBestVal}.`);
+    
+    totalBubble.textContent = currentBestVal;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnMax').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runMinMax('MAX');
+    isRunning = false;
+  });
+
+  document.getElementById('btnMin').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runMinMax('MIN');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initChart();
+</script>
+</body>
+</html>

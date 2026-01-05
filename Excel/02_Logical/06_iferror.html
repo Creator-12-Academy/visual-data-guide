@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: IFERROR Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Error & Safety Badges */
+  .badge-error {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;
+    background: #ef4444; color: #fff; border: 1px solid #b91c1c;
+    animation: shake 0.4s ease-in-out;
+  }
+  
+  .badge-safe {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold;
+    background: #3b82f6; color: #fff; border: 1px solid #1d4ed8;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  .badge-ok { color: #4ade80; font-weight: bold; }
+
+  /* Animations */
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+  @keyframes popIn {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  /* Shield Icon Overlay */
+  .shield-icon {
+    font-size: 1.5rem; position: absolute; right: 10px; opacity: 0;
+    transition: all 0.3s;
+  }
+  .shield-active { opacity: 1; transform: scale(1.2); text-shadow: 0 0 10px #3b82f6; }
+
+  /* Row Highlight */
+  .eval-row { background: rgba(255,255,255,0.05); border-left: 3px solid #facc15; }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🛡️ The Error Catcher</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate <em>Price per Unit</em> (Sales / Units).<br>
+      <strong>Problem:</strong> Dividing by zero creates a <code>#DIV/0!</code> error.<br>
+      <strong>Solution:</strong> Use <strong>IFERROR</strong> to catch it and show "0" instead.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1rem;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ Run Calculation</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">IFERROR</span>(value, value_if_error)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Value:</strong> The calculation to try (e.g., A1 / B1).</li>
+          <li><strong>2. If Error:</strong> What to display if it fails (e.g., 0, "-", "Error").</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Try Division, return 0 if it fails</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">IFERROR</span>( <span class="col">Sales/Units</span>, <span class="val">0</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Safe Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+        <div class="shield-icon" id="shieldIcon">🛡️</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Masking Real Problems</div>
+          <div class="mistake-desc">
+            IFERROR catches <em>everything</em> (#REF, #NAME, #VALUE). Sometimes you <em>want</em> to see errors (like typos) so you can fix them.
+          </div>
+          <div class="mistake-fix">✅ Fix: Use <strong>IFNA</strong> to catch only VLOOKUP errors.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Returning Text for Math</div>
+          <div class="mistake-desc">If you return "Error" (text) instead of 0 (number), you won't be able to Sum that column later.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("IFERROR Function", "../../");
+
+  const data = [
+    { sales: 100, units: 10 }, // Normal
+    { sales: 50,  units: 0 },  // DIV/0 Error
+    { sales: 200, units: 20 }, // Normal
+    { sales: 0,   units: 0 }   // DIV/0 Error
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const shieldIcon = document.getElementById('shieldIcon');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1.5fr;">
+        <div>Sales</div> <div>Units</div> <div>Avg Price</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1.5fr;">
+          <div class="cell-num">$${d.sales}</div>
+          <div class="cell-num">${d.units}</div>
+          <div id="res-${i}" style="display:flex; align-items:center;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.textContent = "-";
+      totalBubble.classList.remove('show');
+      shieldIcon.classList.remove('shield-active');
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  // --- LOGIC: IFERROR ---
+  async function runLogic() {
+    document.getElementById('line2').classList.add('active');
+    App.updateText("Calculating Price (Sales / Units)...");
+    await App.speak("Starting calculation. I will try to divide Sales by Units.");
+    
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`res-${i}`);
+      const s = data[i].sales;
+      const u = data[i].units;
+      
+      row.classList.add('eval-row');
+      
+      // 1. Attempt Calc
+      App.updateText(`Row ${i+1}: $${s} / ${u}...`);
+      await new Promise(r => setTimeout(r, 400)); // Short pause
+
+      if (u === 0) {
+        // ERROR DETECTED
+        resCell.innerHTML = `<span class="badge-error">#DIV/0!</span>`;
+        totalBubble.textContent = "#DIV/0!";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        
+        App.updateText(`❌ Error! Division by Zero.`);
+        await App.speak(`Error detected. We cannot divide by zero.`);
+        
+        await new Promise(r => setTimeout(r, 800)); // Let user see the error
+        
+        // SHIELD ACTIVATION
+        shieldIcon.classList.add('shield-active');
+        App.updateText(`🛡️ IFERROR Shield Activated! Swapping value...`);
+        await App.speak(`Shield activated! Swapping the error for zero.`);
+        
+        await new Promise(r => setTimeout(r, 500));
+        
+        // SWAP
+        resCell.innerHTML = `<span class="badge-safe">0 (Fixed)</span>`;
+        totalBubble.textContent = "0";
+        totalBubble.style.background = "#3b82f6"; // Safe Blue
+        
+        await new Promise(r => setTimeout(r, 600));
+        shieldIcon.classList.remove('shield-active');
+
+      } else {
+        // NORMAL CALC
+        const result = s / u;
+        resCell.innerHTML = `<span class="badge-ok">$${result}</span>`;
+        totalBubble.textContent = result;
+        totalBubble.style.background = "var(--accent)";
+        totalBubble.classList.add('show');
+        
+        App.updateText(`✅ Success. Result is $${result}.`);
+        if(i===0) await App.speak(`Success. The result is ${result}.`);
+        
+        await new Promise(r => setTimeout(r, 400));
+      }
+      
+      row.classList.remove('eval-row');
+      totalBubble.classList.remove('show');
+    }
+
+    App.updateText("Done! All errors handled.");
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runLogic();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

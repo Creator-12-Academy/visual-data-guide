@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: DATE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Calendar Stage */
+  .date-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.5rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 250px;
+  }
+
+  /* Input Blocks */
+  .input-row {
+    display: flex; gap: 10px; align-items: flex-end;
+  }
+  .date-block {
+    background: #334155; padding: 10px; border-radius: 6px;
+    border: 1px solid var(--border); text-align: center;
+    display: flex; flex-direction: column; align-items: center;
+    width: 80px; position: relative; transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .block-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 5px; }
+  .block-val { font-size: 1.5rem; font-weight: bold; color: #fff; font-family: monospace; }
+
+  /* Final Calendar Page */
+  .calendar-page {
+    width: 120px; background: #fff; color: #000;
+    border-radius: 8px; overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    opacity: 0; transform: scale(0.5); transition: all 0.5s;
+  }
+  .cal-header { background: #ef4444; color: #fff; font-weight: bold; padding: 5px; text-align: center; font-size: 0.9rem; }
+  .cal-body { padding: 10px; text-align: center; }
+  .cal-day { font-size: 2.5rem; font-weight: 900; line-height: 1; }
+  .cal-my { font-size: 0.9rem; color: #666; font-weight: bold; margin-top: 5px; }
+
+  /* Animation States */
+  .merging { opacity: 0; transform: translateY(50px) scale(0.5); }
+  .show-cal { opacity: 1; transform: scale(1); }
+
+  /* Overflow Handling Visual */
+  .overflow-note {
+    font-size: 0.9rem; color: #facc15; font-weight: bold;
+    opacity: 0; transition: opacity 0.3s; margin-top: 10px;
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🛠️ Date Constructor</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Build a valid date from numbers.<br>
+      <strong>DATE</strong> is smart: It handles "Month 13" by rolling over to the next year automatically.
+    </p>
+
+    <div class="date-stage">
+      
+      <div class="input-row" id="inputs">
+        <div class="date-block" id="blkYear">
+          <div class="block-label">Year</div>
+          <div class="block-val" id="valY">2025</div>
+        </div>
+        <div class="date-block" id="blkMonth">
+          <div class="block-label">Month</div>
+          <div class="block-val" id="valM">10</div>
+        </div>
+        <div class="date-block" id="blkDay">
+          <div class="block-label">Day</div>
+          <div class="block-val" id="valD">25</div>
+        </div>
+      </div>
+
+      <div class="arrow-down" id="arrow" style="font-size:1.5rem; opacity:0; transition:0.3s;">⬇</div>
+
+      <div class="calendar-page" id="calendar">
+        <div class="cal-header" id="calMonth">OCT</div>
+        <div class="cal-body">
+          <div class="cal-day" id="calDay">25</div>
+          <div class="cal-my" id="calYear">2025</div>
+        </div>
+      </div>
+
+      <div class="overflow-note" id="overflowNote">⚠️ Month 14 rolled over to Feb!</div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnNormal">📅 Standard (2025, 10, 25)</button>
+        <button class="action" id="btnOverflow">🔄 Overflow (Month 14)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">DATE</span>(year, month, day)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Year:</strong> The 4-digit year (e.g. 2025).</li>
+          <li><strong>2. Month:</strong> The month number. (If >12, adds to year).</li>
+          <li><strong>3. Day:</strong> The day. (If >31, adds to month).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Assemble the date</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">DATE</span>( <span class="val" id="cY">2025</span>, <span class="val" id="cM">10</span>, <span class="val" id="cD">25</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Resulting Date:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Why use DATE?</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">✅ Safer than Text</div>
+          <div class="mistake-desc">
+            Typing "10/25/2025" in a formula is risky (US vs UK formats). Using <code>DATE(2025, 10, 25)</code> is unambiguous and never breaks.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">✅ Dynamic Math</div>
+          <div class="mistake-desc">
+            Great for math: <code>DATE(2025, 1 + 6, 1)</code> correctly returns July 1st. You don't need to manually calculate month rollovers.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("DATE Function", "../../");
+
+  const valY = document.getElementById('valY');
+  const valM = document.getElementById('valM');
+  const valD = document.getElementById('valD');
+  const arrow = document.getElementById('arrow');
+  const calendar = document.getElementById('calendar');
+  const totalBubble = document.getElementById('totalBubble');
+  const overflowNote = document.getElementById('overflowNote');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset positions
+    document.querySelectorAll('.date-block').forEach(b => {
+        b.style.opacity = '1';
+        b.style.transform = 'translateY(0) scale(1)';
+    });
+    
+    calendar.classList.remove('show-cal');
+    arrow.style.opacity = '0';
+    overflowNote.style.opacity = '0';
+    totalBubble.classList.remove('show');
+    totalBubble.textContent = "-";
+    
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(y, m, d) {
+    valY.textContent = y;
+    valM.textContent = m;
+    valD.textContent = d;
+    
+    document.getElementById('cY').textContent = y;
+    document.getElementById('cM').textContent = m;
+    document.getElementById('cD').textContent = d;
+    
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runDate(y, m, d, isOverflow) {
+    updateUI(y, m, d);
+    App.updateText(`Constructing Date: Year ${y}, Month ${m}, Day ${d}`);
+    await App.speak(`Building a date from these numbers.`);
+    
+    if(shouldStop) return;
+
+    // 1. Show merging
+    arrow.style.opacity = '1';
+    await new Promise(r => setTimeout(r, 600));
+    
+    const blocks = document.querySelectorAll('.date-block');
+    blocks.forEach(b => b.classList.add('merging')); // Fade down
+    
+    await new Promise(r => setTimeout(r, 600));
+
+    // 2. Logic Check (JS Date handles overflow exactly like Excel)
+    // JS Date Month is 0-indexed (0=Jan, 11=Dec)
+    // But input 'm' is 1-based (1=Jan). So subtract 1.
+    const dateObj = new Date(y, m - 1, d);
+    
+    const finalMonth = dateObj.toLocaleString('default', { month: 'short' }).toUpperCase();
+    const finalDay = dateObj.getDate();
+    const finalYear = dateObj.getFullYear();
+    const fullStr = dateObj.toLocaleDateString();
+
+    // Update Calendar
+    document.getElementById('calMonth').textContent = finalMonth;
+    document.getElementById('calDay').textContent = finalDay;
+    document.getElementById('calYear').textContent = finalYear;
+    
+    // Show Calendar
+    calendar.classList.add('show-cal');
+    
+    if (isOverflow) {
+        App.updateText(`Overflow! Month ${m} becomes ${finalMonth} ${finalYear}.`);
+        await App.speak(`Wait! Month ${m} is too high. Excel rolls it over to the next year.`);
+        overflowNote.style.opacity = '1';
+    } else {
+        App.updateText(`Success! Date is ${fullStr}.`);
+        await App.speak(`Success. The date is ${fullStr}.`);
+    }
+    
+    totalBubble.textContent = fullStr;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnNormal').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runDate(2025, 10, 25, false);
+    isRunning = false;
+  });
+
+  document.getElementById('btnOverflow').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 14th Month = Feb next year
+    await runDate(2025, 14, 15, true);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

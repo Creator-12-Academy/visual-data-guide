@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: LEN Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Tape Measure Container */
+  .tape-stage {
+    position: relative; margin-bottom: 2rem; padding: 20px 0;
+    overflow-x: auto; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border); border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  /* The Character Strip */
+  .char-strip {
+    display: flex; gap: 2px; margin-bottom: 10px;
+  }
+
+  /* Character Block */
+  .char-box {
+    width: 30px; height: 40px; background: #334155;
+    border: 1px solid var(--border); border-radius: 2px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: monospace; font-size: 1.2rem; color: #fff; font-weight: bold;
+    position: relative; transition: all 0.2s;
+  }
+  
+  /* Special styling for Space */
+  .char-space { 
+    background: rgba(255,255,255,0.1); border-style: dashed; 
+    color: rgba(255,255,255,0.3);
+  }
+  .char-space::after { content: '·'; } /* Dot to visualize space */
+
+  /* Ruler Ticks below chars */
+  .ruler-strip {
+    display: flex; gap: 2px;
+  }
+  .ruler-tick {
+    width: 30px; border-top: 2px solid var(--text-dim);
+    display: flex; justify-content: center; padding-top: 4px;
+    font-size: 0.7rem; color: var(--text-dim); position: relative;
+  }
+  .ruler-tick::before {
+    content:''; position: absolute; top: -4px; left: 50%; transform: translateX(-50%);
+    width: 2px; height: 4px; background: var(--text-dim);
+  }
+
+  /* Active Counting State */
+  .counting {
+    background: var(--accent); color: #000; border-color: #fff;
+    transform: scale(1.1); z-index: 10;
+    box-shadow: 0 0 10px var(--accent);
+  }
+  .counting-tick { border-color: var(--accent); color: var(--accent); font-weight: bold; }
+  .counting-tick::before { background: var(--accent); }
+
+  /* Counter Display */
+  .counter-display {
+    background: #0f172a; border: 2px solid var(--border);
+    border-radius: 50%; width: 80px; height: 80px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: absolute; right: 20px; top: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  .counter-val { font-size: 2rem; font-weight: 900; color: #fff; line-height: 1; }
+  .counter-lbl { font-size: 0.6rem; color: var(--text-dim); text-transform: uppercase; }
+
+  .pulse-count { animation: pulseWhite 0.2s; }
+  @keyframes pulseWhite { 50% { transform: scale(1.2); color: var(--accent); } }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📏 The Character Counter</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Count the total characters in the cell.<br>
+      <strong>LEN</strong> counts everything: letters, numbers, symbols, and <span style="color:#facc15;">Spaces</span>.
+    </p>
+
+    <div class="tape-stage" id="stage">
+      <div class="char-strip" id="charStrip"></div>
+      <div class="ruler-strip" id="rulerStrip"></div>
+      
+      <div class="counter-display">
+        <div class="counter-val" id="liveCount">0</div>
+        <div class="counter-lbl">CHARS</div>
+      </div>
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnText">"Excel 2025"</button>
+        <button class="action" id="btnSpace">"   " (Spaces)</button>
+        <button class="action" id="btnNum">100% (Formatted)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">LEN</span>(text)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Text:</strong> The text string to count.</li>
+          <li><strong>Returns:</strong> A number representing the length.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Count characters in A1</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">LEN</span>( <span class="col">A1</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Total Length:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Visual vs Actual</div>
+          <div class="mistake-desc">
+            A cell might display <strong>$10.00</strong> but actually contain <strong>10</strong>. 
+            LEN counts the <em>value</em> (2 chars: "1", "0"), not the format (6 chars).
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Invisible Spaces</div>
+          <div class="mistake-desc">
+            If <code>LEN("A")</code> returns 2, you likely have a trailing space ("A "). Always use <strong>TRIM</strong> if counts look wrong.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("LEN Function", "../../");
+
+  const charStrip = document.getElementById('charStrip');
+  const rulerStrip = document.getElementById('rulerStrip');
+  const liveCount = document.getElementById('liveCount');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initStr(str, isFormattedNumber = false) {
+    charStrip.innerHTML = '';
+    rulerStrip.innerHTML = '';
+    
+    // If it's a formatted number case (like 100%), the actual value is usually 1 (100% = 1).
+    // However, if entered as TEXT "100%", count is 4.
+    // Excel Rule: LEN(100) -> LEN("100") -> 3. 
+    // LEN(100%) [where cell contains 1, formatted as %] -> LEN(1) -> 1.
+    // For this visual demo, we will simulate the "Text Representation" 
+    // unless specified otherwise to show what characters are being counted.
+    
+    const chars = str.split('');
+    
+    chars.forEach((char, i) => {
+      // Char Box
+      const box = document.createElement('div');
+      box.id = `c-${i}`;
+      if (char === ' ') {
+        box.className = 'char-box char-space';
+        box.innerHTML = ''; 
+      } else {
+        box.className = 'char-box';
+        box.textContent = char;
+      }
+      charStrip.appendChild(box);
+
+      // Ruler Tick
+      const tick = document.createElement('div');
+      tick.className = 'ruler-tick';
+      tick.id = `t-${i}`;
+      tick.textContent = i + 1;
+      rulerStrip.appendChild(tick);
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.querySelectorAll('.counting').forEach(c => c.classList.remove('counting'));
+    document.querySelectorAll('.counting-tick').forEach(c => c.classList.remove('counting-tick'));
+    
+    liveCount.textContent = "0";
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC: RUN LEN ---
+  async function runLen(str, narrateSpaces) {
+    initStr(str);
+    document.getElementById('line2').classList.add('active');
+    
+    App.updateText(`Measuring length of: "${str}"`);
+    await App.speak(`Measuring the text "${str}".`);
+    
+    if(shouldStop) return;
+
+    const chars = str.split('');
+    
+    for (let i = 0; i < chars.length; i++) {
+      if(shouldStop) return;
+      
+      const box = document.getElementById(`c-${i}`);
+      const tick = document.getElementById(`t-${i}`);
+      const char = chars[i];
+      
+      // Activate
+      box.classList.add('counting');
+      tick.classList.add('counting-tick');
+      
+      // Update Counter
+      liveCount.textContent = i + 1;
+      liveCount.classList.add('pulse-count');
+      setTimeout(() => liveCount.classList.remove('pulse-count'), 100);
+
+      // Narration for specific types
+      if (char === ' ' && narrateSpaces) {
+          App.updateText(`Position ${i+1}: Space found. It counts!`);
+          if(i===0 || i===chars.length-1) await App.speak("Space counts."); // Only speak once/twice
+          await new Promise(r => setTimeout(r, 500));
+      } else {
+          // Faster for letters
+          await new Promise(r => setTimeout(r, 150));
+      }
+    }
+
+    // Finish
+    App.updateText(`Done! Total Length: ${str.length}`);
+    await App.speak(`The total length is ${str.length}.`);
+    
+    totalBubble.textContent = str.length;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnText').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "Excel 2025" (10 chars)
+    await runLen("Excel 2025", true);
+    isRunning = false;
+  });
+
+  document.getElementById('btnSpace').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "   " (3 spaces)
+    await runLen("   ", true);
+    isRunning = false;
+  });
+
+  document.getElementById('btnNum').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "100%" - treating as Text for demo
+    await runLen("100%", false);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initStr("Excel"); // Default
+
+</script>
+</body>
+</html>

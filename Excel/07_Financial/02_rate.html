@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: RATE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --needle-color: #facc15;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .rate-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 280px; position: relative;
+  }
+
+  /* The Gauge */
+  .gauge-container {
+    width: 200px; height: 100px; position: relative; overflow: hidden;
+    margin-bottom: 10px;
+  }
+  .gauge-bg {
+    width: 200px; height: 100px; background: #475569;
+    border-radius: 100px 100px 0 0; /* Semi-circle */
+    position: absolute; top: 0; left: 0;
+  }
+  .gauge-fill {
+    width: 200px; height: 100px; background: var(--accent);
+    border-radius: 100px 100px 0 0; position: absolute; top: 0; left: 0;
+    transform-origin: bottom center; transform: rotate(-180deg); /* Start hidden */
+    transition: transform 1.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .gauge-center {
+    width: 160px; height: 80px; background: var(--bg-card);
+    border-radius: 80px 80px 0 0; position: absolute; bottom: 0; left: 20px;
+    display: flex; align-items: flex-end; justify-content: center;
+    border-bottom: none;
+  }
+  
+  /* Digital Readout */
+  .rate-display {
+    font-size: 3rem; font-weight: 900; color: #fff; font-family: monospace;
+    z-index: 10; line-height: 1;
+  }
+  .rate-label {
+    font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase;
+    margin-top: 5px; text-align: center;
+  }
+
+  /* Input Variables Row */
+  .vars-row {
+    display: flex; gap: 15px; width: 100%; justify-content: center;
+  }
+  .var-card {
+    background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px; text-align: center; min-width: 90px;
+  }
+  .var-val { font-weight: bold; color: var(--accent); font-size: 1.1rem; }
+  .var-name { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📈 The Rate Finder</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find the annual interest rate.<br>
+      <strong>RATE</strong> reverse-engineers the percentage based on the loan amount, payment size, and duration.
+    </p>
+
+    <div class="rate-stage">
+      
+      <div>
+        <div class="gauge-container">
+          <div class="gauge-bg"></div>
+          <div class="gauge-fill" id="gaugeFill"></div>
+          <div class="gauge-center"></div>
+        </div>
+        <div class="rate-display" id="rateOutput">0.0%</div>
+        <div class="rate-label">Annual Interest Rate</div>
+      </div>
+
+      <div class="vars-row">
+        <div class="var-card">
+          <div class="var-val" id="dispNper">-</div>
+          <div class="var-name">NPER (Months)</div>
+        </div>
+        <div class="var-card">
+          <div class="var-val" id="dispPmt">-</div>
+          <div class="var-name">PMT (Monthly)</div>
+        </div>
+        <div class="var-card">
+          <div class="var-val" id="dispPv">-</div>
+          <div class="var-name">PV (Loan)</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnLow">🚗 Low Rate Deal</button>
+        <button class="action" id="btnHigh">💳 High Interest</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">RATE</span>(nper, pmt, pv, [fv], [type], [guess])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Nper:</strong> Total months (Years * 12).</li>
+          <li><strong>2. Pmt:</strong> Monthly payment (Negative!).</li>
+          <li><strong>3. Pv:</strong> Loan amount (Positive).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Find interest rate</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">RATE</span>( <span class="val" id="codeNper">60</span>, <span class="val" id="codePmt">-400</span>, <span class="val" id="codePv">20000</span> ) * 12
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Annual Rate:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Monthly vs Annual</div>
+          <div class="mistake-desc">
+            The function returns the rate <strong>per period</strong>. If you use monthly periods, you get a monthly rate (e.g., 0.5%). You MUST multiply by 12 to get the Annual Percentage Rate (APR).
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 #NUM! Error</div>
+          <div class="mistake-desc">
+            If Excel cannot find a result within 20 iterations, it returns #NUM!. This often happens if you forget to make the Payment (PMT) negative and the Loan (PV) positive.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("RATE Function", "../../");
+
+  const gaugeFill = document.getElementById('gaugeFill');
+  const rateOutput = document.getElementById('rateOutput');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // Elements
+  const dispNper = document.getElementById('dispNper');
+  const dispPmt = document.getElementById('dispPmt');
+  const dispPv = document.getElementById('dispPv');
+  
+  const codeNper = document.getElementById('codeNper');
+  const codePmt = document.getElementById('codePmt');
+  const codePv = document.getElementById('codePv');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Gauge
+    gaugeFill.style.transform = 'rotate(-180deg)';
+    rateOutput.textContent = "0.0%";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(nper, pmt, pv) {
+    dispNper.textContent = nper;
+    dispPmt.textContent = pmt;
+    dispPv.textContent = pv;
+    
+    codeNper.textContent = nper;
+    codePmt.textContent = pmt;
+    codePv.textContent = pv;
+    
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runRate(nper, pmt, pv, targetRate, desc) {
+    updateUI(nper, pmt, pv);
+    App.updateText(`Analyzing: ${desc}...`);
+    await App.speak(`Calculating the interest rate for ${desc}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Calculate Monthly Rate
+    // TargetRate (e.g., 5%) is Annual. Monthly is ~0.41%
+    const monthlyRate = targetRate / 12;
+    
+    // 2. Animate Gauge
+    // Map 0% -> -180deg, 20% -> 0deg (Visual Limit)
+    // Formula: (TargetRate / 0.20) * 180 - 180
+    const maxVisualRate = 0.25; // 25% max on gauge
+    const rotation = Math.min((targetRate / maxVisualRate) * 180 - 180, 0); // Cap at 0 deg (full)
+    
+    gaugeFill.style.transform = `rotate(${rotation}deg)`;
+    
+    // 3. Count Up Number
+    const steps = 20;
+    const increment = targetRate / steps;
+    let current = 0;
+    
+    for(let i=0; i<=steps; i++) {
+        if(shouldStop) break;
+        rateOutput.textContent = (current * 100).toFixed(1) + "%";
+        current += increment;
+        await new Promise(r => setTimeout(r, 50));
+    }
+    
+    rateOutput.textContent = (targetRate * 100).toFixed(2) + "%"; // Final precision
+
+    await new Promise(r => setTimeout(r, 500));
+
+    // Result
+    App.updateText(`Result: ${(targetRate*100).toFixed(2)}% Annual Rate`);
+    await App.speak(`The annual rate is ${(targetRate*100).toFixed(1)} percent.`);
+    
+    totalBubble.textContent = `${(targetRate*100).toFixed(2)}%`;
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnLow').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 60 months, -350 pmt, 20000 loan -> ~1.9% approx
+    // Let's use a real calc or approximate
+    // NPER=60, PMT=-350, PV=20000. Total Paid = 21000. Interest = 1000.
+    // Very low rate. Approx 1.9%
+    await runRate(60, -350, 20000, 0.0195, "Low Interest Auto Loan");
+    isRunning = false;
+  });
+
+  document.getElementById('btnHigh').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 24 months, -250 pmt, 5000 loan -> ~18% approx
+    // Total Paid = 6000. Interest = 1000 on 5000 over 2 years.
+    await runRate(24, -250, 5000, 0.1816, "Credit Card Debt");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

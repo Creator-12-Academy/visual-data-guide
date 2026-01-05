@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: CONCAT & TEXTJOIN</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Assembly Line Stage */
+  .join-stage {
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    min-height: 120px; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 2rem; padding: 20px; overflow-x: auto;
+    position: relative;
+  }
+
+  /* Text Block */
+  .text-block {
+    background: #334155; padding: 8px 12px; border-radius: 4px;
+    color: #fff; font-weight: bold; font-family: monospace; font-size: 1.1rem;
+    border: 1px solid var(--border); position: relative;
+    opacity: 0; transform: scale(0.5);
+    animation: popIn 0.3s forwards;
+  }
+
+  /* Delimiter Block */
+  .delim-block {
+    background: var(--accent); color: #000; padding: 4px 8px;
+    border-radius: 10px; font-size: 0.9rem; font-weight: bold;
+    box-shadow: 0 0 10px var(--accent);
+    opacity: 0; transform: scale(0);
+    animation: popIn 0.3s forwards;
+  }
+
+  @keyframes popIn { to { opacity: 1; transform: scale(1); } }
+
+  /* Merge Animation */
+  .merging {
+    transition: all 0.5s ease-in-out;
+    margin: 0 !important; /* Remove gaps */
+    border-radius: 0; /* Square edges */
+  }
+  .merged-result {
+    background: #4ade80; color: #000; border-color: #fff;
+    box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔗 The String Joiner</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Combine First Name, Middle, and Last Name.<br>
+      <strong>CONCAT:</strong> Glues text directly.<br>
+      <strong>TEXTJOIN:</strong> Adds a separator (e.g., space) automatically.
+    </p>
+
+    <div class="join-stage" id="stage">
+      <span style="color:var(--text-dim); font-style:italic;">(Waiting to join...)</span>
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnConcat">⛓️ CONCAT (Raw)</button>
+        <button class="action" id="btnJoin">🛠️ TEXTJOIN (Smart)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-concat">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">CONCAT</span>(text1, [text2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Text:</strong> Strings to combine.</li>
+          <li><strong>Note:</strong> Does not add spaces automatically. You must include them manually as " ".</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-join" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">TEXTJOIN</span>(delimiter, ignore_empty, text1...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Delimiter:</strong> Separator (e.g., " ").</li>
+          <li><strong>2. Ignore Empty:</strong> TRUE/FALSE. Skips blanks.</li>
+          <li><strong>3. Text:</strong> The strings to join.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final String:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Concatenate vs Concat</div>
+          <div class="mistake-desc">
+            <code>CONCATENATE</code> is the old legacy function. <code>CONCAT</code> is the modern version that supports ranges (e.g. A1:A10), which the old one couldn't do.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Missing Spaces</div>
+          <div class="mistake-desc">
+            <code>=CONCAT("John", "Doe")</code> results in <strong>"JohnDoe"</strong>. Always remember to add the space: <code>=CONCAT("John", " ", "Doe")</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("CONCAT & TEXTJOIN", "../../");
+
+  // Data: John, (Middle Empty), Doe
+  const parts = ["John", "", "Doe"]; 
+  const stage = document.getElementById('stage');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    stage.innerHTML = `<span style="color:var(--text-dim); font-style:italic;">(Waiting to join...)</span>`;
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fn) {
+    if (fn === 'CONCAT') {
+        document.getElementById('syntax-concat').style.display = 'block';
+        document.getElementById('syntax-join').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Join blindly (Notice no space)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">CONCAT</span>( <span class="col">A1:C1</span> )`;
+    } else {
+        document.getElementById('syntax-concat').style.display = 'none';
+        document.getElementById('syntax-join').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Join with Space, Ignore Blanks</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">TEXTJOIN</span>( <span class="str">" "</span>, <span class="bool">TRUE</span>, <span class="col">A1:C1</span> )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runJoin(fn) {
+    updateUI(fn);
+    stage.innerHTML = ''; // Clear stage
+    
+    // 1. Reveal Input Blocks
+    for (let i = 0; i < parts.length; i++) {
+        const p = parts[i];
+        const block = document.createElement('div');
+        block.className = 'text-block';
+        block.id = `blk-${i}`;
+        
+        // Visualize empty string differently
+        if (p === "") {
+            block.textContent = "∅";
+            block.style.opacity = "0.5";
+            block.style.borderStyle = "dashed";
+        } else {
+            block.textContent = p;
+        }
+        stage.appendChild(block);
+        await new Promise(r => setTimeout(r, 200));
+    }
+
+    if(shouldStop) return;
+
+    // 2. Logic & Animation
+    if (fn === 'CONCAT') {
+        App.updateText("CONCAT joins everything blindly...");
+        await App.speak("Concatenating simply glues them together.");
+        
+        let finalStr = "";
+        
+        // Move blocks together
+        const blocks = document.querySelectorAll('.text-block');
+        blocks.forEach(b => b.classList.add('merging'));
+        
+        await new Promise(r => setTimeout(r, 600));
+        
+        // Merge Result
+        stage.innerHTML = "";
+        for(let p of parts) finalStr += p;
+        
+        const resBlock = document.createElement('div');
+        resBlock.className = 'text-block merged-result';
+        resBlock.textContent = `"${finalStr}"`;
+        stage.appendChild(resBlock);
+        
+        App.updateText(`Result: "${finalStr}" (Note: No spaces!)`);
+        await App.speak(`The result is ${finalStr}. Notice there are no spaces.`);
+        
+        totalBubble.textContent = finalStr;
+
+    } else {
+        // TEXTJOIN
+        App.updateText("TEXTJOIN inserts delimiter and ignores blanks...");
+        await App.speak("Text Join is smarter. It adds a space and skips the empty middle name.");
+        
+        // Remove Empty Blocks
+        const blocks = document.querySelectorAll('.text-block');
+        
+        // 2a. Fade out empty
+        if (parts[1] === "") {
+            const emptyBlk = document.getElementById('blk-1');
+            emptyBlk.style.opacity = '0';
+            emptyBlk.style.transform = 'scale(0)';
+            await new Promise(r => setTimeout(r, 400));
+            emptyBlk.remove();
+        }
+        
+        // 2b. Insert Delimiter
+        const delim = document.createElement('div');
+        delim.className = 'delim-block';
+        delim.innerHTML = '" "'; // Space visual
+        // Insert between remaining blocks (John and Doe)
+        const john = document.getElementById('blk-0');
+        john.after(delim);
+        
+        await new Promise(r => setTimeout(r, 600));
+        
+        // 2c. Merge
+        const remaining = document.querySelectorAll('.text-block, .delim-block');
+        remaining.forEach(b => b.classList.add('merging'));
+        
+        await new Promise(r => setTimeout(r, 600));
+        
+        stage.innerHTML = "";
+        const finalStr = "John Doe";
+        const resBlock = document.createElement('div');
+        resBlock.className = 'text-block merged-result';
+        resBlock.textContent = `"${finalStr}"`;
+        stage.appendChild(resBlock);
+        
+        App.updateText(`Result: "${finalStr}" (Clean!)`);
+        await App.speak(`The result is ${finalStr}. Much cleaner.`);
+        
+        totalBubble.textContent = finalStr;
+    }
+
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnConcat').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runJoin('CONCAT');
+    isRunning = false;
+  });
+
+  document.getElementById('btnJoin').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runJoin('TEXTJOIN');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>
