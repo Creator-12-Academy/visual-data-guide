@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel: Math & Trig</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Overrides for this Category */
+  :root { --accent: var(--accent-excel); }
+  
+  .hero { text-align: center; padding: 3rem 1rem 2rem; }
+  .hero h1 { font-size: 2.2rem; margin-bottom: 0.5rem; color: var(--accent); }
+  .hero p { color: var(--text-dim); font-size: 1rem; max-width: 600px; margin: 0 auto; }
+
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    max-width: 1000px; margin: 0 auto; padding: 2rem;
+  }
+
+  .lesson-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 1rem; padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 1rem;
+    transition: transform 0.2s, box-shadow 0.2s;
+    text-decoration: none; color: var(--text-primary);
+  }
+  .lesson-card:hover { 
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 20px rgba(34, 197, 94, 0.1); 
+    border-color: var(--accent); 
+  }
+
+  .card-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+  .card-title { font-weight: 800; font-size: 1.1rem; color: #fff; }
+  .card-desc { font-size: 0.85rem; color: var(--text-dim); line-height: 1.5; }
+  
+  .status-badge { 
+    margin-left: auto; font-size: 0.7rem; 
+    background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 10px;
+  }
+
+  /* 📱 MOBILE OPTIMIZATIONS */
+  @media (max-width: 768px) {
+    .hero { padding: 2rem 1rem 1rem; }
+    .hero h1 { font-size: 1.8rem; }
+    
+    .module-grid {
+      grid-template-columns: 1fr; /* Force single column on mobile */
+      padding: 1rem;
+      gap: 1rem;
+    }
+
+    .lesson-card {
+      padding: 1.2rem;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <header></header>
+
+  <div class="hero">
+    <h1>∑ Math & Trig</h1>
+    <p>Crunch the numbers. From simple aggregation to conditional summing, rounding, and random simulation.</p>
+  </div>
+
+  <div class="module-grid">
+
+    <a href="01_sum.html" class="lesson-card">
+      <div style="display:flex; align-items:center;">
+        <span class="card-icon">➕</span>
+        <span class="status-badge">Essential</span>
+      </div>
+      <div>
+        <div class="card-title">01. SUM</div>
+        <div class="card-desc">The first formula everyone learns. Add up a range of numbers instantly.</div>
+      </div>
+    </a>
+
+    <a href="02_sumif.html" class="lesson-card">
+      <div style="display:flex; align-items:center;">
+        <span class="card-icon">🎯</span>
+        <span class="status-badge">Crucial</span>
+      </div>
+      <div>
+        <div class="card-title">02. SUMIF / SUMIFS</div>
+        <div class="card-desc">Add numbers only if they meet specific criteria (e.g., "Total Sales for Apples").</div>
+      </div>
+    </a>
+
+    <a href="03_product.html" class="lesson-card">
+      <div style="display:flex; align-items:center;">
+        <span class="card-icon">✖️</span>
+        <span class="status-badge">Basic</span>
+      </div>
+      <div>
+        <div class="card-title">03. PRODUCT</div>
+        <div class="card-desc">Multiply all numbers in a range. Useful for compounding growth or volume calculations.</div>
+      </div>
+    </a>
+
+    <a href="04_quotient.html" class="lesson-card">
+      <div style="display:flex; align-items:center;">
+        <span class="card-icon">➗</span>
+        <span class="status-badge">Utility</span>
+      </div>
+      <div>
+        <div class="card-title">04. QUOTIENT / MOD</div>
+        <div class="card-desc">Divide numbers and handle the pieces. Get the integer result (Quotient) or just the Remainder (Mod).</div>
+      </div>
+    </a>
+
+    <a href="05_power.html" class="lesson-card">
+      <div style="display:flex; align-items:center;">
+        <span class="card-icon">🚀</span>
+        <span class="status-badge">Math</span>
+      </div>
+      <div>
+        <div class="card-title">05. POWER / SQRT</div>
+        <div class="card-desc">Exponents and Roots. Calculate squares, cubes, and square roots.</div>
+      </div>
+    </a>
+
+    <a href="06_round.html" class="lesson-card">
+      <div style="display:flex; align-items:center;">
+        <span class="card-icon">📏</span>
+        <span class="status-badge">Essential</span>
+      </div>
+      <div>
+        <div class="card-title">06. ROUND</div>
+        <div class="card-desc">Control your decimals. ROUND (Nearest), ROUNDUP (Always away from 0), and ROUNDDOWN (Towards 0).</div>
+      </div>
+    </a>
+
+    <a href="07_ceiling.html" class="lesson-card">
+      <div style="display:flex; align-items:center;">
+        <span class="card-icon">🧱</span>
+        <span class="status-badge">Utility</span>
+      </div>
+      <div>
+        <div class="card-title">07. CEILING / FLOOR</div>
+        <div class="card-desc">Round to a specific multiple (Significance). E.g., Round price up to the nearest $0.99 or $5.00.</div>
+      </div>
+    </a>
+
+    <a href="08_int.html" class="lesson-card">
+      <div style="display:flex; align-items:center;">
+        <span class="card-icon">🔢</span>
+        <span class="status-badge">Basic</span>
+      </div>
+      <div>
+        <div class="card-title">08. INT</div>
+        <div class="card-desc">Strip the decimals. Converts any decimal number down to the nearest integer.</div>
+      </div>
+    </a>
+
+    <a href="09_abs.html" class="lesson-card">
+      <div style="display:flex; align-items:center;">
+        <span class="card-icon">↔️</span>
+        <span class="status-badge">Math</span>
+      </div>
+      <div>
+        <div class="card-title">09. ABS</div>
+        <div class="card-desc">Absolute Value. Removes the negative sign (e.g., -50 becomes 50). Useful for variance checks.</div>
+      </div>
+    </a>
+
+    <a href="10_rand.html" class="lesson-card">
+      <div style="display:flex; align-items:center;">
+        <span class="card-icon">🎲</span>
+        <span class="status-badge">Simulation</span>
+      </div>
+      <div>
+        <div class="card-title">10. RAND / RANDBETWEEN</div>
+        <div class="card-desc">Generate random data. Create decimals between 0-1 or integers between specific limits.</div>
+      </div>
+    </a>
+
+  </div>
+
+  <div style="text-align:center; margin-bottom:4rem;">
+    <a href="../index.html" class="nav-link" style="display:inline-block; border:1px solid var(--border); padding: 0.8rem 2rem;">⬅ Back to Excel Menu</a>
+  </div>
+
+  <footer></footer>
+
+  <script src="../../assets/app.js"></script>
+  <script>
+    App.initLayout("Math & Trig", "../../");
+  </script>
+
+</body>
+</html>

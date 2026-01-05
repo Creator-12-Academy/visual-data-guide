@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: TYPE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --neon-purple: #c084fc;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .type-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 350px; position: relative;
+    overflow: hidden;
+  }
+
+  /* Spectrometer Device */
+  .device-box {
+    width: 200px; height: 140px; background: #0f172a;
+    border: 4px solid var(--text-dim); border-radius: 12px;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    position: relative; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  
+  /* Screen */
+  .device-screen {
+    width: 160px; height: 60px; background: #000;
+    border: 2px solid #333; margin-bottom: 20px; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Courier New', monospace; font-size: 2.5rem;
+    font-weight: 900; color: var(--neon-purple); text-shadow: 0 0 10px var(--neon-purple);
+  }
+
+  /* Input Slot */
+  .input-slot {
+    position: absolute; top: -20px; width: 80px; height: 10px;
+    background: #000; border-radius: 4px;
+  }
+
+  /* Data Particle */
+  .data-orb {
+    width: 50px; height: 50px; border-radius: 50%;
+    background: #fff; color: #000; font-weight: bold; font-size: 0.8rem;
+    display: flex; align-items: center; justify-content: center;
+    position: absolute; top: -60px; left: 50%; transform: translateX(-50%);
+    box-shadow: 0 0 15px rgba(255,255,255,0.5);
+    transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    opacity: 0;
+  }
+  .drop-in { top: 40px; opacity: 1; transform: translateX(-50%) scale(0); }
+
+  /* Classification Grid (Legend) */
+  .legend-grid {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px;
+    width: 100%; max-width: 600px; margin-top: 20px;
+  }
+  .legend-item {
+    background: rgba(0,0,0,0.2); border: 1px solid var(--border);
+    border-radius: 6px; padding: 10px 5px; text-align: center;
+    opacity: 0.4; transition: all 0.3s;
+  }
+  .lg-code { font-size: 1.2rem; font-weight: bold; color: var(--accent); margin-bottom: 5px; }
+  .lg-desc { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; }
+
+  /* Active Legend State */
+  .lg-active {
+    opacity: 1; background: rgba(192, 132, 252, 0.15); 
+    border-color: var(--neon-purple); transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(192, 132, 252, 0.2);
+  }
+  .lg-active .lg-code { color: var(--neon-purple); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🏷️ Data Type Analyzer</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Reveal the numeric code for a data type.<br>
+      <strong>TYPE</strong> classifies data into 5 categories. Useful for testing if a cell contains an Array or Error.
+    </p>
+
+    <div class="type-stage">
+      
+      <div class="data-orb" id="orb">?</div>
+
+      <div class="device-box">
+        <div class="input-slot"></div>
+        <div style="font-size:0.6rem; color:#666; margin-bottom:5px;">TYPE CODE</div>
+        <div class="device-screen" id="screenVal">--</div>
+      </div>
+
+      <div class="legend-grid">
+        <div class="legend-item" id="lg1">
+          <div class="lg-code">1</div>
+          <div class="lg-desc">Number</div>
+        </div>
+        <div class="legend-item" id="lg2">
+          <div class="lg-code">2</div>
+          <div class="lg-desc">Text</div>
+        </div>
+        <div class="legend-item" id="lg4">
+          <div class="lg-code">4</div>
+          <div class="lg-desc">Boolean</div>
+        </div>
+        <div class="legend-item" id="lg16">
+          <div class="lg-code">16</div>
+          <div class="lg-desc">Error</div>
+        </div>
+        <div class="legend-item" id="lg64">
+          <div class="lg-code">64</div>
+          <div class="lg-desc">Array</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnNum">🔢 Number (100)</button>
+        <button class="action" id="btnTxt">🔤 Text ("ABC")</button>
+        <button class="action" id="btnBool">⚖️ Bool (TRUE)</button>
+        <button class="action" id="btnErr">⚠️ Error (#N/A)</button>
+        <button class="action" id="btnArr">🌊 Array ({1;2})</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">TYPE</span>(value)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Value:</strong> The cell or data to evaluate.</li>
+          <li><strong>Returns:</strong> An integer code (1, 2, 4, 16, or 64).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Check data type of A1</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">TYPE</span>( <span class="val" id="codeVal">A1</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Numeric Code:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Notes</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">📅 Dates are Numbers</div>
+          <div class="mistake-desc">
+            Since Excel stores dates as serial numbers, <code>TYPE(Date)</code> returns <strong>1</strong>.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Empty Cells</div>
+          <div class="mistake-desc">
+            <code>TYPE(EmptyCell)</code> returns <strong>1</strong> (Number) because empty cells are treated as 0 in math operations. Use <strong>ISBLANK</strong> to check for emptiness instead.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("TYPE Function", "../../");
+
+  const orb = document.getElementById('orb');
+  const screenVal = document.getElementById('screenVal');
+  const totalBubble = document.getElementById('totalBubble');
+  const codeVal = document.getElementById('codeVal');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Visuals
+    orb.style.opacity = 0;
+    orb.style.top = "-60px";
+    orb.classList.remove('drop-in');
+    
+    screenVal.textContent = "--";
+    document.querySelectorAll('.legend-item').forEach(el => el.classList.remove('lg-active'));
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runType(valLabel, codeStr, typeCode, desc) {
+    // Setup UI
+    orb.textContent = valLabel;
+    codeVal.textContent = codeStr;
+    document.getElementById('line2').classList.add('active');
+    
+    App.updateText(`Analyzing input: ${desc}...`);
+    await App.speak(`Analyzing the input.`);
+    
+    if(shouldStop) return;
+
+    // 1. Drop In
+    orb.style.opacity = 1;
+    orb.classList.add('drop-in');
+    
+    // Randomize screen for effect
+    const shuffle = setInterval(() => {
+        screenVal.textContent = [1,2,4,16,64][Math.floor(Math.random()*5)];
+    }, 50);
+
+    await new Promise(r => setTimeout(r, 800));
+    clearInterval(shuffle);
+
+    if(shouldStop) return;
+
+    // 2. Show Result
+    screenVal.textContent = typeCode;
+    
+    // Highlight Legend
+    document.getElementById(`lg${typeCode}`).classList.add('lg-active');
+    
+    App.updateText(`Result Code: ${typeCode} (${desc})`);
+    await App.speak(`The type code is ${typeCode}.`);
+    
+    totalBubble.textContent = typeCode;
+    totalBubble.style.background = "var(--neon-purple)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnNum').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runType("100", "100", 1, "Number");
+    isRunning = false;
+  });
+
+  document.getElementById('btnTxt').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runType("ABC", '"ABC"', 2, "Text");
+    isRunning = false;
+  });
+
+  document.getElementById('btnBool').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runType("T", "TRUE", 4, "Boolean");
+    isRunning = false;
+  });
+
+  document.getElementById('btnErr').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runType("#N/A", "#N/A", 16, "Error Value");
+    isRunning = false;
+  });
+
+  document.getElementById('btnArr').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runType("{1;2}", "{1;2}", 64, "Array");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: COUNT & COUNTA</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Data Type Badges */
+  .type-badge {
+    font-size: 0.75rem; padding: 2px 6px; border-radius: 4px;
+    background: #334155; color: var(--text-dim);
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+
+  /* Scan Status */
+  .row-dim { opacity: 0.3; transition: 0.3s; }
+  .row-check {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid var(--accent);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    transform: scale(1.02);
+    font-weight: bold;
+  }
+  .check-icon { font-size: 1.2rem; opacity: 0; transition: 0.2s; }
+  .show-icon { opacity: 1; }
+
+  /* Tally Counter Visual */
+  .tally-box {
+    background: #0f172a; border: 4px solid #334155;
+    border-radius: 50%; width: 120px; height: 120px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    margin: 1rem auto; position: relative;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  }
+  .tally-box::before {
+    content: ''; position: absolute; top: -10px; width: 20px; height: 10px;
+    background: #94a3b8; border-radius: 4px; /* Clicker button */
+  }
+  .tally-val {
+    font-size: 3.5rem; font-weight: 900; color: #fff; font-family: monospace;
+    line-height: 1;
+  }
+  .tally-label { font-size: 0.8rem; color: var(--text-dim); margin-top: 5px; }
+
+  .click-anim { animation: clickPress 0.2s; }
+  @keyframes clickPress {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.95); background: #1e293b; }
+    100% { transform: scale(1); }
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔢 The Tally Counter</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Count how many valid entries are in the list.<br>
+      <strong>COUNT:</strong> Only counts Numbers.<br>
+      <strong>COUNTA:</strong> Counts Anything (except empty cells).
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1rem;"></div>
+
+    <div class="tally-box" id="clicker">
+      <div class="tally-val" id="countDisplay">0</div>
+      <div class="tally-label">ITEMS</div>
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnCount">🔢 COUNT (Num Only)</button>
+        <button class="action" id="btnCountA">🔠 COUNTA (Any)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-count">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">COUNT</span>(value1, [value2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Logic:</strong> Counts cells containing <strong>Numbers</strong> (including Dates & Percentages).</li>
+          <li><strong>Ignores:</strong> Text, Empty cells, and Logical values (in ranges).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-counta" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">COUNTA</span>(value1, [value2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Logic:</strong> Counts <strong>Anything</strong> that is not empty.</li>
+          <li><strong>Includes:</strong> Numbers, Text, Errors, Booleans, Formulas returning "".</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Count:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 The "Invisible" Space</div>
+          <div class="mistake-desc">
+            A cell containing just a space " " looks empty, but <strong>COUNTA</strong> counts it! This often happens with bad data imports.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">📅 Dates are Numbers</div>
+          <div class="mistake-desc">
+            Excel stores dates as serial numbers (e.g., 45000). Therefore, <strong>COUNT</strong> will include them.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("COUNT vs COUNTA", "../../");
+
+  const data = [
+    { val: "100", raw: 100, type: "Number" },
+    { val: "Apple", raw: "Apple", type: "Text" },
+    { val: "", raw: "", type: "Empty" },
+    { val: "Oct 25", raw: 45224, type: "Date (Num)" }, // Date is numeric
+    { val: "TRUE", raw: true, type: "Bool" }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const countDisplay = document.getElementById('countDisplay');
+  const clicker = document.getElementById('clicker');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 0.5fr;">
+        <div>Value</div> <div>Type</div> <div>?</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      let displayVal = d.val === "" ? "(blank)" : d.val;
+      let style = d.val === "" ? "color:#666; font-style:italic;" : "";
+      
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 0.5fr;">
+          <div style="${style}"><b>${displayVal}</b></div>
+          <div><span class="type-badge">${d.type}</span></div>
+          <div id="icon-${i}" class="check-icon">✅</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.querySelectorAll('.table-row').forEach(r => {
+        r.className = 'table-row';
+        r.style.opacity = "1";
+    });
+    document.querySelectorAll('.check-icon').forEach(i => i.classList.remove('show-icon'));
+    
+    countDisplay.textContent = "0";
+    countDisplay.style.color = "#fff";
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  function updateUI(mode) {
+    if (mode === 'COUNT') {
+        document.getElementById('syntax-count').style.display = 'block';
+        document.getElementById('syntax-counta').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Count Numbers Only</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">COUNT</span>( A2:A6 )`;
+    } else {
+        document.getElementById('syntax-count').style.display = 'none';
+        document.getElementById('syntax-counta').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Count Non-Empty Cells</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">COUNTA</span>( A2:A6 )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runCountLogic(mode) {
+    updateUI(mode);
+    App.updateText(`Scanning with ${mode}...`);
+    await App.speak(`Starting ${mode}. Let's see what gets counted.`);
+    
+    if(shouldStop) return;
+
+    let currentCount = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const icon = document.getElementById(`icon-${i}`);
+      const item = data[i];
+      let isCounted = false;
+      let reason = "";
+
+      // LOGIC BRANCHES
+      if (mode === 'COUNT') {
+          // Rule: Only Numbers (and Dates which are nums)
+          if (typeof item.raw === 'number') {
+              isCounted = true;
+              reason = "It's a Number (or Date). Count it.";
+          } else {
+              isCounted = false;
+              reason = `Ignored. ${item.type} is not a Number.`;
+          }
+      } 
+      else { // COUNTA
+          // Rule: Not Empty
+          if (item.raw !== "") {
+              isCounted = true;
+              reason = "It is not empty. Count it.";
+          } else {
+              isCounted = false;
+              reason = "It is empty (Blank). Ignore.";
+          }
+      }
+
+      // ANIMATION
+      row.classList.add('row-highlight');
+      App.updateText(`Row ${i+1}: ${reason}`);
+      await new Promise(r => setTimeout(r, 400));
+
+      if (isCounted) {
+          // Success
+          row.classList.add('row-check');
+          icon.innerHTML = "✅";
+          icon.classList.add('show-icon');
+          
+          // Clicker Anim
+          clicker.classList.add('click-anim');
+          currentCount++;
+          countDisplay.textContent = currentCount;
+          countDisplay.style.color = "#4ade80"; // Green flash
+          
+          setTimeout(() => {
+            clicker.classList.remove('click-anim');
+            countDisplay.style.color = "#fff";
+          }, 200);
+
+          await new Promise(r => setTimeout(r, 300));
+      } else {
+          // Fail
+          row.classList.add('row-dim');
+          icon.innerHTML = "❌";
+          icon.classList.add('show-icon');
+          await new Promise(r => setTimeout(r, 300));
+      }
+      
+      row.classList.remove('row-highlight');
+    }
+
+    // Finish
+    App.updateText(`Final Result: ${currentCount}`);
+    await App.speak(`All done. The total count is ${currentCount}.`);
+    
+    totalBubble.textContent = currentCount;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnCount').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCountLogic('COUNT');
+    isRunning = false;
+  });
+
+  document.getElementById('btnCountA').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCountLogic('COUNTA');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

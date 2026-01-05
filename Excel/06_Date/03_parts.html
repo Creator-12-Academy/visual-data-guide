@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: YEAR, MONTH, DAY</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Deconstruction Stage */
+  .split-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 250px; position: relative;
+  }
+
+  /* Source Date */
+  .source-card {
+    background: #fff; color: #000; padding: 1rem 2rem; border-radius: 8px;
+    font-size: 1.8rem; font-weight: 900; box-shadow: 0 0 20px rgba(255,255,255,0.2);
+    position: relative; z-index: 10;
+  }
+
+  /* Destination Buckets */
+  .bucket-row {
+    display: flex; gap: 15px; width: 100%; justify-content: center;
+  }
+  .bucket {
+    background: #334155; border: 2px solid var(--border);
+    border-radius: 8px; width: 90px; height: 100px;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    position: relative; overflow: hidden;
+  }
+  .bucket-label {
+    background: rgba(0,0,0,0.3); width: 100%; text-align: center;
+    padding: 5px; font-size: 0.7rem; color: var(--text-dim); font-weight: bold;
+  }
+  .bucket-val {
+    font-size: 1.8rem; font-weight: bold; color: #fff; margin-top: 15px;
+    opacity: 0; transform: translateY(-20px); transition: all 0.4s;
+  }
+  .bucket-active { border-color: var(--accent); box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); }
+  .bucket-active .bucket-val { opacity: 1; transform: translateY(0); }
+
+  /* Flying Particles */
+  .particle {
+    position: absolute; font-size: 1.5rem; font-weight: bold; color: #fff;
+    pointer-events: none; z-index: 20;
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🧩 Date Deconstructor</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Break a date into its component parts.<br>
+      Useful for grouping data by Year or analyzing seasonality by Month.
+    </p>
+
+    <div class="split-stage">
+      
+      <div class="source-card" id="sourceDate">2025-10-31</div>
+
+      <div class="bucket-row">
+        <div class="bucket" id="bYear">
+          <div class="bucket-label">YEAR()</div>
+          <div class="bucket-val" id="resYear">2025</div>
+        </div>
+        <div class="bucket" id="bMonth">
+          <div class="bucket-label">MONTH()</div>
+          <div class="bucket-val" id="resMonth">10</div>
+        </div>
+        <div class="bucket" id="bDay">
+          <div class="bucket-label">DAY()</div>
+          <div class="bucket-val" id="resDay">31</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">⚡ Extract Parts</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">YEAR</span>(serial_number)
+        </div>
+        <div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem;">
+          Returns the year (1900-9999).
+        </div>
+      </div>
+
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">MONTH</span>(serial_number)
+        </div>
+        <div style="font-size:0.85rem; color:var(--text-dim); margin-bottom:0.5rem;">
+          Returns the month number (1-12).
+        </div>
+      </div>
+
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">DAY</span>(serial_number)
+        </div>
+        <div style="font-size:0.85rem; color:var(--text-dim);">
+          Returns the day of the month (1-31).
+        </div>
+      </div>
+
+      <div id="codeDisplay" class="codeArea" style="margin-top:1rem;">
+        <div class="codeLine" id="line1"><span class="cmt">-- Extracting...</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">YEAR</span>(<span class="col">A1</span>), <span class="fn">MONTH</span>(<span class="col">A1</span>)...
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Extracted:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Month is a Number</div>
+          <div class="mistake-desc">
+            <code>MONTH()</code> returns <strong>10</strong>, not "October". Use the <code>TEXT</code> function if you need the month name.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Text Dates</div>
+          <div class="mistake-desc">
+            These functions work best on real Serial Dates. If your date is text ("Oct 31"), they might error out or give unexpected results depending on your system settings.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("YEAR, MONTH, DAY", "../../");
+
+  const source = document.getElementById('sourceDate');
+  const bYear = document.getElementById('bYear');
+  const bMonth = document.getElementById('bMonth');
+  const bDay = document.getElementById('bDay');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    [bYear, bMonth, bDay].forEach(b => b.classList.remove('bucket-active'));
+    document.querySelectorAll('.particle').forEach(p => p.remove());
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function flyParticle(val, startEl, endEl) {
+    const rectStart = startEl.getBoundingClientRect();
+    const rectEnd = endEl.getBoundingClientRect();
+    
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.textContent = val;
+    p.style.left = `${rectStart.left + 20}px`;
+    p.style.top = `${rectStart.top}px`;
+    document.body.appendChild(p);
+
+    const deltaX = (rectEnd.left + rectEnd.width/2) - (rectStart.left + 20) - 20; // center
+    const deltaY = rectEnd.top - rectStart.top + 20;
+
+    const anim = p.animate([
+        { transform: 'translate(0,0) scale(1)', opacity: 1 },
+        { transform: `translate(${deltaX}px, ${deltaY}px) scale(0.5)`, opacity: 0 }
+    ], {
+        duration: 600,
+        easing: 'cubic-bezier(0.25, 1, 0.5, 1)'
+    });
+
+    anim.onfinish = () => p.remove();
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runExtract() {
+    document.getElementById('line2').classList.add('active');
+    
+    const year = "2025";
+    const month = "10";
+    const day = "31";
+
+    App.updateText("Splitting date into parts...");
+    await App.speak("Let's break this date down.");
+    
+    if(shouldStop) return;
+
+    // 1. YEAR
+    App.updateText("Extracting Year...");
+    flyParticle(year, source, bYear);
+    await new Promise(r => setTimeout(r, 600));
+    bYear.classList.add('bucket-active');
+    await App.speak(`The year is ${year}.`);
+    
+    if(shouldStop) return;
+
+    // 2. MONTH
+    App.updateText("Extracting Month...");
+    flyParticle(month, source, bMonth);
+    await new Promise(r => setTimeout(r, 600));
+    bMonth.classList.add('bucket-active');
+    await App.speak(`The month is ${month}.`);
+
+    if(shouldStop) return;
+
+    // 3. DAY
+    App.updateText("Extracting Day...");
+    flyParticle(day, source, bDay);
+    await new Promise(r => setTimeout(r, 600));
+    bDay.classList.add('bucket-active');
+    await App.speak(`The day is ${day}.`);
+
+    // Finish
+    App.updateText("Deconstruction Complete.");
+    totalBubble.textContent = "Done";
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runExtract();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

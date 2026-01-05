@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: XLOOKUP</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override for Excel */
+  :root { --accent: var(--accent-excel); }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔎 Modern XLOOKUP</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find Price (Right) OR Find ID (Left).<br>
+      XLOOKUP can search in <strong>any direction</strong> and handles errors natively.
+    </p>
+
+    <div id="dataTable" style="position:relative;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRight">➡️ Look Right</button>
+        <button class="action" id="btnLeft">⬅️ Look Left</button>
+        <button class="action" id="btnError">🛡️ Not Found</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">XLOOKUP</span>(lookup, lookup_array, return_array, [not_found])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Lookup Value:</strong> What you are searching for.</li>
+          <li><strong>2. Lookup Array:</strong> The specific column to SEARCH in.</li>
+          <li><strong>3. Return Array:</strong> The specific column to RETURN from.</li>
+          <li><strong>4. Not Found:</strong> Text to show if missing (Optional).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a scenario...</span></div>
+        <div class="codeLine" id="line2">=<span class="fn">XLOOKUP</span>( ... )</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 0 0 0.5rem; border-top:1px solid var(--border); padding-top:1.5rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Array Size Mismatch</div>
+          <div class="mistake-desc">The Lookup Array (e.g., A2:A100) and Return Array (e.g., B2:B100) MUST be the same height.</div>
+          <div class="mistake-fix">✅ Fix: Check your ranges match exactly.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Selecting Whole Table</div>
+          <div class="mistake-desc">Unlike VLOOKUP, you select <strong>two separate columns</strong>, not the whole table.</div>
+          <div class="mistake-fix">✅ Fix: Select only the specific columns you need.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="connector" class="lookup-line"></div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("XLOOKUP", "../../");
+
+  const data = [
+    { id: 101, prod: "Apple", price: 10 },
+    { id: 102, prod: "Banana", price: 5 },
+    { id: 103, prod: "Cherry", price: 20 },
+    { id: 104, prod: "Date", price: 8 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const connector = document.getElementById('connector');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1.5fr 1fr;">
+        <div id="h-id">ID (A)</div> <div id="h-prod">Product (B)</div> <div id="h-price">Price (C)</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1.5fr 1fr;">
+          <div id="id-${i}" class="cell-num">${d.id}</div>
+          <div id="prod-${i}"><b>${d.prod}</b></div>
+          <div id="price-${i}" class="cell-num">$${d.price}</div>
+        </div>
+      `;
+    });
+  }
+
+  function drawLine(startEl, endEl) {
+    const rect1 = startEl.getBoundingClientRect();
+    const rect2 = endEl.getBoundingClientRect();
+    
+    const x1 = rect1.left + (rect1.width / 2);
+    const y1 = rect1.top + (rect1.height / 2);
+    const x2 = rect2.left + (rect2.width / 2);
+    const y2 = rect2.top + (rect2.height / 2);
+
+    const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+    connector.style.width = `${length}px`;
+    connector.style.left = `${x1}px`;
+    connector.style.top = `${y1}px`;
+    connector.style.transform = `rotate(${angle}deg)`;
+    connector.style.opacity = "1";
+  }
+
+  function hideLine() { connector.style.opacity = "0"; }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    hideLine();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    document.getElementById('line1').innerHTML = '<span class="cmt">-- Select a scenario...</span>';
+    document.getElementById('line2').innerHTML = '=<span class="fn">XLOOKUP</span>( ... )';
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    // Clear styles
+    document.querySelectorAll('.match-found').forEach(e => e.classList.remove('match-found'));
+    document.querySelectorAll('.scan-col').forEach(e => e.classList.remove('scan-col'));
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // GENERIC XLOOKUP ENGINE
+  async function runXLookup(target, searchCol, returnCol, errorMsg = null) {
+    
+    // 1. Update Code Display
+    const searchRef = searchCol === 'prod' ? "B:B" : "A:A";
+    const returnRef = returnCol === 'price' ? "C:C" : "A:A";
+    const errorPart = errorMsg ? `, "${errorMsg}"` : "";
+    
+    const searchNoun = searchCol === 'prod' ? "Product" : "ID";
+    const returnNoun = returnCol === 'price' ? "Price" : "ID";
+    
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- Find ${returnNoun} for "${target}"</span>`;
+    document.getElementById('line2').innerHTML = 
+      `=<span class="fn">XLOOKUP</span>( <span class="str">"${target}"</span>, ${searchRef}, ${returnRef}${errorPart} )`;
+
+    App.updateText(`1. Searching for "<b>${target}</b>" in Column ${searchRef.charAt(0)}...`);
+    
+    await App.speak(`I am going to look for ${target} in the table in the ${searchNoun} column.`);
+    if(shouldStop) return;
+
+    let matchIndex = -1;
+    
+    // 2. Scan Search Column
+    for (let i = 0; i < data.length; i++) {
+        if(shouldStop) return;
+        const cell = document.getElementById(`${searchCol}-${i}`);
+        cell.classList.add('scan-col');
+        
+        await new Promise(r => setTimeout(r, App.voiceEnabled ? 200 : 100));
+        
+        if (data[i][searchCol] == target) {
+            matchIndex = i;
+            cell.classList.remove('scan-col');
+            cell.classList.add('match-found');
+            break;
+        }
+        cell.classList.remove('scan-col');
+    }
+
+    if (matchIndex === -1) {
+        // Error Case
+        if (errorMsg) {
+             App.updateText(`❌ Not Found. Returning default: "${errorMsg}"`);
+             await App.speak(`I couldn't find ${target}. Normally this gives an N A error, but XLOOKUP lets us return this custom message instead.`);
+             totalBubble.textContent = errorMsg;
+             totalBubble.style.background = "#facc15"; 
+             totalBubble.style.color = "#000";
+             totalBubble.classList.add('show');
+        } else {
+             // Standard Error
+             totalBubble.textContent = "#N/A";
+             totalBubble.style.background = "#ef4444";
+             totalBubble.classList.add('show');
+             await App.speak("Error. Value not found.");
+        }
+        return;
+    }
+
+    // 3. Fetch Result
+    App.updateText(`2. Match found! Getting the ${returnNoun}...`);
+    await App.speak(`I found a match! Now grabbing the ${returnNoun}.`); 
+    
+    const targetCell = document.getElementById(`${returnCol}-${matchIndex}`);
+    const sourceCell = document.getElementById(`${searchCol}-${matchIndex}`);
+    
+    drawLine(sourceCell, targetCell);
+    targetCell.classList.add('match-found'); 
+    
+    await new Promise(r => setTimeout(r, 800));
+    
+    let finalVal = data[matchIndex][returnCol];
+    if(returnCol === 'price') finalVal = `$${finalVal}`;
+
+    totalBubble.textContent = finalVal;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    App.updateText(`Result: <b>${finalVal}</b>`);
+    await App.speak(`Here it is. The ${returnNoun} is ${finalVal}.`);
+    
+    await new Promise(r => setTimeout(r, 1000));
+    hideLine();
+  }
+
+  // --- BUTTONS ---
+
+  document.getElementById('btnRight').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runXLookup("Banana", "prod", "price");
+    isRunning = false;
+  });
+
+  document.getElementById('btnLeft').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runXLookup("Banana", "prod", "id");
+    isRunning = false;
+  });
+
+  document.getElementById('btnError').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runXLookup("Mango", "prod", "price", "Not Found");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

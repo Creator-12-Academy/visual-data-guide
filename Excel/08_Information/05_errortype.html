@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: ERROR.TYPE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --err-red: #f87171;
+    --code-yellow: #facc15;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .diag-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 400px; position: relative;
+    overflow: hidden;
+  }
+
+  /* Diagnostic Device */
+  .scanner-box {
+    width: 240px; background: #0f172a; border: 4px solid var(--text-dim);
+    border-radius: 16px; padding: 20px; display: flex; flex-direction: column;
+    align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    position: relative; z-index: 10;
+  }
+  
+  .scan-screen {
+    width: 100%; height: 60px; background: #000; border: 2px solid #333;
+    border-radius: 4px; display: flex; align-items: center; justify-content: center;
+    font-family: 'Courier New', monospace; font-size: 2.5rem; font-weight: 900;
+    color: var(--code-yellow); text-shadow: 0 0 10px var(--code-yellow);
+    margin-bottom: 10px;
+  }
+
+  .scan-label { font-size: 0.7rem; color: #666; text-transform: uppercase; margin-bottom: 5px; }
+
+  /* Input Error Chips */
+  .err-chip {
+    background: var(--err-red); color: #fff; padding: 8px 16px;
+    border-radius: 6px; font-weight: bold; font-family: monospace;
+    position: absolute; top: 10px; left: 50%; transform: translateX(-50%);
+    box-shadow: 0 4px 10px rgba(248, 113, 113, 0.4);
+    opacity: 0; transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  .insert-chip { top: 100px; opacity: 1; scale: 0.8; } /* Moves into machine */
+
+  /* Reference Table */
+  .ref-table {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    width: 100%; max-width: 400px; font-size: 0.9rem;
+  }
+  .ref-row {
+    display: flex; justify-content: space-between; align-items: center;
+    background: rgba(0,0,0,0.2); padding: 6px 12px; border-radius: 4px;
+    border: 1px solid transparent; transition: all 0.3s;
+  }
+  .ref-err { font-family: monospace; color: var(--err-red); font-weight: bold; }
+  .ref-code { font-weight: bold; color: var(--text-dim); }
+
+  /* Highlight State */
+  .row-active {
+    background: rgba(250, 204, 21, 0.15); border-color: var(--code-yellow);
+    transform: scale(1.05);
+  }
+  .row-active .ref-code { color: var(--code-yellow); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔢 Error Decoder</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Identify the specific type of error.<br>
+      <strong>ERROR.TYPE</strong> converts error symbols into numbers (1-8) so you can react to them differently.
+    </p>
+
+    <div class="diag-stage">
+      
+      <div class="err-chip" id="chip">#ERR</div>
+
+      <div class="scanner-box">
+        <div class="scan-label">DIAGNOSTIC RESULT</div>
+        <div class="scan-screen" id="screenVal">--</div>
+        <div style="width:100%; height:4px; background:#333; margin-top:10px; border-radius:2px;">
+          <div id="scanBar" style="width:0%; height:100%; background:var(--code-yellow); transition:width 0.5s;"></div>
+        </div>
+      </div>
+
+      <div class="ref-table">
+        <div class="ref-row" id="row1"><span class="ref-err">#NULL!</span> <span class="ref-code">1</span></div>
+        <div class="ref-row" id="row2"><span class="ref-err">#DIV/0!</span> <span class="ref-code">2</span></div>
+        <div class="ref-row" id="row3"><span class="ref-err">#VALUE!</span> <span class="ref-code">3</span></div>
+        <div class="ref-row" id="row4"><span class="ref-err">#REF!</span> <span class="ref-code">4</span></div>
+        <div class="ref-row" id="row5"><span class="ref-err">#NAME?</span> <span class="ref-code">5</span></div>
+        <div class="ref-row" id="row6"><span class="ref-err">#NUM!</span> <span class="ref-code">6</span></div>
+        <div class="ref-row" id="row7"><span class="ref-err">#N/A</span> <span class="ref-code">7</span></div>
+        </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnDiv">➗ #DIV/0!</button>
+        <button class="action" id="btnNa">🔍 #N/A</button>
+        <button class="action" id="btnRef">🔗 #REF!</button>
+        <button class="action" id="btnNum">🔢 #NUM!</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">ERROR.TYPE</span>(error_val)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Input:</strong> The cell containing the error.</li>
+          <li><strong>Returns:</strong> A number (1-8) corresponding to the error type.</li>
+          <li><strong>Note:</strong> Returns #N/A if the cell contains NO error.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Check error type in A1</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">ERROR.TYPE</span>( <span class="val" id="codeVal">A1</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Error Code:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Practical Use</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">💡 Custom Messages</div>
+          <div class="mistake-desc">
+            Combine with IF/CHOOSE to give specific advice:
+            <br><code>=IF(ERROR.TYPE(A1)=7, "Item not found", "Check math")</code>.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 No Error?</div>
+          <div class="mistake-desc">
+            If the cell does <strong>not</strong> contain an error, <code>ERROR.TYPE</code> itself returns the #N/A error! Always wrap it in <code>IFERROR</code> or check <code>ISERROR</code> first.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("ERROR.TYPE Function", "../../");
+
+  const chip = document.getElementById('chip');
+  const screenVal = document.getElementById('screenVal');
+  const scanBar = document.getElementById('scanBar');
+  const totalBubble = document.getElementById('totalBubble');
+  const codeVal = document.getElementById('codeVal');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Visuals
+    chip.style.opacity = 0;
+    chip.style.top = "10px";
+    chip.classList.remove('insert-chip');
+    
+    screenVal.textContent = "--";
+    scanBar.style.width = "0%";
+    
+    document.querySelectorAll('.ref-row').forEach(r => r.classList.remove('row-active'));
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runDiag(errText, errCode, desc) {
+    // Setup UI
+    chip.textContent = errText;
+    codeVal.textContent = errText;
+    document.getElementById('line2').classList.add('active');
+    
+    App.updateText(`Analyzing Error: ${errText} (${desc})`);
+    await App.speak(`Diagnosing the error code.`);
+    
+    if(shouldStop) return;
+
+    // 1. Insert Chip
+    chip.style.opacity = 1;
+    chip.classList.add('insert-chip'); // Moves down into machine
+    
+    await new Promise(r => setTimeout(r, 600));
+
+    // 2. Processing
+    scanBar.style.width = "100%";
+    
+    // Flicker numbers
+    const shuffle = setInterval(() => {
+        screenVal.textContent = Math.floor(Math.random() * 8) + 1;
+    }, 50);
+
+    await new Promise(r => setTimeout(r, 800));
+    clearInterval(shuffle);
+    scanBar.style.width = "0%";
+
+    if(shouldStop) return;
+
+    // 3. Show Result
+    screenVal.textContent = errCode;
+    
+    // Highlight Table
+    const row = document.getElementById(`row${errCode}`);
+    if(row) row.classList.add('row-active');
+    
+    App.updateText(`Diagnostic Complete. Code ${errCode} corresponds to ${errText}.`);
+    await App.speak(`The diagnostic code is ${errCode}.`);
+    
+    totalBubble.textContent = errCode;
+    totalBubble.style.background = "var(--code-yellow)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnDiv').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runDiag("#DIV/0!", 2, "Divide by Zero");
+    isRunning = false;
+  });
+
+  document.getElementById('btnNa').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runDiag("#N/A", 7, "Value Not Available");
+    isRunning = false;
+  });
+
+  document.getElementById('btnRef').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runDiag("#REF!", 4, "Invalid Reference");
+    isRunning = false;
+  });
+
+  document.getElementById('btnNum').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runDiag("#NUM!", 6, "Invalid Number");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

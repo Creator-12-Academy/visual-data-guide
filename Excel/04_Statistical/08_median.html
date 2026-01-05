@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: MEDIAN & MODE</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Visualization Stage */
+  .stats-stage {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    height: 180px; padding: 20px; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border-bottom: 2px solid var(--border);
+    perspective: 800px; position: relative;
+  }
+
+  /* Number Cards */
+  .num-card {
+    width: 50px; height: 60px;
+    background: #334155; border: 2px solid var(--border); border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 1.2rem; color: #fff;
+    transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+  
+  /* Index Label (for sorting viz) */
+  .card-idx {
+    font-size: 0.7rem; color: var(--text-dim); position: absolute; bottom: -20px; opacity: 0;
+  }
+
+  /* Highlight States */
+  .highlight-mid {
+    background: #facc15; color: #000; border-color: #fff;
+    transform: scale(1.2) translateY(-10px); z-index: 10;
+    box-shadow: 0 10px 20px rgba(250, 204, 21, 0.3);
+  }
+  .highlight-mode {
+    background: #4ade80; color: #000; border-color: #fff;
+    transform: scale(1.1); box-shadow: 0 5px 15px rgba(74, 222, 128, 0.3);
+  }
+  .dimmed { opacity: 0.2; transform: scale(0.9); }
+
+  /* Mode Badge */
+  .crown-icon {
+    position: absolute; top: -30px; font-size: 1.5rem; 
+    opacity: 0; transition: 0.3s;
+  }
+  .show-crown { opacity: 1; animation: bounce 0.5s; }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🎯 Central Tendency</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Analyze the dataset: <code>{ 3, 8, 3, 5, 10 }</code>.<br>
+      <strong>MEDIAN:</strong> The middle number (after sorting).<br>
+      <strong>MODE:</strong> The most frequent number (Popularity).
+    </p>
+
+    <div class="stats-stage" id="stage"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnMedian">📏 Find MEDIAN</button>
+        <button class="action" id="btnMode">🔥 Find MODE</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-median">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">MEDIAN</span>(number1, [number2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Logic:</strong> Sorts values, finds the middle.</li>
+          <li><strong>Even Count:</strong> If there are 2 middle numbers, it averages them.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-mode" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">MODE.SNGL</span>(number1, ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Logic:</strong> Finds the most frequent value.</li>
+          <li><strong>History:</strong> Replaces the old <code>MODE</code> function.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 MODE Errors (#N/A)</div>
+          <div class="mistake-desc">
+            If all numbers are unique (e.g., 1, 2, 3), MODE returns an <strong>#N/A</strong> error because no number is "most frequent."
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Median vs Average</div>
+          <div class="mistake-desc">
+            Median is better for Salary/House Price data because it ignores <strong>Outliers</strong> (extreme values) that skew the Average.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("MEDIAN & MODE", "../../");
+
+  // Initial Data: {3, 8, 3, 5, 10}
+  // Sorted: 3, 3, 5, 8, 10
+  // Median: 5
+  // Mode: 3
+  const initialData = [
+    { id:0, val: 3 },
+    { id:1, val: 8 },
+    { id:2, val: 3 },
+    { id:3, val: 5 },
+    { id:4, val: 10 }
+  ];
+
+  const stage = document.getElementById('stage');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initStage() {
+    stage.innerHTML = '';
+    initialData.forEach((d, i) => {
+      // We use absolute positioning tricks or flex order
+      // Simpler: Just create them in DOM order first
+      const card = document.createElement('div');
+      card.className = 'num-card';
+      card.id = `card-${d.id}`;
+      card.innerHTML = `${d.val} <div class="card-idx">#${i+1}</div>`;
+      // Store value on element
+      card.dataset.value = d.val;
+      stage.appendChild(card);
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Remove highlights & Sort classes
+    document.querySelectorAll('.num-card').forEach(c => {
+        c.className = 'num-card';
+        c.style.order = "0"; // Reset Flex order
+        c.innerHTML = c.innerHTML.split('<div')[0]; // Remove extra icons
+    });
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initStage(); // Re-render clean
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fn) {
+    if (fn === 'MEDIAN') {
+        document.getElementById('syntax-median').style.display = 'block';
+        document.getElementById('syntax-mode').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Find the Middle Value</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">MEDIAN</span>( A2:E2 )`;
+    } else {
+        document.getElementById('syntax-median').style.display = 'none';
+        document.getElementById('syntax-mode').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Find the Most Frequent</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">MODE.SNGL</span>( A2:E2 )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC: MEDIAN ---
+  async function runMedian() {
+    updateUI('MEDIAN');
+    App.updateText("To find the Median, we must SORT first.");
+    await App.speak("Median is the middle. But first, we must sort the numbers.");
+    
+    if(shouldStop) return;
+
+    // 1. Sort Visuals
+    // We sort a copy of the array
+    const sorted = [...initialData].sort((a,b) => a.val - b.val);
+    
+    // Apply Flex 'order' property to visually sort
+    sorted.forEach((item, index) => {
+        const el = document.getElementById(`card-${item.id}`);
+        el.style.order = index;
+    });
+
+    await new Promise(r => setTimeout(r, 800)); // Sort duration
+
+    // 2. Identify Middle
+    const midIndex = Math.floor(sorted.length / 2); // Index 2 (3rd item)
+    const midItem = sorted[midIndex];
+    
+    App.updateText(`Sorted: 3, 3, 5, 8, 10. The Middle is position 3.`);
+    await App.speak("Now they are sorted. The middle position is right here.");
+    
+    // Dim others
+    sorted.forEach((item, index) => {
+        const el = document.getElementById(`card-${item.id}`);
+        if (index !== midIndex) el.classList.add('dimmed');
+    });
+
+    await new Promise(r => setTimeout(r, 500));
+
+    // Highlight Middle
+    const midEl = document.getElementById(`card-${midItem.id}`);
+    midEl.classList.remove('dimmed');
+    midEl.classList.add('highlight-mid');
+    
+    App.updateText(`Median is <b>${midItem.val}</b>.`);
+    await App.speak(`The median is ${midItem.val}.`);
+    
+    totalBubble.textContent = midItem.val;
+    totalBubble.style.background = "#facc15"; // Yellow matches highlight
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- LOGIC: MODE ---
+  async function runMode() {
+    updateUI('MODE');
+    App.updateText("Scanning for duplicates (Popularity)...");
+    await App.speak("Mode is a popularity contest. Who shows up the most?");
+    
+    if(shouldStop) return;
+
+    // 1. Sort helps visualize grouping
+    const sorted = [...initialData].sort((a,b) => a.val - b.val);
+    sorted.forEach((item, index) => {
+        const el = document.getElementById(`card-${item.id}`);
+        el.style.order = index;
+    });
+    
+    await new Promise(r => setTimeout(r, 800));
+
+    // 2. Highlight the 3s
+    App.updateText("Found two 3s. Everything else appears once.");
+    await App.speak("I see two threes. Everything else only appears once.");
+    
+    const modeVal = 3;
+    
+    initialData.forEach(d => {
+        const el = document.getElementById(`card-${d.id}`);
+        if (d.val === modeVal) {
+            el.classList.add('highlight-mode');
+            // Add Crown
+            el.innerHTML += `<div class="crown-icon show-crown">👑</div>`;
+        } else {
+            el.classList.add('dimmed');
+        }
+    });
+
+    await new Promise(r => setTimeout(r, 600));
+
+    App.updateText(`Mode is <b>${modeVal}</b>.`);
+    await App.speak(`The winner is ${modeVal}.`);
+    
+    totalBubble.textContent = modeVal;
+    totalBubble.style.background = "#4ade80"; // Green matches highlight
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnMedian').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runMedian();
+    isRunning = false;
+  });
+
+  document.getElementById('btnMode').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runMode();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initStage();
+
+</script>
+</body>
+</html>

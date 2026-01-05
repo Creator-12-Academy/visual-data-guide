@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: Text Join Operator (&)</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --weld-orange: #f97316;
+    --string-green: #4ade80;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .join-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 350px; position: relative;
+    overflow: hidden;
+  }
+
+  /* The Track */
+  .assembly-line {
+    display: flex; align-items: center; justify-content: center; gap: 40px;
+    width: 100%; position: relative;
+  }
+
+  /* Text Blocks */
+  .text-block {
+    background: #0f172a; border: 2px solid var(--string-green);
+    color: var(--string-green); padding: 10px 20px; border-radius: 6px;
+    font-family: monospace; font-size: 1.5rem; font-weight: bold;
+    position: relative; transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
+    white-space: pre; /* Preserves spaces */
+  }
+  .block-merged {
+    background: rgba(74, 222, 128, 0.2);
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.2);
+  }
+
+  /* The Welder (& Symbol) */
+  .welder-arm {
+    position: absolute; left: 50%; top: -60px; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center;
+    transition: top 0.3s; z-index: 10;
+  }
+  .welder-head {
+    width: 50px; height: 50px; background: var(--weld-orange);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 2rem; font-weight: 900; color: #000;
+    box-shadow: 0 0 15px var(--weld-orange);
+  }
+  .welder-spark {
+    position: absolute; width: 80px; height: 80px; top: 20px;
+    background: radial-gradient(circle, #fff, var(--weld-orange), transparent);
+    opacity: 0; pointer-events: none; border-radius: 50%;
+  }
+  .spark-active { animation: sparkFlash 0.4s ease-in-out infinite; opacity: 1; }
+
+  @keyframes sparkFlash {
+    0% { transform: scale(0.5); opacity: 0.8; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.8); opacity: 0.8; }
+  }
+
+  /* Extra Spacer Block */
+  .spacer-block {
+    background: #475569; border: 1px dashed #fff; color: #fff;
+    width: 0; padding: 0; opacity: 0; overflow: hidden;
+    transition: all 0.3s; display: flex; align-items: center; justify-content: center;
+  }
+  .spacer-show { width: 40px; padding: 10px 0; opacity: 1; margin: 0 -35px; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔗 Text Welder (&)</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Join multiple pieces of text into one string.<br>
+      The <strong>&</strong> operator glues values together exactly as they are.
+    </p>
+
+    <div class="join-stage">
+      
+      <div class="assembly-line" id="line">
+        <div class="text-block" id="block1">"Hello"</div>
+        
+        <div class="text-block spacer-block" id="spacer">" "</div>
+
+        <div class="text-block" id="block2">"World"</div>
+      </div>
+
+      <div class="welder-arm" id="welder">
+        <div class="welder-head">&</div>
+        <div class="welder-spark" id="spark"></div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnBasic">🔗 Basic Join (No Space)</button>
+        <button class="action" id="btnSpace">🚀 Join with Space</button>
+        <button class="action" id="btnNum">🔢 Join Number (#101)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =value1 & value2
+        </div>
+        <ul class="arg-list">
+          <li><strong>Symbol:</strong> Ampersand (Shift + 7).</li>
+          <li><strong>Action:</strong> Concatenates (joins) two values into a Text string.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Join strings</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="val" id="codeA">"Hello"</span> & <span class="val" id="codeB">"World"</span>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result String:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Missing Space</div>
+          <div class="mistake-desc">
+            <code>A1 & B1</code> results in <strong>"HelloWorld"</strong>. <br>
+            To fix, you must manually add a space in quotes: <code>A1 & " " & B1</code>.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🔢 Numbers become Text</div>
+          <div class="mistake-desc">
+            Even if you join numbers (e.g., <code>1 & 2</code>), the result <strong>"12"</strong> is treated as Text, not a Number. Math formulas might not work on it directly.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("Text Join Operator", "../../");
+
+  const block1 = document.getElementById('block1');
+  const block2 = document.getElementById('block2');
+  const spacer = document.getElementById('spacer');
+  const welder = document.getElementById('welder');
+  const spark = document.getElementById('spark');
+  const totalBubble = document.getElementById('totalBubble');
+  const codeA = document.getElementById('codeA');
+  const codeB = document.getElementById('codeB');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset positions
+    block1.style.transform = "translateX(0)";
+    block1.style.opacity = "1";
+    block1.className = "text-block";
+    block1.innerHTML = '"Hello"';
+    
+    block2.style.transform = "translateX(0)";
+    block2.style.opacity = "1";
+    block2.innerHTML = '"World"';
+    
+    spacer.className = "text-block spacer-block"; // hide
+    
+    welder.style.top = "-60px";
+    spark.classList.remove('spark-active');
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(v1, v2, useSpace, formulaStr) {
+    block1.innerHTML = v1.startsWith('"') ? v1 : `"${v1}"`;
+    block2.innerHTML = v2.startsWith('"') ? v2 : `"${v2}"`;
+    
+    // Update Code
+    let html = `<span class="val">${v1}</span> & `;
+    if(useSpace) html += `<span class="str">" "</span> & `;
+    html += `<span class="val">${v2}</span>`;
+    
+    document.getElementById('line2').innerHTML = `=${html}`;
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runJoin(val1, val2, useSpace) {
+    // Prep Data
+    const display1 = typeof val1 === 'string' ? `"${val1}"` : val1;
+    const display2 = typeof val2 === 'string' ? `"${val2}"` : val2;
+    
+    updateUI(display1, display2, useSpace);
+    
+    // Setup Visual Blocks
+    block1.innerHTML = display1;
+    block2.innerHTML = display2;
+    
+    if (useSpace) {
+        spacer.className = "text-block spacer-block spacer-show";
+        App.updateText(`Joining: ${val1} + [Space] + ${val2}...`);
+        await App.speak(`Joining ${val1} with a space and ${val2}.`);
+    } else {
+        App.updateText(`Joining: ${val1} + ${val2}...`);
+        await App.speak(`Joining ${val1} and ${val2}.`);
+    }
+    
+    if(shouldStop) return;
+
+    // 1. Move Welder Down
+    welder.style.top = "10px";
+    await new Promise(r => setTimeout(r, 500));
+
+    // 2. Spark & Merge
+    spark.classList.add('spark-active');
+    
+    // Collapse elements towards center
+    // We visually hide the individual blocks and replace Block 1 with the merged result
+    
+    await new Promise(r => setTimeout(r, 600)); // wait for welding
+    
+    // Calculate Final String
+    let finalStr = "";
+    if(useSpace) finalStr = val1 + " " + val2;
+    else finalStr = val1 + "" + val2;
+
+    // Visual Merge
+    block2.style.transform = "translateX(-50px)";
+    block2.style.opacity = "0";
+    if(useSpace) {
+        spacer.style.opacity = "0";
+        spacer.style.width = "0";
+    }
+    
+    // Transform Block 1 into Result
+    block1.innerHTML = `"${finalStr}"`;
+    block1.classList.add('block-merged');
+    block1.style.transform = "scale(1.1)";
+    
+    spark.classList.remove('spark-active');
+    welder.style.top = "-60px"; // Retract
+
+    // Result
+    App.updateText(`Result: "${finalStr}"`);
+    await App.speak(`The result is ${finalStr}.`);
+    
+    totalBubble.textContent = `"${finalStr}"`;
+    totalBubble.style.background = "var(--string-green)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnBasic').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runJoin("Hello", "World", false);
+    isRunning = false;
+  });
+
+  document.getElementById('btnSpace').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runJoin("Hello", "World", true);
+    isRunning = false;
+  });
+
+  document.getElementById('btnNum').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "Order" & 101 -> "Order101" (Basic demo, usually needs space)
+    // Let's do basic first to show the jam
+    await runJoin("Order#", 101, false);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: INT Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Number Container */
+  .number-stage {
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(255,255,255,0.05); border: 2px solid var(--border);
+    border-radius: 12px; height: 120px; margin-bottom: 2rem;
+    font-size: 3rem; font-family: monospace; font-weight: bold;
+    position: relative; overflow: hidden;
+  }
+
+  /* Parts of the Number */
+  .num-int { color: #fff; transition: all 0.3s; z-index: 2; position: relative; }
+  .num-dec { color: #facc15; transition: all 0.5s ease-in; display: inline-block; }
+
+  /* Animations */
+  .fall-off {
+    transform: translateY(100px) rotate(20deg);
+    opacity: 0;
+  }
+  
+  .shift-down {
+    animation: flashRed 0.5s;
+    color: #ef4444; /* Red to indicate change in value for negatives */
+  }
+
+  @keyframes flashRed {
+    0% { color: #fff; transform: scale(1); }
+    50% { color: #ef4444; transform: scale(1.2); }
+    100% { color: #fff; transform: scale(1); }
+  }
+
+  /* Visual Floor Line */
+  .floor-line {
+    position: absolute; bottom: 20px; left: 20px; right: 20px;
+    height: 4px; background: #334155; border-radius: 2px;
+  }
+  .floor-label {
+    position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%);
+    font-size: 0.8rem; color: var(--text-dim);
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔢 Integer Floor</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Convert a decimal to an integer.<br>
+      <strong>INT</strong> rounds a number <em>down</em> to the nearest integer.
+    </p>
+
+    <div class="number-stage" id="stage">
+      <div id="wrapper">
+        <span class="num-int" id="intPart">0</span><span class="num-dec" id="decPart">.00</span>
+      </div>
+      <div class="floor-line"></div>
+      <div class="floor-label">Integer Floor</div>
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnPos">➕ 5.8 (Positive)</button>
+        <button class="action" id="btnNeg">➖ -5.8 (Negative)</button>
+        <button class="action" id="btnClean">0️⃣ 10.0 (Whole)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">INT</span>(number)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Number:</strong> The real number you want to round down to an integer.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Round down to nearest Integer</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">INT</span>( <span class="val" id="codeVal">5.8</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 INT vs TRUNC</div>
+          <div class="mistake-desc">
+            <strong>TRUNC</strong> removes the decimal (-5.8 ➝ -5).<br>
+            <strong>INT</strong> rounds <em>down</em> (-5.8 ➝ -6).<br>
+            Be careful with negative numbers!
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("INT Function", "../../");
+
+  const intPart = document.getElementById('intPart');
+  const decPart = document.getElementById('decPart');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset(num = 0) {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    // Reset visual parts
+    const str = num.toString();
+    const parts = str.split('.');
+    
+    intPart.textContent = parts[0];
+    intPart.className = 'num-int'; // Remove animation classes
+    
+    decPart.textContent = parts[1] ? `.${parts[1]}` : "";
+    decPart.className = 'num-dec';
+    decPart.style.opacity = "1";
+    decPart.style.transform = "none";
+
+    document.getElementById('line2').classList.remove('active');
+
+    return parts;
+  }
+
+  // --- LOGIC: INT ---
+  async function runInt(val) {
+    const parts = reset(val);
+    shouldStop = false;
+    isRunning = true;
+
+    // Update Code
+    document.getElementById('codeVal').textContent = val;
+    document.getElementById('line2').classList.add('active');
+
+    App.updateText(`Rounding <b>${val}</b> down...`);
+    await App.speak(`Rounding ${val} down to the nearest integer.`);
+    
+    if(shouldStop) return;
+
+    // Wait for user to register input
+    await new Promise(r => setTimeout(r, 600));
+
+    // CHECK NEGATIVE
+    if (val < 0 && parts[1]) {
+        // Negative with Decimal -> ROUNDS DOWN (e.g. -5.8 -> -6)
+        App.updateText("Negative number detected. Rounding DOWN (away from zero).");
+        await App.speak("Since it is negative, rounding down means going deeper.");
+        
+        // 1. Drop Decimal
+        decPart.classList.add('fall-off');
+        await new Promise(r => setTimeout(r, 500));
+        
+        // 2. Decrement Integer
+        intPart.classList.add('shift-down');
+        const newVal = Math.floor(val);
+        intPart.textContent = newVal; // -5 -> -6
+        
+        await new Promise(r => setTimeout(r, 500));
+        
+        totalBubble.textContent = newVal;
+        totalBubble.style.background = "#facc15"; // Warning color for change
+    } 
+    else if (parts[1]) {
+        // Positive with Decimal -> Just drop decimal
+        App.updateText("Removing decimal part...");
+        await App.speak("Removing the decimal part.");
+        
+        decPart.classList.add('fall-off');
+        await new Promise(r => setTimeout(r, 600));
+        
+        totalBubble.textContent = Math.floor(val);
+        totalBubble.style.background = "var(--accent)";
+    } 
+    else {
+        // Integer already
+        App.updateText("Already an integer. No change.");
+        await App.speak("It is already an integer.");
+        totalBubble.textContent = val;
+        totalBubble.style.background = "var(--accent)";
+    }
+
+    totalBubble.classList.add('show');
+    totalBubble.style.color = "#000";
+    
+    App.updateText(`Result: <b>${Math.floor(val)}</b>`);
+    
+    isRunning = false;
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnPos').addEventListener('click', async () => {
+    if(isRunning) return; 
+    await runInt(5.8);
+  });
+
+  document.getElementById('btnNeg').addEventListener('click', async () => {
+    if(isRunning) return; 
+    await runInt(-5.8);
+  });
+
+  document.getElementById('btnClean').addEventListener('click', async () => {
+    if(isRunning) return; 
+    await runInt(10);
+  });
+
+  document.getElementById('btnReset').addEventListener('click', () => {
+    reset(0);
+    App.updateText("Ready...");
+  });
+
+  // Init default
+  reset(0);
+
+</script>
+</body>
+</html>

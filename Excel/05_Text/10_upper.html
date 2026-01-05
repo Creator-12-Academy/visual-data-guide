@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: UPPER, LOWER, PROPER</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Case Converter Stage */
+  .converter-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.5rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; perspective: 800px;
+  }
+
+  /* Text Container */
+  .text-container {
+    display: flex; gap: 2px; font-family: monospace; font-size: 2rem; font-weight: bold;
+    background: #0f172a; padding: 1rem 2rem; border-radius: 8px;
+    border: 2px solid var(--border); box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+
+  /* Individual Letter Flip */
+  .letter-box {
+    display: inline-block; min-width: 20px; text-align: center;
+    transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+    transform-style: preserve-3d; position: relative;
+  }
+  
+  .flip-active { transform: rotateX(360deg); color: var(--accent); }
+
+  /* Gear Icon Animation */
+  .gear-icon {
+    font-size: 2rem; color: var(--text-dim); transition: 0.5s;
+  }
+  .gear-spin { animation: spin 1s linear infinite; color: #fff; }
+
+  @keyframes spin { 100% { transform: rotate(360deg); } }
+
+  /* Highlight for PROPER case logic */
+  .capital-mark {
+    border-bottom: 3px solid #facc15; padding-bottom: 2px;
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔠 Case Converter</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Standardize the messy text: <code>"eXceL iS aWeSoMe"</code>.<br>
+      Clean up capitalization for professional reports.
+    </p>
+
+    <div class="converter-stage">
+      
+      <div class="text-container" id="textStage">
+        </div>
+
+      <div class="gear-icon" id="gear">⚙️</div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnUpper">⬆️ UPPER (All Caps)</button>
+        <button class="action" id="btnLower">⬇️ LOWER (All Small)</button>
+        <button class="action" id="btnProper">Title Case (PROPER)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-upper">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">UPPER</span>(text)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Effect:</strong> Converts ALL letters to uppercase.</li>
+          <li><strong>Use:</strong> Standardizing codes (e.g. "US-123").</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-lower" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">LOWER</span>(text)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Effect:</strong> Converts ALL letters to lowercase.</li>
+          <li><strong>Use:</strong> Standardizing emails (e.g. "john@doe.com").</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-proper" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">PROPER</span>(text)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Effect:</strong> Capitalizes the 1st letter of each word.</li>
+          <li><strong>Use:</strong> Names and Titles (e.g. "John Doe").</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 PROPER Confusion</div>
+          <div class="mistake-desc">
+            PROPER capitalizes the letter after <em>any</em> non-letter character. <br>
+            <code>PROPER("mc'donald")</code> becomes <strong>Mc'Donald</strong> (Good).<br>
+            <code>PROPER("2-way")</code> becomes <strong>2-Way</strong> (Good).
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("UPPER, LOWER, PROPER", "../../");
+
+  const rawText = "eXceL iS aWeSoMe";
+  const stage = document.getElementById('textStage');
+  const gear = document.getElementById('gear');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initStage() {
+    stage.innerHTML = '';
+    rawText.split('').forEach((char, i) => {
+      const span = document.createElement('span');
+      span.className = 'letter-box';
+      span.id = `char-${i}`;
+      // Handle space
+      if(char === ' ') span.innerHTML = '&nbsp;';
+      else span.textContent = char;
+      
+      stage.appendChild(span);
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset rotations and classes
+    document.querySelectorAll('.letter-box').forEach(l => {
+        l.classList.remove('flip-active', 'capital-mark');
+        l.style.transform = 'none';
+        // Reset text content after short delay so user doesn't see jump before flip resets
+        // Actually, just re-init is safer
+    });
+    
+    gear.classList.remove('gear-spin');
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initStage();
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fn, desc) {
+    // Hide all syntax first
+    ['upper','lower','proper'].forEach(id => document.getElementById(`syntax-${id}`).style.display = 'none');
+    document.getElementById(`syntax-${fn.toLowerCase()}`).style.display = 'block';
+
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- ${desc}</span>`;
+    document.getElementById('line2').innerHTML = `=<span class="fn">${fn}</span>( <span class="str">"${rawText}"</span> )`;
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runConvert(fn) {
+    let desc = "";
+    if(fn === 'UPPER') desc = "Convert to Uppercase";
+    if(fn === 'LOWER') desc = "Convert to Lowercase";
+    if(fn === 'PROPER') desc = "Title Case (First letter)";
+    
+    updateUI(fn, desc);
+    App.updateText(`Running ${fn}... Processing text.`);
+    await App.speak(`Applying ${fn} case.`);
+    
+    if(shouldStop) return;
+
+    // Start Gear
+    gear.classList.add('gear-spin');
+
+    const chars = rawText.split('');
+    let resultStr = "";
+
+    // Animate Letters
+    for (let i = 0; i < chars.length; i++) {
+        if(shouldStop) return;
+        
+        const el = document.getElementById(`char-${i}`);
+        const char = chars[i];
+        let newChar = char;
+        let isFirstLetter = false;
+
+        // Logic
+        if (fn === 'UPPER') {
+            newChar = char.toUpperCase();
+        } 
+        else if (fn === 'LOWER') {
+            newChar = char.toLowerCase();
+        } 
+        else { // PROPER
+            // Check if previous char was space or if it's first char
+            const prevChar = i > 0 ? chars[i-1] : ' '; // Default space for start
+            // Regex for non-letter check is robust, but for this demo, space is main delimiter
+            if (prevChar === ' ' && char !== ' ') {
+                newChar = char.toUpperCase();
+                isFirstLetter = true;
+            } else {
+                newChar = char.toLowerCase();
+            }
+        }
+        
+        resultStr += newChar;
+
+        // Visual Flip
+        el.classList.add('flip-active');
+        
+        // Change content halfway through flip (300ms)
+        setTimeout(() => {
+            if(el) {
+                if(newChar === ' ') el.innerHTML = '&nbsp;';
+                else el.textContent = newChar;
+                
+                if(isFirstLetter) el.classList.add('capital-mark');
+            }
+        }, 300);
+
+        // Stagger slightly
+        await new Promise(r => setTimeout(r, 100));
+    }
+
+    gear.classList.remove('gear-spin');
+    
+    App.updateText(`Done! Result: "${resultStr}"`);
+    await App.speak(`The result is ${resultStr}.`);
+    
+    totalBubble.textContent = `"${resultStr}"`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnUpper').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runConvert('UPPER');
+    isRunning = false;
+  });
+
+  document.getElementById('btnLower').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runConvert('LOWER');
+    isRunning = false;
+  });
+
+  document.getElementById('btnProper').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runConvert('PROPER');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initStage();
+
+</script>
+</body>
+</html>

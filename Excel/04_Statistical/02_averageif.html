@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: AVERAGEIF & IFS</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Status Indicators */
+  .status-dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    background: #334155; margin-right: 4px; transition: 0.3s;
+  }
+  .dot-pass { background: #4ade80; box-shadow: 0 0 5px #4ade80; }
+  .dot-fail { background: #ef4444; opacity: 0.5; }
+
+  /* Math Board */
+  .math-board {
+    background: #0f172a; border: 1px solid var(--border);
+    border-radius: 8px; padding: 1rem; margin-top: 1rem;
+    display: grid; grid-template-columns: 1fr 0.2fr 1fr 0.2fr 1fr;
+    align-items: center; text-align: center;
+    font-family: monospace; font-weight: bold;
+  }
+  .math-val { font-size: 1.2rem; color: #fff; transition: 0.2s; }
+  .math-op { color: var(--text-dim); }
+  
+  .pulse-up { animation: pulseGreen 0.3s; color: #4ade80; }
+  
+  @keyframes pulseGreen {
+    50% { transform: scale(1.3); }
+  }
+
+  /* Included Value Highlight */
+  .val-included { color: #4ade80; font-weight: bold; }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🎯 Conditional Average</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find the average Score for specific groups.<br>
+      <strong>AVERAGEIF:</strong> One condition. <strong>AVERAGEIFS:</strong> Multiple conditions.
+    </p>
+
+    <div id="dataTable" style="position:relative;"></div>
+
+    <div class="math-board">
+      <div>
+        <div style="font-size:0.7rem; color:var(--text-dim); margin-bottom:5px;">SUM</div>
+        <div class="math-val" id="dispSum">0</div>
+      </div>
+      <div class="math-op">÷</div>
+      <div>
+        <div style="font-size:0.7rem; color:var(--text-dim); margin-bottom:5px;">COUNT</div>
+        <div class="math-val" id="dispCount">0</div>
+      </div>
+      <div class="math-op">=</div>
+      <div>
+        <div style="font-size:0.7rem; color:var(--text-dim); margin-bottom:5px;">AVG</div>
+        <div class="math-val" id="dispAvg" style="color:var(--accent);">-</div>
+      </div>
+    </div>
+
+    <div class="calculation-box" id="calcBox" style="margin-top:1rem;">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnIf">▶️ IF (Math Class)</button>
+        <button class="action" id="btnIfs">▶️ IFS (Math + Pass)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-if">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">AVERAGEIF</span>(range, criteria, [avg_range])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Range:</strong> Where to check (e.g., Classes).</li>
+          <li><strong>2. Criteria:</strong> What to look for ("Math").</li>
+          <li><strong>3. Avg Range:</strong> Numbers to average (Scores).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-ifs" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">AVERAGEIFS</span>(avg_range, crit_rng1, crit1, ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Avg Range:</strong> Numbers to average. <span style="color:#facc15;">(First!)</span></li>
+          <li><strong>2. Range 1:</strong> First check (Classes).</li>
+          <li><strong>3. Crit 1:</strong> "Math".</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a scenario...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Zero vs Blank</div>
+          <div class="mistake-desc">
+            If a student was absent (Blank), they are ignored. <br>
+            If they got a 0 (Zero), they drag the average down. <br>
+            AVERAGEIF treats them correctly based on cell content.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Argument Swap</div>
+          <div class="mistake-desc">Just like SUMIFs, <strong>AVERAGEIFS</strong> puts the numeric range <em>first</em>. <strong>AVERAGEIF</strong> puts it <em>last</em>.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("AVERAGEIF / S", "../../");
+
+  const data = [
+    { cls: "Math", pass: true, score: 90 },
+    { cls: "Eng",  pass: true, score: 85 },
+    { cls: "Math", pass: false, score: 40 },
+    { cls: "Math", pass: true, score: 80 },
+    { cls: "Eng",  pass: false, score: 55 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const dispSum = document.getElementById('dispSum');
+  const dispCount = document.getElementById('dispCount');
+  const dispAvg = document.getElementById('dispAvg');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1fr 0.5fr;">
+        <div>Class</div> <div>Status</div> <div>Score</div> <div>Check</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      const statusIcon = d.pass ? "✅ Pass" : "❌ Fail";
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1fr 0.5fr;">
+          <div id="c1-${i}">${d.cls}</div>
+          <div id="c2-${i}" style="font-size:0.8rem;">${statusIcon}</div>
+          <div class="cell-num" id="val-${i}">${d.score}</div>
+          <div id="dots-${i}">
+            <span class="status-dot" id="dot1-${i}"></span>
+            <span class="status-dot" id="dot2-${i}"></span>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear Math Board
+    dispSum.textContent = "0";
+    dispCount.textContent = "0";
+    dispAvg.textContent = "-";
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    // Reset Rows
+    document.querySelectorAll('.table-row').forEach(r => {
+        r.style.opacity = "1";
+        r.classList.remove('row-highlight');
+    });
+    document.querySelectorAll('.val-included').forEach(c => c.classList.remove('val-included'));
+    document.querySelectorAll('.status-dot').forEach(d => d.className = 'status-dot');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  // --- LOGIC: AVERAGEIF (Single) ---
+  async function runIf() {
+    // UI Setup
+    document.getElementById('syntax-if').style.display = 'block';
+    document.getElementById('syntax-ifs').style.display = 'none';
+    
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- Avg Score for "Math"</span>`;
+    document.getElementById('line2').innerHTML = 
+      `=<span class="fn">AVERAGEIF</span>( <span class="col">A2:A6</span>, <span class="str">"Math"</span>, <span class="val">C2:C6</span> )`;
+    document.getElementById('line2').classList.add('active');
+
+    App.updateText("Checking Class column for 'Math'...");
+    await App.speak("I'm looking for Math class scores only.");
+    
+    if(shouldStop) return;
+
+    let sum = 0;
+    let count = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      row.classList.add('row-highlight');
+      
+      await new Promise(r => setTimeout(r, 300));
+
+      if (data[i].cls === "Math") {
+        // MATCH
+        document.getElementById(`dot1-${i}`).classList.add('dot-pass');
+        document.getElementById(`val-${i}`).classList.add('val-included');
+        
+        sum += data[i].score;
+        count++;
+        
+        updateMath(sum, count);
+        App.updateText(`Row ${i+1}: Match! Adding ${data[i].score}.`);
+        await new Promise(r => setTimeout(r, 500));
+
+      } else {
+        // FAIL
+        document.getElementById(`dot1-${i}`).classList.add('dot-fail');
+        row.style.opacity = "0.4";
+      }
+      row.classList.remove('row-highlight');
+    }
+
+    finishCalc(sum, count);
+  }
+
+  // --- LOGIC: AVERAGEIFS (Multi) ---
+  async function runIfs() {
+    // UI Setup
+    document.getElementById('syntax-if').style.display = 'none';
+    document.getElementById('syntax-ifs').style.display = 'block';
+    
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- Avg for "Math" AND "Pass"</span>`;
+    document.getElementById('line2').innerHTML = 
+      `=<span class="fn">AVERAGEIFS</span>( <span class="val">C2:C6</span>, <span class="col">A2:A6</span>, <span class="str">"Math"</span>, <span class="col">B2:B6</span>, <span class="bool">TRUE</span> )`;
+    document.getElementById('line2').classList.add('active');
+
+    App.updateText("Checking: Class='Math' AND Status='Pass'...");
+    await App.speak("Now checking two things. Class is Math, AND they Passed.");
+    
+    if(shouldStop) return;
+
+    let sum = 0;
+    let count = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      row.classList.add('row-highlight');
+      
+      // Check 1: Class
+      await new Promise(r => setTimeout(r, 200));
+      if (data[i].cls === "Math") {
+         document.getElementById(`dot1-${i}`).classList.add('dot-pass');
+      } else {
+         document.getElementById(`dot1-${i}`).classList.add('dot-fail');
+         failRow(i, row); continue;
+      }
+
+      // Check 2: Pass
+      await new Promise(r => setTimeout(r, 200));
+      if (data[i].pass) {
+         document.getElementById(`dot2-${i}`).classList.add('dot-pass');
+         document.getElementById(`val-${i}`).classList.add('val-included');
+         
+         sum += data[i].score;
+         count++;
+         updateMath(sum, count);
+         
+         App.updateText(`Row ${i+1}: Both Match! Adding ${data[i].score}.`);
+         await new Promise(r => setTimeout(r, 500));
+
+      } else {
+         document.getElementById(`dot2-${i}`).classList.add('dot-fail');
+         failRow(i, row);
+      }
+      
+      row.classList.remove('row-highlight');
+    }
+
+    finishCalc(sum, count);
+  }
+
+  function failRow(i, row) {
+    row.style.opacity = "0.4";
+    row.classList.remove('row-highlight');
+  }
+
+  function updateMath(sum, count) {
+    dispSum.textContent = sum;
+    dispCount.textContent = count;
+    dispSum.classList.add('pulse-up');
+    dispCount.classList.add('pulse-up');
+    setTimeout(() => {
+        dispSum.classList.remove('pulse-up');
+        dispCount.classList.remove('pulse-up');
+    }, 300);
+  }
+
+  async function finishCalc(sum, count) {
+    if (count === 0) {
+        App.updateText("No matches found. Division by Zero error.");
+        totalBubble.textContent = "#DIV/0!";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        return;
+    }
+
+    const avg = (sum / count).toFixed(1);
+    dispAvg.textContent = avg;
+    
+    App.updateText(`Calc: ${sum} ÷ ${count} = ${avg}`);
+    await App.speak(`Total is ${sum}, count is ${count}. The average is ${avg}.`);
+    
+    totalBubble.textContent = avg;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnIf').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runIf();
+    isRunning = false;
+  });
+
+  document.getElementById('btnIfs').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runIfs();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

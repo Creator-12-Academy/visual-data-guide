@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: SUMIF & SUMIFS</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Filter Status Dots */
+  .status-dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    background: #334155; margin-right: 4px; transition: 0.3s;
+  }
+  .dot-pass { background: #4ade80; box-shadow: 0 0 5px #4ade80; }
+  .dot-fail { background: #ef4444; opacity: 0.5; }
+
+  /* Flying Number Animation */
+  .flying-number {
+    position: absolute; font-weight: bold; color: var(--accent);
+    font-family: monospace; font-size: 1.2rem; pointer-events: none;
+    z-index: 9999; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  /* Accumulator Pulse */
+  .bump { transform: scale(1.2); color: #fff; text-shadow: 0 0 10px var(--accent); }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>∑ Conditional Math</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Sum the Sales <em>only if</em> they meet specific criteria.<br>
+      <strong>SUMIF:</strong> 1 Condition. <strong>SUMIFS:</strong> 2+ Conditions.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1rem;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnSumIf">▶️ SUMIF (East Only)</button>
+        <button class="action" id="btnSumIfs">▶️ SUMIFS (East + Apple)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-sumif">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">SUMIF</span>(range, criteria, [sum_range])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Range:</strong> Where to look (e.g., Regions).</li>
+          <li><strong>2. Criteria:</strong> What to look for ("East").</li>
+          <li><strong>3. Sum Range:</strong> What to add (Sales).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-sumifs" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">SUMIFS</span>(sum_range, crit_range1, crit1, ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Sum Range:</strong> Numbers to add. <span style="color:#facc15;">(First!)</span></li>
+          <li><strong>2. Crit Range 1:</strong> First check (Regions).</li>
+          <li><strong>3. Criteria 1:</strong> "East".</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a scenario...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Running Total:</span>
+        <div class="total-bubble" id="totalBubble">$0</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Argument Order Flip</div>
+          <div class="mistake-desc">
+            In <strong>SUMIF</strong>, the numbers to add are LAST.<br>
+            In <strong>SUMIFS</strong>, the numbers to add are FIRST.<br>
+            This inconsistency confuses everyone!
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Text Criteria</div>
+          <div class="mistake-desc">Criteria like "East" must be in quotes. Criteria like >100 must also be in quotes: <code>">100"</code>.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("SUMIF & SUMIFS", "../../");
+
+  const data = [
+    { reg: "East", prod: "Apple", val: 100 },  // Match Both
+    { reg: "West", prod: "Apple", val: 50 },   // Fail Reg
+    { reg: "East", prod: "Banana", val: 80 },  // Fail Prod (for SUMIFS)
+    { reg: "East", prod: "Apple", val: 200 },  // Match Both
+    { reg: "West", prod: "Banana", val: 150 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let currentTotal = 0;
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1fr 0.5fr;">
+        <div>Region</div> <div>Product</div> <div>Sales</div> <div>Check</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1fr 0.5fr;">
+          <div id="reg-${i}">${d.reg}</div>
+          <div id="prod-${i}">${d.prod}</div>
+          <div class="cell-num" id="val-${i}">$${d.val}</div>
+          <div id="status-${i}">
+            <span class="status-dot" id="d1-${i}"></span>
+            <span class="status-dot" id="d2-${i}"></span>
+          </div>
+        </div>
+      `;
+    });
+    currentTotal = 0;
+    totalBubble.textContent = "$0";
+    totalBubble.style.opacity = "1"; 
+    totalBubble.style.transform = "scale(1)";
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      document.getElementById('syntax-sumif').style.display = 'block';
+      document.getElementById('syntax-sumifs').style.display = 'none';
+    }, 100);
+  }
+
+  // --- ANIMATION: FLYING NUMBER ---
+  function flyNumber(startEl, amount) {
+    const rect = startEl.getBoundingClientRect();
+    const endRect = totalBubble.getBoundingClientRect();
+    
+    const el = document.createElement('div');
+    el.className = 'flying-number';
+    el.textContent = `+$${amount}`;
+    el.style.left = `${rect.left}px`;
+    el.style.top = `${rect.top}px`;
+    document.body.appendChild(el);
+
+    const deltaX = endRect.left + (endRect.width/2) - rect.left - 20;
+    const deltaY = endRect.top + (endRect.height/2) - rect.top;
+
+    el.animate([
+      { transform: 'translate(0,0) scale(1)', opacity: 1 },
+      { transform: `translate(${deltaX}px, ${deltaY}px) scale(0.5)`, opacity: 0 }
+    ], {
+      duration: 800,
+      easing: 'ease-in-out'
+    }).onfinish = () => el.remove();
+  }
+
+  // --- LOGIC: SUMIF (Single Condition) ---
+  async function runSumIf() {
+    // 1. Setup UI
+    document.getElementById('syntax-sumif').style.display = 'block';
+    document.getElementById('syntax-sumifs').style.display = 'none';
+    
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- Sum if Region is "East"</span>`;
+    document.getElementById('line2').innerHTML = 
+      `=<span class="fn">SUMIF</span>( <span class="col">A2:A6</span>, <span class="str">"East"</span>, <span class="val">C2:C6</span> )`;
+
+    App.updateText(`Running SUMIF... Only checking Region column.`);
+    await App.speak(`I will only check the Region column. If it is East, I add the money.`);
+    
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      row.classList.add('row-highlight');
+      
+      // CHECK REGION
+      await new Promise(r => setTimeout(r, 300));
+      
+      if (data[i].reg === "East") {
+         document.getElementById(`d1-${i}`).classList.add('dot-pass');
+         
+         // SUCCESS
+         App.updateText(`Row ${i+1}: Match! Adding $${data[i].val}...`);
+         const valCell = document.getElementById(`val-${i}`);
+         valCell.style.color = "#4ade80";
+         valCell.style.fontWeight = "bold";
+
+         flyNumber(valCell, data[i].val);
+         await new Promise(r => setTimeout(r, 800));
+
+         currentTotal += data[i].val;
+         totalBubble.textContent = `$${currentTotal}`;
+         totalBubble.classList.add('bump');
+         setTimeout(() => totalBubble.classList.remove('bump'), 200);
+
+      } else {
+         // FAIL
+         document.getElementById(`d1-${i}`).classList.add('dot-fail');
+         row.style.opacity = '0.4'; 
+      }
+      row.classList.remove('row-highlight');
+    }
+    
+    App.updateText(`Final Total: <b>$${currentTotal}</b>`);
+    await App.speak(`Done. The total is ${currentTotal} dollars.`);
+  }
+
+  // --- LOGIC: SUMIFS (Multi Condition) ---
+  async function runSumIfs() {
+    // 1. Setup UI
+    document.getElementById('syntax-sumif').style.display = 'none';
+    document.getElementById('syntax-sumifs').style.display = 'block';
+    
+    document.getElementById('line1').innerHTML = `<span class="cmt">-- Sum if East AND Apple</span>`;
+    document.getElementById('line2').innerHTML = 
+      `=<span class="fn">SUMIFS</span>( <span class="val">C2:C6</span>, <span class="col">A2:A6</span>, <span class="str">"East"</span>, <span class="col">B2:B6</span>, <span class="str">"Apple"</span> )`;
+
+    App.updateText(`Running SUMIFS... Checking Region AND Product.`);
+    await App.speak(`Now I check two things. Region must be East, AND Product must be Apple.`);
+    
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      const row = document.getElementById(`row-${i}`);
+      row.classList.add('row-highlight');
+      
+      // CHECK 1: REGION
+      await new Promise(r => setTimeout(r, 200));
+      if (data[i].reg === "East") {
+         document.getElementById(`d1-${i}`).classList.add('dot-pass');
+      } else {
+         document.getElementById(`d1-${i}`).classList.add('dot-fail');
+         row.style.opacity = '0.4';
+         row.classList.remove('row-highlight');
+         continue; // Stop checking this row
+      }
+
+      // CHECK 2: PRODUCT
+      await new Promise(r => setTimeout(r, 200));
+      if (data[i].prod === "Apple") {
+         document.getElementById(`d2-${i}`).classList.add('dot-pass');
+         
+         // SUCCESS
+         App.updateText(`Row ${i+1}: Both Match! Adding $${data[i].val}...`);
+         const valCell = document.getElementById(`val-${i}`);
+         valCell.style.color = "#4ade80"; valCell.style.fontWeight = "bold";
+
+         flyNumber(valCell, data[i].val);
+         await new Promise(r => setTimeout(r, 800));
+
+         currentTotal += data[i].val;
+         totalBubble.textContent = `$${currentTotal}`;
+         totalBubble.classList.add('bump');
+         setTimeout(() => totalBubble.classList.remove('bump'), 200);
+
+      } else {
+         document.getElementById(`d2-${i}`).classList.add('dot-fail');
+         row.style.opacity = '0.4';
+      }
+      
+      row.classList.remove('row-highlight');
+    }
+    
+    App.updateText(`Final Total: <b>$${currentTotal}</b>`);
+    await App.speak(`Done. The total is ${currentTotal} dollars.`);
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnSumIf').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 150));
+    await runSumIf();
+    isRunning = false;
+  });
+
+  document.getElementById('btnSumIfs').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 150));
+    await runSumIfs();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

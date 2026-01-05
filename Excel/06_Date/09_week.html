@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: WEEKNUM & WEEKDAY</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Visualization Container */
+  .week-stage {
+    display: flex; flex-direction: column; gap: 2rem;
+    padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  /* 1. Weekday Grid (Sun-Sat) */
+  .day-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px;
+  }
+  .day-box {
+    background: #334155; padding: 10px 5px; border-radius: 4px;
+    text-align: center; font-size: 0.8rem; font-weight: bold;
+    color: var(--text-dim); transition: all 0.3s; border: 2px solid transparent;
+  }
+  .day-active {
+    background: var(--accent); color: #000; transform: scale(1.1);
+    box-shadow: 0 0 15px var(--accent); border-color: #fff;
+  }
+
+  /* 2. Year Progress (Weeknum) */
+  .year-track {
+    position: relative; height: 40px; background: #334155;
+    border-radius: 20px; overflow: hidden; margin-top: 10px;
+  }
+  .year-fill {
+    height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #93c5fd);
+    transition: width 1s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+  .week-marker {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    background: #fff; color: #000; font-weight: bold; font-size: 0.8rem;
+    padding: 2px 8px; border-radius: 10px; opacity: 0; transition: opacity 0.5s 0.8s;
+  }
+
+  /* Date Display */
+  .target-date {
+    text-align: center; font-size: 1.2rem; font-weight: bold; color: #fff; margin-bottom: 1rem;
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📅 Weekly Cycles</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Analyze the date <strong>October 25, 2025</strong>.<br>
+      <strong>WEEKDAY:</strong> Which day of the week (1-7)?<br>
+      <strong>WEEKNUM:</strong> Which week of the year (1-52)?
+    </p>
+
+    <div class="week-stage">
+      
+      <div class="target-date">Date: Oct 25, 2025 (Saturday)</div>
+
+      <div>
+        <div style="margin-bottom:5px; font-size:0.8rem; color:#ccc;">Day of Week:</div>
+        <div class="day-grid" id="dayGrid">
+          <div class="day-box" id="d1">Sun<br>1</div>
+          <div class="day-box" id="d2">Mon<br>2</div>
+          <div class="day-box" id="d3">Tue<br>3</div>
+          <div class="day-box" id="d4">Wed<br>4</div>
+          <div class="day-box" id="d5">Thu<br>5</div>
+          <div class="day-box" id="d6">Fri<br>6</div>
+          <div class="day-box" id="d7">Sat<br>7</div>
+        </div>
+      </div>
+
+      <div>
+        <div style="margin-bottom:5px; font-size:0.8rem; color:#ccc;">Week of Year (Progress):</div>
+        <div class="year-track">
+          <div class="year-fill" id="weekFill"></div>
+          <div class="week-marker" id="weekMarker">Wk 43</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnDay">📅 WEEKDAY (7)</button>
+        <button class="action" id="btnNum">📊 WEEKNUM (43)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-day">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">WEEKDAY</span>(serial_number, [return_type])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Date:</strong> The date to check.</li>
+          <li><strong>2. Type:</strong> 1 (Sun=1, Sat=7) is Default. Use 2 for Mon=1.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-num" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">WEEKNUM</span>(serial_number, [return_type])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Date:</strong> The date to check.</li>
+          <li><strong>2. Type:</strong> Determines when the week starts (Sun or Mon).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Mon vs Sun Start</div>
+          <div class="mistake-desc">
+            By default, Excel thinks weeks start on Sunday (Return Type 1).<br>
+            If your work week is Mon-Sun, use <code>WEEKDAY(A1, 2)</code>. This makes Mon=1, Sun=7.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">📅 ISO Week Numbers</div>
+          <div class="mistake-desc">
+            For European standards (ISO 8601), use <code>ISOWEEKNUM</code> instead of WEEKNUM. It handles the "Week 1" definition differently near Jan 1st.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("WEEKNUM & WEEKDAY", "../../");
+
+  // Oct 25, 2025 is a Saturday.
+  // Weekday (Default): 7
+  // Weeknum: 43 (out of 52/53)
+  
+  const weekFill = document.getElementById('weekFill');
+  const weekMarker = document.getElementById('weekMarker');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear Days
+    document.querySelectorAll('.day-box').forEach(d => d.classList.remove('day-active'));
+    
+    // Clear Week Track
+    weekFill.style.width = '0%';
+    weekMarker.style.opacity = '0';
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(mode) {
+    if (mode === 'DAY') {
+        document.getElementById('syntax-day').style.display = 'block';
+        document.getElementById('syntax-num').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Day of Week (Sun=1... Sat=7)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">WEEKDAY</span>( <span class="col">"Oct 25"</span> )`;
+    } else {
+        document.getElementById('syntax-day').style.display = 'none';
+        document.getElementById('syntax-num').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Week Number of the Year</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">WEEKNUM</span>( <span class="col">"Oct 25"</span> )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC: WEEKDAY ---
+  async function runWeekday() {
+    updateUI('DAY');
+    App.updateText("Scanning the week (Sunday to Saturday)...");
+    await App.speak("Scanning the days of the week.");
+    
+    if(shouldStop) return;
+
+    // Animate scan
+    for(let i=1; i<=7; i++) {
+        if(shouldStop) return;
+        const box = document.getElementById(`d${i}`);
+        
+        box.style.borderColor = "#fff"; // Temp highlight
+        await new Promise(r => setTimeout(r, 150));
+        
+        if (i === 7) {
+            // SATURDAY MATCH
+            box.classList.add('day-active');
+            box.style.borderColor = "#fff";
+            
+            App.updateText(`Saturday is Day 7.`);
+            await App.speak(`It is Saturday, which is the 7th day.`);
+            
+            totalBubble.textContent = "7";
+            totalBubble.style.background = "var(--accent)";
+            totalBubble.classList.add('show');
+        } else {
+            box.style.borderColor = "transparent";
+        }
+    }
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- LOGIC: WEEKNUM ---
+  async function runWeeknum() {
+    updateUI('NUM');
+    App.updateText("Calculating progress through the year...");
+    await App.speak("Calculating how far we are into the year.");
+    
+    if(shouldStop) return;
+
+    // Week 43 out of 52
+    const pct = (43 / 52) * 100;
+    
+    weekFill.style.width = `${pct}%`;
+    weekMarker.style.left = `${pct}%`;
+    weekMarker.style.opacity = '1';
+    
+    await new Promise(r => setTimeout(r, 1000));
+    
+    App.updateText(`Result: Week 43`);
+    await App.speak(`We are in week 43.`);
+    
+    totalBubble.textContent = "43";
+    totalBubble.style.background = "#3b82f6";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnDay').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runWeekday();
+    isRunning = false;
+  });
+
+  document.getElementById('btnNum').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runWeeknum();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

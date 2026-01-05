@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: SUBSTITUTE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Sentence Container */
+  .sentence-stage {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 8px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; padding: 2rem; margin-bottom: 2rem;
+    font-size: 1.2rem; font-family: monospace; min-height: 100px;
+    align-items: center;
+  }
+
+  /* Word Blocks */
+  .word-block {
+    padding: 6px 10px; border-radius: 4px; background: #334155;
+    color: #fff; position: relative; transition: all 0.4s;
+  }
+
+  /* Target Highlight */
+  .target-word {
+    background: #facc15; color: #000; font-weight: bold;
+    box-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
+    transform: scale(1.1); z-index: 10;
+  }
+
+  /* Replacement Animation */
+  .replaced-word {
+    background: #4ade80; color: #000; font-weight: bold;
+    animation: bounceIn 0.5s;
+  }
+
+  @keyframes bounceIn {
+    0% { transform: scale(0); opacity: 0; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  /* Fading Old Word */
+  .poof {
+    position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+    opacity: 0; font-size: 0.8rem; color: #ef4444; pointer-events: none;
+  }
+  .poof-anim { animation: floatUp 0.6s forwards; }
+
+  @keyframes floatUp {
+    0% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, -30px); }
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔄 The Text Swapper</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Update the year in the report title.<br>
+      <strong>SUBSTITUTE</strong> finds specific text ("2023") and replaces it ("2025").
+    </p>
+
+    <div class="sentence-stage" id="stage">
+      </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnAll">🔁 Replace All</button>
+        <button class="action" id="btnOne">1️⃣ Replace First Only</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">SUBSTITUTE</span>(text, old, new, [instance])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Old Text:</strong> What to find ("2023").</li>
+          <li><strong>2. New Text:</strong> What to put there ("2025").</li>
+          <li><strong>3. Instance:</strong> (Optional) Which one to swap? Omit to swap all.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Update Year from 2023 to 2025</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">SUBSTITUTE</span>( <span class="col">A1</span>, <span class="str">"2023"</span>, <span class="str">"2025"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Case Sensitive</div>
+          <div class="mistake-desc">
+            SUBSTITUTE is strict. Replacing "Apple" will NOT replace "apple". Use <strong>REPLACE</strong> if case doesn't matter or you only know the position.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">✅ Removing Text</div>
+          <div class="mistake-desc">
+            To delete text, replace it with an empty string <code>""</code>. <br>
+            Example: <code>=SUBSTITUTE(A1, "-", "")</code> removes dashes.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("SUBSTITUTE Function", "../../");
+
+  // "Sales Report 2023 - Q1 2023"
+  const initialWords = ["Sales", "Report", "2023", "-", "Q1", "2023"];
+  const stage = document.getElementById('stage');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initStage() {
+    stage.innerHTML = '';
+    initialWords.forEach((word, i) => {
+      const span = document.createElement('span');
+      span.className = 'word-block';
+      span.id = `word-${i}`;
+      span.textContent = word;
+      
+      // Hidden poof element for animation
+      const poof = document.createElement('span');
+      poof.className = 'poof';
+      poof.textContent = word;
+      span.appendChild(poof);
+      
+      stage.appendChild(span);
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initStage();
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(instance) {
+    if (instance) {
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Replace ONLY the 1st instance</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">SUBSTITUTE</span>( <span class="col">A1</span>, <span class="str">"2023"</span>, <span class="str">"2025"</span>, <span class="val">1</span> )`;
+    } else {
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Replace ALL instances</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">SUBSTITUTE</span>( <span class="col">A1</span>, <span class="str">"2023"</span>, <span class="str">"2025"</span> )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runSub(instanceNum) {
+    updateUI(instanceNum);
+    App.updateText(`Scanning for "2023"...`);
+    await App.speak(`Looking for the text 2023.`);
+    
+    if(shouldStop) return;
+
+    let foundCount = 0;
+    let finalStrArr = [...initialWords];
+
+    for (let i = 0; i < initialWords.length; i++) {
+        if(shouldStop) return;
+        
+        const word = initialWords[i];
+        const el = document.getElementById(`word-${i}`);
+        
+        if (word === "2023") {
+            foundCount++;
+            
+            // Check logic: Replace All OR Specific Instance
+            let doSwap = false;
+            if (!instanceNum) doSwap = true; // All
+            else if (instanceNum === foundCount) doSwap = true; // Specific
+
+            if (doSwap) {
+                // Highlight Old
+                el.classList.add('target-word');
+                App.updateText(`Found match at word ${i+1}. Swapping...`);
+                await new Promise(r => setTimeout(r, 600));
+                
+                // Animate Swap
+                el.querySelector('.poof').classList.add('poof-anim'); // Float away old text
+                el.classList.remove('target-word');
+                el.classList.add('replaced-word');
+                
+                // Update Text (Wait slightly for poof)
+                setTimeout(() => {
+                    el.childNodes[0].nodeValue = "2025"; // Change text node only
+                }, 200);
+                
+                finalStrArr[i] = "2025";
+                
+                await App.speak("Swapped.");
+                await new Promise(r => setTimeout(r, 500));
+            } else {
+                App.updateText(`Found match, but skipping (Instance ${foundCount}).`);
+                await new Promise(r => setTimeout(r, 400));
+            }
+        }
+    }
+
+    // Finish
+    const resultStr = finalStrArr.join(" ");
+    App.updateText(`Done! Result: "${resultStr}"`);
+    await App.speak(`The final sentence is: ${resultStr}`);
+    
+    totalBubble.textContent = `"${resultStr}"`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnAll').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSub(null); // All
+    isRunning = false;
+  });
+
+  document.getElementById('btnOne').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSub(1); // 1st Instance only
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initStage();
+
+</script>
+</body>
+</html>

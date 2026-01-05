@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: TRUE / FALSE</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Toggle Switch */
+  .bool-switch {
+    width: 60px; height: 30px; background: #334155;
+    border-radius: 15px; position: relative; cursor: pointer;
+    transition: all 0.3s; margin: 0 auto;
+    border: 2px solid var(--border);
+  }
+  .bool-switch::after {
+    content: ''; position: absolute; left: 2px; top: 2px;
+    width: 22px; height: 22px; background: #fff;
+    border-radius: 50%; transition: all 0.3s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+  }
+  
+  /* State: TRUE */
+  .bool-switch.is-true { background: #4ade80; border-color: #4ade80; }
+  .bool-switch.is-true::after { transform: translateX(30px); }
+
+  /* State: FALSE */
+  .bool-switch.is-false { background: #ef4444; border-color: #ef4444; }
+
+  /* Math Transformation Animation */
+  .math-box {
+    display: flex; align-items: center; justify-content: center; gap: 10px;
+    font-size: 1.5rem; font-weight: bold; margin-top: 1rem;
+    background: rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px;
+  }
+  .morph-val { 
+    transition: all 0.5s; display: inline-block; min-width: 60px; text-align: center;
+  }
+  
+  .flash-transform { animation: flashYellow 0.5s; color: #facc15; transform: scale(1.2); }
+
+  @keyframes flashYellow {
+    0% { color: #fff; transform: scale(1); }
+    50% { color: #facc15; transform: scale(1.3); }
+    100% { color: #fff; transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>💡 The Hidden Numbers</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Multiply logic by money.<br>
+      In Excel math, <span style="color:#4ade80; font-weight:bold;">TRUE = 1</span> and <span style="color:#ef4444; font-weight:bold;">FALSE = 0</span>.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1.5rem;"></div>
+
+    <div class="math-box">
+      <span id="vis-logic" class="morph-val">TRUE</span>
+      <span>×</span>
+      <span>$100</span>
+      <span>=</span>
+      <span id="vis-result" style="color:var(--accent);">$100</span>
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ Calculate Bonus</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">TRUE</span>()  or  =<span class="fn">FALSE</span>()
+        </div>
+        <ul class="arg-list">
+          <li><strong>Concept:</strong> These are Boolean values.</li>
+          <li><strong>Math:</strong> Any math operation (+, -, *, /) forces them to become numbers (1 or 0).</li>
+          <li><strong>Double Negative (--):</strong> A common trick (<code>--A1</code>) to force text-numbers or booleans into real numbers.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Calculate Bonus: (Met Target?) * $100</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="col" id="codeBool">TRUE</span> * <span class="val">100</span>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Total Bonus:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Text "TRUE" vs Logic TRUE</div>
+          <div class="mistake-desc">
+            Typing "TRUE" in a cell is usually auto-converted. But in formulas, <code>"TRUE"</code> (text) is NOT the same as <code>TRUE()</code> (logic).
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 SUM won't count them</div>
+          <div class="mistake-desc">
+            <code>=SUM(TRUE, TRUE)</code> is 2. But <code>=SUM(A1:A2)</code> where cells contain TRUE is 0. Excel ignores text/bools in ranges unless you convert them first (e.g. using --).
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("TRUE / FALSE", "../../");
+
+  const data = [
+    { name: "Team A", targetMet: true },
+    { name: "Team B", targetMet: false },
+    { name: "Team C", targetMet: true }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const visLogic = document.getElementById('vis-logic');
+  const visResult = document.getElementById('vis-result');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1.5fr;">
+        <div>Team</div> <div>Met Target?</div> <div>Bonus</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      const switchClass = d.targetMet ? 'bool-switch is-true' : 'bool-switch is-false';
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1.5fr;">
+          <div>${d.name}</div>
+          <div style="display:flex; justify-content:center;">
+            <div class="${switchClass}" id="sw-${i}"></div>
+          </div>
+          <div id="bonus-${i}" style="text-align:center;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.textContent = "-";
+      totalBubble.classList.remove('show');
+      visLogic.textContent = "TRUE";
+      visResult.textContent = "$100";
+      visLogic.style.color = "#fff";
+    }, 100);
+  }
+
+  // --- LOGIC: BOOLEAN MATH ---
+  async function runLogic() {
+    App.updateText("Starting Calculation...");
+    await App.speak("Let's calculate the bonus. Remember, True becomes One, and False becomes Zero.");
+    
+    if(shouldStop) return;
+
+    let grandTotal = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const resCell = document.getElementById(`bonus-${i}`);
+      const isTrue = data[i].targetMet;
+      
+      row.classList.add('row-highlight');
+      
+      // 1. Show Logic State
+      const txt = isTrue ? "TRUE" : "FALSE";
+      const val = isTrue ? 1 : 0;
+      const color = isTrue ? "#4ade80" : "#ef4444";
+      
+      visLogic.textContent = txt;
+      visLogic.style.color = color;
+      
+      document.getElementById('codeBool').textContent = txt;
+      document.getElementById('codeBool').style.color = color;
+
+      App.updateText(`${data[i].name}: ${txt}. Converting to Number...`);
+      await new Promise(r => setTimeout(r, 600));
+
+      // 2. Animate Transformation (Morph text to number)
+      visLogic.classList.add('flash-transform');
+      visLogic.textContent = val; // "TRUE" becomes "1"
+      
+      if(isTrue) await App.speak("True becomes one.");
+      else await App.speak("False becomes zero.");
+      
+      await new Promise(r => setTimeout(r, 600));
+      visLogic.classList.remove('flash-transform');
+
+      // 3. Do Math
+      const result = val * 100;
+      visResult.textContent = `$${result}`;
+      
+      resCell.innerHTML = `<b>$${result}</b>`;
+      resCell.style.color = isTrue ? "#4ade80" : "#ef4444";
+      
+      grandTotal += result;
+      totalBubble.textContent = `$${grandTotal}`;
+      totalBubble.classList.add('show');
+      
+      App.updateText(`1 × $100 = $${result}`);
+      
+      await new Promise(r => setTimeout(r, 500));
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText("Done! Logic converted to Math successfully.");
+    totalBubble.style.background = "var(--accent)";
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runLogic();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

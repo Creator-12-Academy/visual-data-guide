@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Excel: Financial Functions</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME (Consistent with Main Menu) --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-bars: #0f172a;  /* Slate 900 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+  }
+
+  body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-body);
+    color: var(--text-main);
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* --- HEADER & HERO --- */
+  header {
+    background: var(--bg-bars);
+    padding: 1rem; 
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hero { text-align: center; padding: 3rem 1rem 2rem; }
+  .hero h1 { font-size: 2.5rem; margin-bottom: 0.5rem; color: var(--text-main); }
+  .hero p { color: var(--text-dim); font-size: 1.1rem; max-width: 600px; margin: 0 auto; }
+
+  /* --- GRID LAYOUT --- */
+  .module-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+    max-width: 1200px; margin: 0 auto; padding: 2rem;
+  }
+
+  /* --- CARDS --- */
+  .lesson-card {
+    background: var(--bg-card); 
+    border: 1px solid var(--border);
+    border-radius: 1rem; padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 1rem;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    text-decoration: none; color: var(--text-main);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+  }
+  
+  .lesson-card:hover { 
+    transform: translateY(-5px); 
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4); 
+    border-color: var(--accent); 
+  }
+
+  .card-header { display: flex; align-items: center; justify-content: space-between; }
+  .card-icon { font-size: 2rem; }
+  
+  .card-title { font-weight: 800; font-size: 1.1rem; color: var(--text-main); margin-bottom: 0.5rem; }
+  .card-desc { font-size: 0.9rem; color: var(--text-dim); line-height: 1.5; }
+  
+  .status-badge { 
+    font-size: 0.7rem; font-weight: bold;
+    background: rgba(56, 189, 248, 0.15); color: var(--accent); 
+    padding: 3px 10px; border-radius: 12px;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+  }
+
+  /* --- FOOTER & NAV --- */
+  .nav-back {
+    display: inline-block; border: 1px solid var(--border); 
+    padding: 0.8rem 2rem; border-radius: 8px;
+    background: var(--bg-card); color: var(--text-dim);
+    text-decoration: none; transition: 0.2s;
+  }
+  .nav-back:hover { border-color: var(--accent); color: var(--accent); }
+
+  footer { margin-top: auto; padding: 2rem; text-align: center; color: var(--text-dim); font-size: 0.8rem; }
+
+  /* 📱 MOBILE */
+  @media (max-width: 768px) {
+    .hero h1 { font-size: 1.8rem; }
+    .module-grid { grid-template-columns: 1fr; padding: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+  <header></header>
+
+  <div class="hero">
+    <h1>💰 Financial Functions</h1>
+    <p>Master the Time Value of Money. Calculate loans, analyze investments, and project future growth.</p>
+  </div>
+
+  <div class="module-grid">
+
+    <a href="01_pmt.html" class="lesson-card">
+      <div class="card-header">
+        <span class="card-icon">💸</span>
+        <span class="status-badge">Loans</span>
+      </div>
+      <div>
+        <div class="card-title">01. PMT (Payment)</div>
+        <div class="card-desc">Calculate monthly payments for loans or mortgages based on constant interest and periods.</div>
+      </div>
+    </a>
+
+    <a href="02_rate.html" class="lesson-card">
+      <div class="card-header">
+        <span class="card-icon">📈</span>
+        <span class="status-badge">Analysis</span>
+      </div>
+      <div>
+        <div class="card-title">02. RATE</div>
+        <div class="card-desc">Find the interest rate per period of an annuity. Useful for reverse-engineering loan terms.</div>
+      </div>
+    </a>
+
+    <a href="03_npv.html" class="lesson-card">
+      <div class="card-header">
+        <span class="card-icon">📉</span>
+        <span class="status-badge">Investment</span>
+      </div>
+      <div>
+        <div class="card-title">03. NPV (Net Present Value)</div>
+        <div class="card-desc">Determine if an investment is worth it by calculating the present value of future cash flows.</div>
+      </div>
+    </a>
+
+    <a href="04_irr.html" class="lesson-card">
+      <div class="card-header">
+        <span class="card-icon">🚀</span>
+        <span class="status-badge">Profitability</span>
+      </div>
+      <div>
+        <div class="card-title">04. IRR (Internal Rate of Return)</div>
+        <div class="card-desc">Calculate the break-even interest rate for a series of cash flows. A key metric for business cases.</div>
+      </div>
+    </a>
+
+    <a href="05_fv.html" class="lesson-card">
+      <div class="card-header">
+        <span class="card-icon">🔮</span>
+        <span class="status-badge">Growth</span>
+      </div>
+      <div>
+        <div class="card-title">05. FV (Future Value)</div>
+        <div class="card-desc">Predict the future value of an investment based on periodic, constant payments and a constant interest rate.</div>
+      </div>
+    </a>
+
+    <a href="06_pv.html" class="lesson-card">
+      <div class="card-header">
+        <span class="card-icon">💎</span>
+        <span class="status-badge">Valuation</span>
+      </div>
+      <div>
+        <div class="card-title">06. PV (Present Value)</div>
+        <div class="card-desc">How much is a future sum of money worth today? Essential for discounting cash flows.</div>
+      </div>
+    </a>
+
+    <a href="07_nper.html" class="lesson-card">
+      <div class="card-header">
+        <span class="card-icon">⏳</span>
+        <span class="status-badge">Time</span>
+      </div>
+      <div>
+        <div class="card-title">07. NPER (Number of Periods)</div>
+        <div class="card-desc">Calculate how long it will take to pay off a loan or reach an investment goal.</div>
+      </div>
+    </a>
+
+  </div>
+
+  <div style="text-align:center; margin-bottom:4rem;">
+    <a href="../index.html" class="nav-back">⬅ Back to Excel Menu</a>
+  </div>
+
+  <footer></footer>
+
+  <script src="../../assets/app.js"></script>
+  <script>
+    App.initLayout("Financial Functions", "../../");
+  </script>
+
+</body>
+</html>

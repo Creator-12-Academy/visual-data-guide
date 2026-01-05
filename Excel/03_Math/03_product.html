@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: PRODUCT Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Multiplication Symbol Animation */
+  .multi-sign {
+    position: absolute; font-weight: bold; color: var(--accent);
+    font-size: 1.5rem; opacity: 0; right: -25px; top: 10px;
+    transition: all 0.3s;
+  }
+  .show-sign { opacity: 1; transform: scale(1.2); }
+
+  /* Accumulator Box */
+  .math-display {
+    background: #0f172a; border: 2px solid var(--border);
+    border-radius: 8px; padding: 1rem; margin-top: 1rem;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    min-height: 80px;
+  }
+  .math-equation { font-family: monospace; color: var(--text-dim); font-size: 0.9rem; margin-bottom: 5px; }
+  .math-result { font-size: 2rem; font-weight: 900; color: #fff; transition: transform 0.2s; }
+  
+  .pulse-res { animation: pulseWhite 0.3s ease-in-out; color: var(--accent); }
+
+  @keyframes pulseWhite {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>✖️ The Multiplier</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate the total volume (L × W × H).<br>
+      <strong>PRODUCT</strong> multiplies all numbers in a range together.
+    </p>
+
+    <div id="dataTable" style="position:relative;"></div>
+
+    <div class="math-display">
+      <div class="math-equation" id="equationStr">Start</div>
+      <div class="math-result" id="runningResult">1</div>
+    </div>
+
+    <div class="calculation-box" id="calcBox" style="margin-top:1rem;">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ Calculate Volume</button>
+        <button class="action" id="btnZero">0️⃣ With a Zero</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">PRODUCT</span>(number1, [number2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Numbers:</strong> A range (A1:A5) or individual numbers.</li>
+          <li><strong>Effect:</strong> Multiplies them all. (A1 * A2 * A3...)</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Multiply Length * Width * Height</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">PRODUCT</span>( <span class="col" id="rangeRef">B2:B4</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Total Product:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 The "Zero" Trap</div>
+          <div class="mistake-desc">If <em>any</em> cell in the range is 0, the entire result becomes 0.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">✅ Ignores Text & Blanks</div>
+          <div class="mistake-desc">Unlike math using `*` (which errors on text), PRODUCT simply ignores text and empty cells.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("PRODUCT Function", "../../");
+
+  const data = [
+    { label: "Length", val: 4 },
+    { label: "Width",  val: 5 },
+    { label: "Height", val: 2 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const runningResultEl = document.getElementById('runningResult');
+  const equationStrEl = document.getElementById('equationStr');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable(useZero = false) {
+    // Clone data
+    let currentData = JSON.parse(JSON.stringify(data));
+    if(useZero) currentData[1].val = 0; // Set Width to 0
+
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr;">
+        <div>Dimension</div> <div>Value</div>
+      </div>
+    `;
+    
+    currentData.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr; position:relative;">
+          <div>${d.label}</div>
+          <div class="cell-num" id="val-${i}">${d.val}</div>
+          <div class="multi-sign" id="sign-${i}">×</div>
+        </div>
+      `;
+    });
+    
+    runningResultEl.textContent = "1"; // Identity for multiplication
+    equationStrEl.textContent = "Start";
+    return currentData;
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.textContent = "-";
+      totalBubble.classList.remove('show');
+      runningResultEl.classList.remove('pulse-res');
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  // --- LOGIC: PRODUCT ---
+  async function runProduct(useZero = false) {
+    const activeData = initTable(useZero);
+    document.getElementById('line2').classList.add('active');
+    
+    App.updateText("Multiplying all values...");
+    await App.speak("I will multiply the numbers one by one.");
+    
+    if(shouldStop) return;
+
+    let currentProd = 1;
+    let eqString = "";
+
+    for (let i = 0; i < activeData.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const sign = document.getElementById(`sign-${i}`);
+      const val = activeData[i].val;
+      
+      row.classList.add('row-highlight');
+      
+      // Visual Feedback
+      if (i < activeData.length - 1) sign.classList.add('show-sign');
+      
+      // Update Math Display
+      if (i === 0) eqString = `${val}`;
+      else eqString += ` × ${val}`;
+      equationStrEl.textContent = eqString;
+
+      App.updateText(`Multiplying by ${val}...`);
+      await new Promise(r => setTimeout(r, 600));
+
+      // Calculate
+      currentProd *= val;
+      
+      // Animate Result
+      runningResultEl.textContent = currentProd;
+      runningResultEl.classList.add('pulse-res');
+      
+      // Voice narration for specific steps
+      if (useZero && val === 0) {
+          await App.speak("Multiplying by zero makes everything zero.");
+      } else if (i === 1) {
+          await App.speak(`${activeData[0].val} times ${activeData[1].val} is ${currentProd}.`);
+      }
+
+      setTimeout(() => runningResultEl.classList.remove('pulse-res'), 300);
+      
+      await new Promise(r => setTimeout(r, 400));
+      row.classList.remove('row-highlight');
+    }
+
+    // Final
+    App.updateText(`Final Product: ${currentProd}`);
+    await App.speak(`The total product is ${currentProd}.`);
+    
+    totalBubble.textContent = currentProd;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runProduct(false);
+    isRunning = false;
+  });
+
+  document.getElementById('btnZero').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runProduct(true); // With Zero
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

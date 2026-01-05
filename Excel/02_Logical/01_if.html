@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: IF Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Logical Status Badges */
+  .badge-pass {
+    display: inline-block; padding: 4px 8px; border-radius: 4px;
+    font-size: 0.8rem; font-weight: bold;
+    background: #4ade80; color: #000;
+    box-shadow: 0 0 10px rgba(74, 222, 128, 0.4);
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .badge-fail {
+    display: inline-block; padding: 4px 8px; border-radius: 4px;
+    font-size: 0.8rem; font-weight: bold;
+    background: #ef4444; color: #fff;
+    opacity: 0.8;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  @keyframes popIn {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+
+  /* Comparison Highlight */
+  .comparing {
+    border: 2px solid #facc15 !important;
+    background: rgba(250, 204, 21, 0.1);
+    transition: all 0.2s;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>⚖️ Logical Logic (IF)</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Check if Sales are greater than the Target ($5,000).<br>
+      <strong>IF</strong> asks a Yes/No question and returns different results for each.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1rem;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ Run Logic</button>
+        <button class="action" id="btnHigh">📈 High Target (8k)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">IF</span>(logical_test, value_if_true, value_if_false)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Logical Test:</strong> The question (e.g., Sales > 5000).</li>
+          <li><strong>2. If True:</strong> What to do if YES (e.g., "Bonus").</li>
+          <li><strong>3. If False:</strong> What to do if NO (e.g., "No Bonus").</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Check for Bonus Eligibility</span></div>
+        <div class="codeLine" id="line2">=<span class="fn">IF</span>( B2 > <span class="val" id="targetVal">5000</span>, <span class="str">"Bonus"</span>, <span class="str">"No Bonus"</span> )</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Current Decision:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Missing Quotes</div>
+          <div class="mistake-desc">Text results must be wrapped in quotes (e.g., "Yes"). Numbers do not need quotes.</div>
+          <div class="mistake-fix">✅ Fix: Use "Passed", not Passed.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Wrong Operator</div>
+          <div class="mistake-desc">Using ">" (Greater Than) when you meant ">=" (Greater Than or Equal To).</div>
+          <div class="mistake-fix">✅ Fix: Double check edge cases (e.g., exactly 5000).</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("IF Function", "../../");
+
+  let threshold = 5000;
+  
+  const data = [
+    { rep: "Alex", sales: 7200 },
+    { rep: "Sam", sales: 4100 },
+    { rep: "Jordan", sales: 5000 }, // Edge case
+    { rep: "Taylor", sales: 8900 }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1.5fr;">
+        <div>Rep</div> <div>Sales</div> <div>Status</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1.5fr;">
+          <div>${d.rep}</div>
+          <div class="cell-num" id="sales-${i}">$${d.sales}</div>
+          <div id="status-${i}" style="display:flex; align-items:center;">-</div>
+        </div>
+      `;
+    });
+    
+    // Update code to reflect current threshold
+    document.getElementById('targetVal').textContent = threshold;
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      highlight(null);
+    }, 100);
+  }
+
+  function highlight(id) {
+    document.querySelectorAll('.codeLine').forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- MAIN LOGIC ---
+  async function runLogic() {
+    highlight('line2');
+    App.updateText(`Checking if Sales > $${threshold}...`);
+    await App.speak(`Let's check who gets a bonus. The target is ${threshold} dollars.`);
+    
+    if(shouldStop) return;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+
+      const salesCell = document.getElementById(`sales-${i}`);
+      const statusCell = document.getElementById(`status-${i}`);
+      const row = document.getElementById(`row-${i}`);
+      const salesVal = data[i].sales;
+
+      // 1. Highlight Comparison
+      salesCell.classList.add('comparing');
+      row.classList.add('row-highlight');
+
+      App.updateText(`Row ${i+1}: Is $${salesVal} > $${threshold}?`);
+      
+      // Voice narration for the first few
+      if (i < 2) {
+          await App.speak(`Is ${salesVal} greater than ${threshold}?`);
+      } else {
+          await new Promise(r => setTimeout(r, 400));
+      }
+
+      // 2. Evaluate
+      const isBonus = salesVal > threshold;
+      
+      if (isBonus) {
+        // TRUE CONDITION
+        App.updateText(`YES. Result: "Bonus"`);
+        if (i < 2) await App.speak(`Yes it is. So the result is Bonus.`);
+        
+        statusCell.innerHTML = `<span class="badge-pass">💰 BONUS</span>`;
+        totalBubble.textContent = "TRUE";
+        totalBubble.style.background = "#4ade80"; // Green
+      } else {
+        // FALSE CONDITION
+        App.updateText(`NO. Result: "No Bonus"`);
+        if (i < 2) await App.speak(`No it is not. So, No Bonus.`);
+        
+        statusCell.innerHTML = `<span class="badge-fail">❌ NO BONUS</span>`;
+        totalBubble.textContent = "FALSE";
+        totalBubble.style.background = "#ef4444"; // Red
+      }
+      
+      totalBubble.classList.add('show');
+      salesCell.classList.remove('comparing');
+      
+      await new Promise(r => setTimeout(r, 400));
+      row.classList.remove('row-highlight');
+    }
+
+    App.updateText(`Done! Logic complete.`);
+    await App.speak(`We are done. Calculations are complete.`);
+    highlight(null);
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runLogic();
+    isRunning = false;
+  });
+
+  document.getElementById('btnHigh').addEventListener('click', () => {
+    threshold = 8000;
+    reset();
+  });
+
+  document.getElementById('btnReset').addEventListener('click', () => {
+    threshold = 5000;
+    reset();
+  });
+
+  initTable();
+</script>
+</body>
+</html>

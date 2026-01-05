@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: SWITCH Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Case Cards Visualization */
+  .case-container {
+    display: flex; gap: 10px; justify-content: center; margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  .case-card {
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; min-width: 90px;
+    display: flex; flex-direction: column; align-items: center;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+    position: relative; cursor: default;
+  }
+  .case-val { 
+    font-weight: bold; color: var(--text-dim); font-size: 0.8rem; 
+    margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px;
+  }
+  .case-result { 
+    font-weight: 800; color: #fff; font-size: 1.1rem;
+  }
+
+  /* Default Case Special Styling */
+  .case-default { border-style: dashed; border-color: var(--text-dim); }
+  .case-default .case-val { color: #facc15; }
+
+  /* Animation States */
+  .checking { 
+    border-color: #facc15; background: rgba(250, 204, 21, 0.1); 
+    transform: scale(1.1); z-index: 10;
+  }
+  .matched { 
+    border-color: #4ade80; background: rgba(74, 222, 128, 0.2); 
+    box-shadow: 0 0 15px rgba(74, 222, 128, 0.3); transform: scale(1.1); z-index: 10;
+  }
+  .dimmed { opacity: 0.2; transform: scale(0.95); }
+
+  /* Input Display */
+  .input-area {
+    background: #0f172a; border-bottom: 1px solid var(--border);
+    padding: 1.5rem; text-align: center; margin-bottom: 1.5rem;
+    border-radius: 8px;
+  }
+  .input-label { font-size: 0.8rem; color: var(--text-dim); margin-bottom: 0.5rem; }
+  .input-val { 
+    font-size: 2.5rem; font-weight: 900; color: var(--accent); 
+    display: inline-block; min-width: 50px;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🎛️ The Clean Swap</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Convert a numeric Priority Code (1, 2, 3) into a Text Label.<br>
+      <strong>SWITCH</strong> swaps specific values for results. It is cleaner than Nested IFs for exact matches.
+    </p>
+
+    <div class="input-area">
+      <div class="input-label">Current Value (Cell A1)</div>
+      <div class="input-val" id="inputVal">?</div>
+    </div>
+
+    <div class="case-container" id="casesMount">
+      </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btn1">1 (Low)</button>
+        <button class="action" id="btn2">2 (Med)</button>
+        <button class="action" id="btn3">3 (High)</button>
+        <button class="action" id="btn4">4 (Unknown)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">SWITCH</span>(expression, val1, res1, [val2, res2], ..., [default])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Expression:</strong> The value to check (e.g., Cell A1).</li>
+          <li><strong>2. Val/Res Pairs:</strong> If equal to <em>Val</em>, return <em>Res</em>.</li>
+          <li><strong>3. Default:</strong> (Optional) Return this if no match found.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Map ID to Priority Name</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">SWITCH</span>( <span class="col" id="codeIn">A1</span>, <br>
+          &nbsp;&nbsp;<span class="val">1</span>, <span class="str">"Low"</span>, <br>
+          &nbsp;&nbsp;<span class="val">2</span>, <span class="str">"Medium"</span>, <br>
+          &nbsp;&nbsp;<span class="val">3</span>, <span class="str">"High"</span>, <br>
+          &nbsp;&nbsp;<span class="str">"Unknown"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Exact Match Only</div>
+          <div class="mistake-desc">SWITCH cannot do ranges (like ">50"). It only checks for "Equals". Use <strong>IFS</strong> for ranges.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 The Default Trap</div>
+          <div class="mistake-desc">The final argument is the "Default". If you forget it and no match is found, Excel returns an #N/A error.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("SWITCH Function", "../../");
+
+  // Configuration
+  const cases = [
+    { val: 1, res: "Low" },
+    { val: 2, res: "Medium" },
+    { val: 3, res: "High" },
+    { val: "Else", res: "Unknown", isDefault: true }
+  ];
+
+  const casesMount = document.getElementById('casesMount');
+  const inputVal = document.getElementById('inputVal');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initCases() {
+    casesMount.innerHTML = '';
+    cases.forEach((c, i) => {
+      let classes = 'case-card';
+      let label = c.isDefault ? "Default" : `Value ${c.val}`;
+      if (c.isDefault) classes += ' case-default';
+      
+      casesMount.innerHTML += `
+        <div class="${classes}" id="case-${i}">
+          <div class="case-val">${label}</div>
+          <div class="case-result">"${c.res}"</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset styles
+    document.querySelectorAll('.case-card').forEach(c => c.className = c.classList.contains('case-default') ? 'case-card case-default' : 'case-card');
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      inputVal.textContent = "?";
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC: RUN SWITCH ---
+  async function runSwitch(inputValue) {
+    // 1. Setup Input
+    inputVal.textContent = inputValue;
+    document.getElementById('codeIn').classList.add('active'); // Highlight code arg
+    
+    App.updateText(`Checking input: <b>${inputValue}</b>...`);
+    await App.speak(`The input value is ${inputValue}. Let's find a match.`);
+    
+    if(shouldStop) return;
+
+    let matched = false;
+
+    // 2. Loop through Cases
+    for (let i = 0; i < cases.length; i++) {
+      if(shouldStop) return;
+      
+      const card = document.getElementById(`case-${i}`);
+      const c = cases[i];
+      
+      // Highlight Checking
+      card.classList.add('checking');
+      
+      if (c.isDefault) {
+        // DEFAULT CASE (Only reached if nothing else matched)
+        App.updateText(`No matches found. Using Default: "${c.res}"`);
+        await App.speak(`Nothing matched. So we use the default value, ${c.res}.`);
+        
+        await finish(card, c.res, "#facc15"); // Yellow for warning/default
+        return;
+      }
+
+      // Check Match
+      App.updateText(`Is ${inputValue} = ${c.val}?`);
+      await new Promise(r => setTimeout(r, 500));
+
+      if (inputValue === c.val) {
+        // MATCH FOUND
+        App.updateText(`YES! Match found. Result: "${c.res}"`);
+        await App.speak(`Yes! It matches. The result is ${c.res}.`);
+        
+        await finish(card, c.res, "#4ade80"); // Green for success
+        return;
+      } else {
+        // NO MATCH
+        card.classList.remove('checking');
+        card.classList.add('dimmed'); // Dim rejected options
+      }
+    }
+  }
+
+  async function finish(card, result, color) {
+    card.classList.remove('checking');
+    card.classList.add('matched');
+    
+    totalBubble.textContent = result;
+    totalBubble.style.background = color;
+    totalBubble.style.color = (color === "#facc15") ? "#000" : (color === "#4ade80" ? "#000" : "#fff");
+    totalBubble.classList.add('show');
+    
+    document.getElementById('codeIn').classList.remove('active');
+    
+    await new Promise(r => setTimeout(r, 500));
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btn1').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSwitch(1);
+    isRunning = false;
+  });
+
+  document.getElementById('btn2').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSwitch(2);
+    isRunning = false;
+  });
+
+  document.getElementById('btn3').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSwitch(3);
+    isRunning = false;
+  });
+
+  document.getElementById('btn4').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runSwitch(4); // Will trigger default
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initCases();
+
+</script>
+</body>
+</html>

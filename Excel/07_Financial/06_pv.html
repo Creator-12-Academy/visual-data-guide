@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: PV Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --gold: #facc15;
+    --portal-color: #ec4899; /* Pink/Purple for Time Portal */
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .pv-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 300px; position: relative;
+    overflow: hidden;
+  }
+
+  /* The Tunnel Track */
+  .tunnel-track {
+    position: relative; width: 100%; height: 120px;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 40px; box-sizing: border-box;
+  }
+
+  /* The Portal (Rate/Time) */
+  .portal-ring {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+    width: 20px; height: 100px; border-radius: 50%;
+    border: 4px solid var(--portal-color);
+    box-shadow: 0 0 20px var(--portal-color), inset 0 0 10px var(--portal-color);
+    z-index: 10;
+  }
+  .portal-label {
+    position: absolute; top: -30px; left: 50%; transform: translateX(-50%);
+    font-size: 0.7rem; color: var(--portal-color); white-space: nowrap; font-weight: bold;
+  }
+
+  /* Money Bags */
+  .money-obj {
+    width: 80px; height: 80px; background: var(--gold);
+    border-radius: 12px; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; color: #000; font-size: 1rem;
+    box-shadow: 0 0 15px rgba(250, 204, 21, 0.4);
+    position: absolute; transition: all 1s cubic-bezier(0.25, 1, 0.5, 1);
+    z-index: 5;
+  }
+  
+  /* Initial State: Future (Right) */
+  .pos-future { right: 40px; transform: scale(1); opacity: 1; }
+  
+  /* Final State: Present (Left) */
+  .pos-present { right: calc(100% - 120px); transform: scale(0.6); opacity: 1; background: #4ade80; }
+
+  /* Labels */
+  .zone-label {
+    font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;
+    position: absolute; bottom: 0;
+  }
+  .lbl-future { right: 40px; }
+  .lbl-present { left: 40px; }
+
+  /* Info Grid */
+  .info-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; max-width: 500px;
+  }
+  .info-box {
+    background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; text-align: center;
+  }
+  .info-val { font-size: 1.2rem; font-weight: bold; color: var(--accent); font-family: monospace; }
+  .info-desc { font-size: 0.7rem; color: var(--text-dim); }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔙 Value Shrinker (Discounting)</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate what a future amount is worth <em>today</em>.<br>
+      <strong>PV</strong> pulls money backward through time. Money shrinks because of lost interest opportunity.
+    </p>
+
+    <div class="pv-stage">
+      
+      <div class="tunnel-track">
+        <div class="zone-label lbl-present">Present (Today)</div>
+        <div class="zone-label lbl-future">Future (Goal)</div>
+
+        <div class="portal-ring"><div class="portal-label">DISCOUNT RATE</div></div>
+
+        <div class="money-obj pos-future" id="moneyBlock">FV</div>
+      </div>
+
+      <div class="info-grid">
+        <div class="info-box">
+          <div class="info-val" id="dispFv">-</div>
+          <div class="info-desc">Future Goal</div>
+        </div>
+        <div class="info-box">
+          <div class="info-val" id="dispRate">-</div>
+          <div class="info-desc">Inflation / Rate</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnGoal">🏆 Goal ($50k in 5yrs)</button>
+        <button class="action" id="btnWin">🎰 Lottery ($10k/yr for 10y)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">PV</span>(rate, nper, pmt, [fv], [type])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Rate:</strong> Interest rate per period (e.g. 5%).</li>
+          <li><strong>2. Nper:</strong> Number of periods (Years).</li>
+          <li><strong>3. Pmt:</strong> Regular payments (use 0 if lump sum).</li>
+          <li><strong>4. Fv:</strong> Future Value goal.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- How much to deposit today?</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">PV</span>( <span class="val" id="cRate">5%</span>, <span class="val" id="cNper">5</span>, <span class="val" id="cPmt">0</span>, <span class="val" id="cFv">50000</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Present Value:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Negative Result</div>
+          <div class="mistake-desc">
+            PV usually returns a <strong>negative</strong> number. This means you must <em>pay</em> (outflow) that amount today to receive the positive Future Value later.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">💡 Annuities vs Lump Sum</div>
+          <div class="mistake-desc">
+            PV can value a stream of payments (use <strong>PMT</strong>) OR a single future lump sum (use <strong>FV</strong>). You can even mix both!
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("PV Function", "../../");
+
+  const moneyBlock = document.getElementById('moneyBlock');
+  const dispFv = document.getElementById('dispFv');
+  const dispRate = document.getElementById('dispRate');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // Code elements
+  const cRate = document.getElementById('cRate');
+  const cNper = document.getElementById('cNper');
+  const cPmt = document.getElementById('cPmt');
+  const cFv = document.getElementById('cFv');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Animation
+    moneyBlock.className = 'money-obj pos-future';
+    moneyBlock.textContent = "FV";
+    
+    dispFv.textContent = "-";
+    dispRate.textContent = "-";
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(rate, nper, pmt, fv) {
+    cRate.textContent = `${(rate*100)}%`;
+    cNper.textContent = nper;
+    cPmt.textContent = pmt;
+    cFv.textContent = fv;
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runPV(rate, nper, pmt, fv, desc) {
+    updateUI(rate, nper, pmt, fv);
+    
+    // Stats
+    const displayAmt = fv !== 0 ? fv : (pmt * nper); // Approximation for display
+    dispFv.textContent = `$${Math.abs(displayAmt).toLocaleString()}`;
+    dispRate.textContent = `${(rate*100)}%`;
+    
+    // Set Initial Block Value
+    moneyBlock.textContent = `$${Math.round(Math.abs(displayAmt)/1000)}k`;
+
+    App.updateText(`Scenario: ${desc}. Calculating Present Value...`);
+    await App.speak(`Calculating present value for ${desc}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Calculate PV
+    // Excel Formula: PV * (1+r)^n + PMT * ( (1+r)^n - 1 )/r + FV = 0
+    // Simplified for JS (Lump Sum vs Annuity logic is complex to mix manually without library)
+    // Let's use simple iterative or standard math:
+    // PV = - ( FV / (1+r)^n + PMT * (1 - (1+r)^-n)/r )
+    
+    const r = rate;
+    const n = nper;
+    let pvResult = 0;
+
+    // Term 1: Lump Sum PV
+    const pvLump = fv / Math.pow(1 + r, n);
+    
+    // Term 2: Annuity PV
+    let pvAnnuity = 0;
+    if (r === 0) {
+        pvAnnuity = pmt * n;
+    } else {
+        pvAnnuity = pmt * (1 - Math.pow(1 + r, -n)) / r;
+    }
+
+    // Excel PV returns the negative required input
+    // The Formula above calculates the Present VALUE of the flows. 
+    // If FV/PMT are positive (inflows), PV is positive value. 
+    // But Excel PV function returns Negative to signify COST to buy those flows.
+    // Let's stick to Excel sign convention: Inputs Positive -> Output Negative.
+    
+    const totalPresentValue = pvLump + pvAnnuity;
+    const excelResult = -totalPresentValue; // Cost to buy
+
+    // 2. Animate
+    App.updateText("Discounting future value back to today...");
+    
+    // Move Block
+    moneyBlock.className = 'money-obj pos-present';
+    
+    await new Promise(r => setTimeout(r, 1000));
+
+    // Update Block Text
+    const absRes = Math.abs(excelResult);
+    moneyBlock.textContent = `$${Math.round(absRes/1000)}k`;
+    
+    App.updateText(`Done! It is worth $${absRes.toLocaleString()} today.`);
+    await App.speak(`The present value is ${Math.round(absRes)} dollars.`);
+    
+    totalBubble.textContent = `-$${absRes.toLocaleString(undefined, {maximumFractionDigits:0})}`;
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnGoal').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 50k Goal, 5% rate, 5 years, 0 pmt
+    await runPV(0.05, 5, 0, 50000, "Saving Goal");
+    isRunning = false;
+  });
+
+  document.getElementById('btnWin').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // Annuity: 10k/year for 10 years at 4% inflation/rate
+    await runPV(0.04, 10, 10000, 0, "Lottery Payout");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

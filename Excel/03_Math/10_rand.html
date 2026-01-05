@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: RAND & RANDBETWEEN</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Visualization Container */
+  .rng-stage {
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; padding: 1.5rem; margin-bottom: 2rem;
+    display: flex; flex-direction: column; gap: 2rem;
+  }
+
+  /* Section Styles */
+  .rng-section { display: flex; flex-direction: column; gap: 10px; }
+  .rng-label { font-size: 0.9rem; color: var(--text-dim); font-weight: bold; text-transform: uppercase; }
+
+  /* 1. Decimal Bar (RAND) */
+  .decimal-track {
+    height: 30px; background: #0f172a; border: 1px solid var(--border);
+    border-radius: 15px; position: relative; overflow: hidden;
+  }
+  .decimal-fill {
+    height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent), #4ade80);
+    transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .decimal-val {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    font-family: monospace; font-weight: bold; color: #fff; text-shadow: 0 0 5px #000;
+  }
+
+  /* 2. Integer Box (RANDBETWEEN) */
+  .integer-box {
+    font-size: 3rem; font-weight: 900; color: #fff;
+    background: #0f172a; border: 2px solid var(--border);
+    border-radius: 12px; text-align: center; padding: 1rem;
+    font-family: monospace; letter-spacing: 2px;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+    transition: all 0.2s;
+  }
+  .shuffling { color: #facc15; transform: scale(1.05); border-color: #facc15; }
+
+  /* Dice Icon */
+  .dice { font-size: 1.5rem; margin-right: 5px; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🎲 Random Generator</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Generate random data for simulations.<br>
+      <strong>RAND:</strong> Any decimal between 0 and 1.<br>
+      <strong>RANDBETWEEN:</strong> Any whole number between specific limits.
+    </p>
+
+    <div class="rng-stage">
+      
+      <div class="rng-section">
+        <div class="rng-label">Probability (0.0 to 1.0)</div>
+        <div class="decimal-track">
+          <div class="decimal-fill" id="randFill"></div>
+          <div class="decimal-val" id="randVal">0.00000</div>
+        </div>
+      </div>
+
+      <div class="rng-section">
+        <div class="rng-label">Dice Roll (1 to 100)</div>
+        <div class="integer-box" id="intVal">--</div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRand">📊 RAND()</button>
+        <button class="action" id="btnBetween">🎲 RANDBETWEEN(1,100)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-rand">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">RAND</span>()
+        </div>
+        <ul class="arg-list">
+          <li><strong>Args:</strong> None. Takes no inputs.</li>
+          <li><strong>Result:</strong> A decimal >= 0 and < 1.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-between" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">RANDBETWEEN</span>(bottom, top)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Bottom:</strong> The lowest possible number (e.g., 1).</li>
+          <li><strong>2. Top:</strong> The highest possible number (e.g., 100).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a generator...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Generated:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Volatile Functions</div>
+          <div class="mistake-desc">Both functions recalculate <strong>every time</strong> you change <em>any</em> cell in the workbook. This can slow down large files.</div>
+          <div class="mistake-fix">✅ Tip: Copy and "Paste Values" to freeze the numbers.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 RANDBETWEEN Duplicates</div>
+          <div class="mistake-desc">It does NOT guarantee unique numbers. You might get the same number twice. Use <strong>SEQUENCE</strong> or <strong>SORTBY</strong> for unique random lists.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("Random Functions", "../../");
+
+  const randFill = document.getElementById('randFill');
+  const randVal = document.getElementById('randVal');
+  const intVal = document.getElementById('intVal');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  function updateUI(mode) {
+    if (mode === 'RAND') {
+        document.getElementById('syntax-rand').style.display = 'block';
+        document.getElementById('syntax-between').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Generate a decimal (0% to 100%)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">RAND</span>()`;
+    } else {
+        document.getElementById('syntax-rand').style.display = 'none';
+        document.getElementById('syntax-between').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Pick a number between 1 and 100</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">RANDBETWEEN</span>( <span class="val">1</span>, <span class="val">100</span> )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC: RAND ---
+  async function runRand() {
+    updateUI('RAND');
+    App.updateText("Spinning the decimal wheel...");
+    await App.speak("Generating a random decimal between zero and one.");
+    
+    if(shouldStop) return;
+
+    // Simulate Spin
+    let spins = 0;
+    const maxSpins = 10;
+    
+    const interval = setInterval(() => {
+        if(shouldStop) { clearInterval(interval); return; }
+        
+        const temp = Math.random();
+        randFill.style.width = `${temp * 100}%`;
+        randVal.textContent = temp.toFixed(5);
+        spins++;
+        
+        if (spins >= maxSpins) {
+            clearInterval(interval);
+            finishRand(Math.random());
+        }
+    }, 100);
+  }
+
+  async function finishRand(finalVal) {
+    randFill.style.width = `${finalVal * 100}%`;
+    randVal.textContent = finalVal.toFixed(5);
+    randVal.style.color = "#fff";
+    
+    totalBubble.textContent = finalVal.toFixed(2);
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    App.updateText(`Result: ${finalVal.toFixed(5)}`);
+    await App.speak(`Stopped at ${finalVal.toFixed(2)}.`);
+    
+    document.getElementById('line2').classList.remove('active');
+    isRunning = false;
+  }
+
+  // --- LOGIC: RANDBETWEEN ---
+  async function runBetween() {
+    updateUI('BETWEEN');
+    App.updateText("Rolling the dice (1-100)...");
+    await App.speak("Rolling for a number between one and one hundred.");
+    
+    if(shouldStop) return;
+
+    intVal.classList.add('shuffling');
+    
+    let count = 0;
+    const maxCount = 15;
+    
+    const interval = setInterval(() => {
+        if(shouldStop) { clearInterval(interval); return; }
+        
+        // Random 1-100
+        const temp = Math.floor(Math.random() * 100) + 1;
+        intVal.textContent = temp;
+        count++;
+        
+        if (count >= maxCount) {
+            clearInterval(interval);
+            finishBetween(Math.floor(Math.random() * 100) + 1);
+        }
+    }, 80); // Fast shuffle
+  }
+
+  async function finishBetween(finalVal) {
+    intVal.classList.remove('shuffling');
+    intVal.textContent = finalVal;
+    intVal.style.borderColor = "#4ade80"; // Success Flash
+    setTimeout(() => intVal.style.borderColor = "var(--border)", 500);
+
+    totalBubble.textContent = finalVal;
+    totalBubble.style.background = "#facc15";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    App.updateText(`Result: ${finalVal}`);
+    await App.speak(`The number is ${finalVal}.`);
+    
+    document.getElementById('line2').classList.remove('active');
+    isRunning = false;
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRand').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runRand();
+  });
+
+  document.getElementById('btnBetween').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runBetween();
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

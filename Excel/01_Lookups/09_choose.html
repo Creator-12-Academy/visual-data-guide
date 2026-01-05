@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: CHOOSE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Option Cards */
+  .options-container {
+    display: flex; gap: 1rem; justify-content: center;
+    margin-bottom: 2rem;
+  }
+
+  .option-card {
+    background: rgba(255,255,255,0.05);
+    border: 2px solid var(--border);
+    border-radius: 8px;
+    width: 80px; height: 100px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    cursor: default; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: relative;
+  }
+
+  .opt-idx {
+    font-size: 1.5rem; font-weight: bold; color: var(--text-dim);
+    margin-bottom: 0.5rem;
+  }
+  .opt-val {
+    font-size: 0.8rem; opacity: 0; transform: translateY(10px); transition: all 0.3s;
+    font-weight: bold; color: #fff;
+  }
+
+  /* Active States */
+  .option-card.active {
+    border-color: var(--accent);
+    background: rgba(34, 197, 94, 0.1);
+    transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.3);
+  }
+  .option-card.active .opt-idx { color: var(--accent); }
+  .option-card.active .opt-val { opacity: 1; transform: translateY(0); }
+
+  /* Connector Beam */
+  .beam {
+    position: absolute; width: 4px; background: var(--accent);
+    top: 50%; left: 50%; transform-origin: top center;
+    opacity: 0; transition: all 0.3s;
+    box-shadow: 0 0 8px var(--accent);
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🎯 The Index Picker</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Pick a medal based on the rank number.<br>
+      <strong>CHOOSE</strong> uses an index number (1, 2, 3...) to select from a list of values.
+    </p>
+
+    <div class="options-container" id="optContainer">
+      <div class="option-card" id="card-1">
+        <span class="opt-idx">1</span>
+        <span class="opt-val">Gold</span>
+      </div>
+      <div class="option-card" id="card-2">
+        <span class="opt-idx">2</span>
+        <span class="opt-val">Silver</span>
+      </div>
+      <div class="option-card" id="card-3">
+        <span class="opt-idx">3</span>
+        <span class="opt-val">Bronze</span>
+      </div>
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btn1">🥇 Rank 1</button>
+        <button class="action" id="btn2">🥈 Rank 2</button>
+        <button class="action" id="btn3">🥉 Rank 3</button>
+        <button class="action" id="btn4">🚫 Rank 4</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">CHOOSE</span>(index_num, val1, [val2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Index Num:</strong> The number to pick (e.g., 2).</li>
+          <li><strong>2. Value 1:</strong> Result if Index is 1.</li>
+          <li><strong>3. Value 2:</strong> Result if Index is 2.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a medal based on rank</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">CHOOSE</span>( <span class="val" id="idxVal">?</span>, 
+          <span class="str">"Gold"</span>, 
+          <span class="str">"Silver"</span>, 
+          <span class="str">"Bronze"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Chosen Value:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Index Out of Range</div>
+          <div class="mistake-desc">If you ask for Index 4 but only provided 3 values, Excel returns a #VALUE! error.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Hardcoding Limit</div>
+          <div class="mistake-desc">CHOOSE is great for short lists (2-5 items). For long lists (e.g., 100 products), use INDEX/MATCH or VLOOKUP instead.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("CHOOSE Function", "../../");
+
+  const values = ["Gold", "Silver", "Bronze"];
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.querySelectorAll('.option-card').forEach(c => c.classList.remove('active'));
+    document.getElementById('idxVal').textContent = "?";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC: RUN CHOOSE ---
+  async function runChoose(idx) {
+    // 1. Update Formula UI
+    document.getElementById('idxVal').textContent = idx;
+    
+    App.updateText(`Looking for Item #${idx} in the list...`);
+    await App.speak(`The formula asks for item number ${idx}.`);
+    
+    if(shouldStop) return;
+
+    // 2. Validate Range
+    if (idx < 1 || idx > values.length) {
+        // ERROR
+        App.updateText(`❌ Index ${idx} is missing! (Only 1-${values.length} exist)`);
+        await App.speak(`Wait. We only have ${values.length} options. Index ${idx} does not exist. That is an error.`);
+        
+        totalBubble.textContent = "#VALUE!";
+        totalBubble.style.background = "#ef4444";
+        totalBubble.classList.add('show');
+        return;
+    }
+
+    // 3. Animate Scan (Jump to correct one)
+    // We could loop, but CHOOSE jumps directly. Let's just highlight.
+    
+    const card = document.getElementById(`card-${idx}`);
+    card.classList.add('active');
+    
+    await new Promise(r => setTimeout(r, 600));
+    
+    const result = values[idx-1];
+    
+    App.updateText(`✅ Match! Item ${idx} is "${result}".`);
+    await App.speak(`Here it is. Option ${idx} is ${result}.`);
+
+    totalBubble.textContent = result;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btn1').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runChoose(1);
+    isRunning = false;
+  });
+
+  document.getElementById('btn2').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runChoose(2);
+    isRunning = false;
+  });
+
+  document.getElementById('btn3').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runChoose(3);
+    isRunning = false;
+  });
+
+  document.getElementById('btn4').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runChoose(4); // Triggers Error
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

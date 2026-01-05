@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: ISBLANK Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --void-black: #0f172a;
+    --ghost-white: rgba(255,255,255,0.1);
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .void-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 300px; position: relative;
+    overflow: hidden;
+  }
+
+  /* The Cell Container */
+  .cell-box {
+    width: 120px; height: 120px; background: var(--void-black);
+    border: 4px solid var(--text-dim); border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; transition: all 0.5s;
+    box-shadow: inset 0 0 20px rgba(0,0,0,0.8);
+  }
+  .cell-active { border-color: var(--accent); box-shadow: 0 0 20px var(--accent); }
+
+  /* Content inside the cell */
+  .content-particle {
+    font-size: 2rem; font-weight: bold; color: #fff;
+    opacity: 0; transform: scale(0); transition: all 0.4s;
+  }
+  .show-content { opacity: 1; transform: scale(1); }
+  
+  /* Invisible Content (Space) */
+  .ghost-particle {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--ghost-white); border: 1px dashed rgba(255,255,255,0.3);
+    animation: floatGhost 2s infinite ease-in-out;
+  }
+  @keyframes floatGhost { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-5px);} }
+
+  /* Scanner Laser */
+  .scanner-line {
+    position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+    background: var(--accent); box-shadow: 0 0 15px var(--accent);
+    opacity: 0; pointer-events: none;
+  }
+  .scan-anim { animation: scanDown 1.5s cubic-bezier(0.45, 0.05, 0.55, 0.95); opacity: 1; }
+
+  @keyframes scanDown {
+    0% { top: 0; }
+    50% { top: 100%; }
+    100% { top: 0; opacity: 0; }
+  }
+
+  /* Result Badge */
+  .result-badge {
+    padding: 10px 20px; border-radius: 8px; font-weight: bold;
+    font-family: monospace; font-size: 1.5rem; text-align: center;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .res-true { background: rgba(74, 222, 128, 0.2); color: #4ade80; border: 1px solid #4ade80; }
+  .res-false { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid #f87171; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔲 The Void Detector</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Determine if a cell is truly empty.<br>
+      <strong>ISBLANK</strong> returns TRUE only if the cell contains absolutely nothing.
+    </p>
+
+    <div class="void-stage">
+      
+      <div class="cell-box" id="targetCell">
+        <div class="scanner-line" id="scanner"></div>
+        <div id="cellContent"></div>
+      </div>
+
+      <div class="result-badge" id="resultBadge">TRUE</div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnEmpty">🔲 Empty Cell</button>
+        <button class="action" id="btnSpace">👻 Space (" ")</button>
+        <button class="action" id="btnZero">⭕ Zero Length ("")</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">ISBLANK</span>(value)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Value:</strong> The cell to check (e.g., A1).</li>
+          <li><strong>Result:</strong> TRUE if empty. FALSE if it contains *anything* (even invisible text).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Check for emptiness</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">ISBLANK</span>( <span class="val" id="codeVal">A1</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Is it Blank?</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Empty String ""</div>
+          <div class="mistake-desc">
+            A formula returning <code>""</code> (e.g. <code>=IF(A1>10, "Yes", "")</code>) makes the cell look blank, but <strong>ISBLANK</strong> will return <strong>FALSE</strong> because the cell contains a formula result.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">👻 Invisible Spaces</div>
+          <div class="mistake-desc">
+            Imported data often has trailing spaces. To a human, " " looks empty. To Excel, it's text. Always assume data is dirty until checked.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("ISBLANK Function", "../../");
+
+  const targetCell = document.getElementById('targetCell');
+  const cellContent = document.getElementById('cellContent');
+  const scanner = document.getElementById('scanner');
+  const resultBadge = document.getElementById('resultBadge');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    cellContent.innerHTML = '';
+    cellContent.className = '';
+    targetCell.classList.remove('cell-active');
+    resultBadge.style.opacity = '0';
+    scanner.classList.remove('scan-anim');
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runCheck(type) {
+    document.getElementById('line2').classList.add('active');
+    
+    // 1. Setup Content
+    if (type === 'empty') {
+        cellContent.innerHTML = '';
+        App.updateText("Checking an Empty Cell...");
+        await App.speak("Checking a completely empty cell.");
+    } 
+    else if (type === 'space') {
+        cellContent.innerHTML = '<div class="ghost-particle"></div>'; // Visual ghost
+        cellContent.className = 'show-content';
+        App.updateText("Checking a cell with a Space...");
+        await App.speak("Checking a cell that contains a space character.");
+    } 
+    else if (type === 'zero') {
+        cellContent.innerHTML = '<span style="font-size:0.8rem; color:#666;">""</span>'; // Quote representation
+        cellContent.className = 'show-content';
+        App.updateText('Checking a Zero-Length String ("")...');
+        await App.speak("Checking a cell with a formula returning an empty string.");
+    }
+    
+    if(shouldStop) return;
+
+    // 2. Scan
+    scanner.classList.remove('scan-anim');
+    void scanner.offsetWidth; // Trigger reflow
+    scanner.classList.add('scan-anim');
+    targetCell.classList.add('cell-active');
+    
+    await new Promise(r => setTimeout(r, 1500)); // Wait for scan
+
+    // 3. Result
+    const isBlank = (type === 'empty');
+    
+    if (isBlank) {
+        resultBadge.textContent = "TRUE";
+        resultBadge.className = "result-badge res-true";
+        App.updateText("Result: TRUE. It is truly empty.");
+        await App.speak("It is true. The cell is empty.");
+        
+        totalBubble.style.background = "var(--accent)"; // Blue/Green
+        totalBubble.style.color = "#fff";
+    } else {
+        resultBadge.textContent = "FALSE";
+        resultBadge.className = "result-badge res-false";
+        
+        const reason = type === 'space' ? "It contains a space." : 'It contains a formula result "".';
+        App.updateText(`Result: FALSE. ${reason}`);
+        await App.speak(`It is false. ${reason}`);
+        
+        totalBubble.style.background = "#f87171"; // Red
+        totalBubble.style.color = "#000";
+    }
+    
+    resultBadge.style.opacity = '1';
+    totalBubble.textContent = isBlank ? "TRUE" : "FALSE";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+    targetCell.classList.remove('cell-active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnEmpty').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCheck('empty');
+    isRunning = false;
+  });
+
+  document.getElementById('btnSpace').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCheck('space');
+    isRunning = false;
+  });
+
+  document.getElementById('btnZero').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCheck('zero');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: Logical Operators</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --true-green: #4ade80;
+    --false-red: #f87171;
+    --op-yellow: #facc15;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .logic-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 350px; position: relative;
+    overflow: hidden;
+  }
+
+  /* Comparator Layout */
+  .comp-row {
+    display: flex; gap: 20px; align-items: center; justify-content: center;
+    font-family: monospace; font-size: 1.5rem; font-weight: bold;
+    width: 100%;
+  }
+
+  /* Value Boxes */
+  .val-box {
+    width: 100px; height: 80px; background: #0f172a;
+    border: 2px solid var(--border); border-radius: 8px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative; transition: all 0.3s;
+  }
+  .val-content { font-size: 1.5rem; color: #fff; }
+  .val-label { font-size: 0.7rem; color: var(--text-dim); margin-top: 5px; }
+
+  /* Operator Diamond */
+  .op-diamond {
+    width: 70px; height: 70px; background: var(--op-yellow);
+    transform: rotate(45deg); display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 20px rgba(250, 204, 21, 0.3); border: 2px solid #fff;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .op-symbol {
+    transform: rotate(-45deg); font-size: 1.8rem; font-weight: 900; color: #000;
+  }
+
+  /* Result Badge */
+  .res-badge {
+    padding: 10px 30px; border-radius: 50px; font-size: 1.8rem; font-weight: 900;
+    opacity: 0.3; transform: scale(0.8); transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    background: #334155; border: 2px solid var(--border); color: var(--text-dim);
+  }
+  
+  .res-true {
+    opacity: 1; transform: scale(1.1); background: rgba(74, 222, 128, 0.2);
+    border-color: var(--true-green); color: var(--true-green);
+    box-shadow: 0 0 20px rgba(74, 222, 128, 0.4);
+  }
+  
+  .res-false {
+    opacity: 1; transform: scale(1); background: rgba(248, 113, 113, 0.2);
+    border-color: var(--false-red); color: var(--false-red);
+    box-shadow: 0 0 20px rgba(248, 113, 113, 0.4);
+  }
+
+  /* Logic Lines */
+  .logic-line {
+    width: 2px; height: 40px; background: var(--border); margin: 0 auto;
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>⚖️ Logic Comparator</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Compare two values.<br>
+      Logical formulas always answer a YES/NO question, returning <strong>TRUE</strong> or <strong>FALSE</strong>.
+    </p>
+
+    <div class="logic-stage">
+      
+      <div class="comp-row">
+        <div class="val-box" id="boxA">
+          <div class="val-content" id="valA">10</div>
+          <div class="val-label">Value A</div>
+        </div>
+
+        <div class="op-diamond" id="opShape">
+          <div class="op-symbol" id="opSym">=</div>
+        </div>
+
+        <div class="val-box" id="boxB">
+          <div class="val-content" id="valB">5</div>
+          <div class="val-label">Value B</div>
+        </div>
+      </div>
+
+      <div class="logic-line"></div>
+
+      <div class="res-badge" id="resBadge">FALSE</div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnEq">Equal (=)</button>
+        <button class="action" id="btnGt">Greater (&gt;)</button>
+        <button class="action" id="btnLt">Less (&lt;)</button>
+        <button class="action" id="btnNeq">Not Equal (&lt;&gt;)</button>
+        <button class="action" id="btnGte">G.E. (&gt;=)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;" id="syntaxTitle">
+          =A1 = B1
+        </div>
+        <ul class="arg-list" id="syntaxDesc">
+          <li><strong>Check:</strong> Are the values exactly the same?</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Compare Values</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="val" id="codeA">10</span> <span class="fn" id="codeOp">=</span> <span class="val" id="codeB">5</span>
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Logic Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Text vs Number</div>
+          <div class="mistake-desc">
+            <code>"10" = 10</code> is <strong>FALSE</strong>. Text and Numbers are different types. 
+            <br>However, <code>"Apple" = "apple"</code> is <strong>TRUE</strong> (Excel is case-insensitive).
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🔀 Not Equal Symbol</div>
+          <div class="mistake-desc">
+            The symbol for "Not Equal" is <code>&lt;&gt;</code>. Think of it as "Less than OR Greater than".
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("Logical Operators", "../../");
+
+  const valA = document.getElementById('valA');
+  const valB = document.getElementById('valB');
+  const opSym = document.getElementById('opSym');
+  const resBadge = document.getElementById('resBadge');
+  const opShape = document.getElementById('opShape');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // Code Elements
+  const codeA = document.getElementById('codeA');
+  const codeB = document.getElementById('codeB');
+  const codeOp = document.getElementById('codeOp');
+  const syntaxTitle = document.getElementById('syntaxTitle');
+  const syntaxDesc = document.getElementById('syntaxDesc');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Visuals
+    opSym.textContent = "?";
+    resBadge.textContent = "WAITING";
+    resBadge.className = "res-badge";
+    opShape.style.transform = "rotate(45deg) scale(1)";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(op, desc, example) {
+    opSym.textContent = op;
+    codeOp.textContent = op;
+    
+    syntaxTitle.textContent = example;
+    syntaxDesc.innerHTML = `<li><strong>Check:</strong> ${desc}</li>`;
+    
+    return { a: 10, b: 5 }; // Default inputs
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runCompare(opName) {
+    let vals = { a:10, b:5 };
+    let opChar = "";
+    let desc = "";
+    
+    // Customize inputs based on scenario for better demo
+    if (opName === 'EQ') {
+        opChar = "=";
+        vals = { a:10, b:10 }; // Make it True
+        desc = "Are values equal?";
+        updateUI("=", "Is A equal to B?", "=A1 = B1");
+    } else if (opName === 'GT') {
+        opChar = ">";
+        vals = { a:10, b:5 };
+        desc = "Is A greater than B?";
+        updateUI(">", "Is A strictly greater than B?", "=A1 > B1");
+    } else if (opName === 'LT') {
+        opChar = "<";
+        vals = { a:3, b:8 };
+        desc = "Is A less than B?";
+        updateUI("<", "Is A strictly less than B?", "=A1 < B1");
+    } else if (opName === 'NEQ') {
+        opChar = "<>";
+        vals = { a:5, b:5 }; // Make it False
+        desc = "Is A different from B?";
+        updateUI("<>", "Is A not equal to B?", "=A1 <> B1");
+    } else if (opName === 'GTE') {
+        opChar = ">=";
+        vals = { a:10, b:10 };
+        desc = "Is A greater than or equal to B?";
+        updateUI(">=", "Is A greater than or equal to B?", "=A1 >= B1");
+    }
+
+    // Update Values
+    valA.textContent = vals.a;
+    valB.textContent = vals.b;
+    codeA.textContent = vals.a;
+    codeB.textContent = vals.b;
+
+    document.getElementById('line2').classList.add('active');
+    App.updateText(`Comparing: ${vals.a} ${opChar} ${vals.b}...`);
+    await App.speak(`Checking if ${vals.a} is ${opName === 'NEQ' ? 'not equal to' : (opName === 'EQ' ? 'equal to' : opChar)} ${vals.b}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Animate Operator
+    opShape.style.transform = "rotate(45deg) scale(1.3)";
+    await new Promise(r => setTimeout(r, 400));
+    opShape.style.transform = "rotate(45deg) scale(1)";
+    await new Promise(r => setTimeout(r, 400));
+
+    // 2. Calculate Result
+    let res = false;
+    if (opName === 'EQ') res = (vals.a === vals.b);
+    else if (opName === 'GT') res = (vals.a > vals.b);
+    else if (opName === 'LT') res = (vals.a < vals.b);
+    else if (opName === 'NEQ') res = (vals.a !== vals.b);
+    else if (opName === 'GTE') res = (vals.a >= vals.b);
+
+    // 3. Show Result
+    if (res) {
+        resBadge.textContent = "TRUE";
+        resBadge.className = "res-badge res-true";
+        App.updateText("Condition Met: TRUE.");
+        await App.speak("True.");
+        totalBubble.style.background = "var(--true-green)";
+    } else {
+        resBadge.textContent = "FALSE";
+        resBadge.className = "res-badge res-false";
+        App.updateText("Condition Failed: FALSE.");
+        await App.speak("False.");
+        totalBubble.style.background = "var(--false-red)";
+    }
+    
+    totalBubble.textContent = res ? "TRUE" : "FALSE";
+    totalBubble.style.color = "#000"; // Contrast
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnEq').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCompare('EQ');
+    isRunning = false;
+  });
+
+  document.getElementById('btnGt').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCompare('GT');
+    isRunning = false;
+  });
+
+  document.getElementById('btnLt').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCompare('LT');
+    isRunning = false;
+  });
+
+  document.getElementById('btnNeq').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCompare('NEQ');
+    isRunning = false;
+  });
+
+  document.getElementById('btnGte').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCompare('GTE');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

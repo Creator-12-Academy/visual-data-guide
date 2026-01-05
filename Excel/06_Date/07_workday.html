@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: WORKDAY Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Calendar Grid */
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; padding: 15px; margin-bottom: 2rem;
+    max-width: 400px; margin-left: auto; margin-right: auto;
+  }
+
+  /* Day Cells */
+  .day-cell {
+    aspect-ratio: 1; background: #334155; border-radius: 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-size: 0.9rem; font-weight: bold; position: relative;
+    transition: all 0.3s; color: #fff;
+  }
+  .day-header { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 5px; text-align: center; }
+
+  /* Status Colors */
+  .is-weekend { background: #475569; opacity: 0.4; } /* Dim weekends */
+  .is-holiday { background: #ef4444; opacity: 0.8; } /* Red holiday */
+  .is-start { background: #3b82f6; box-shadow: 0 0 10px #3b82f6; z-index: 2; } /* Blue Start */
+  .is-path { background: #facc15; color: #000; } /* Yellow path */
+  .is-end { background: var(--accent); color: #000; transform: scale(1.2); z-index: 5; box-shadow: 0 0 15px var(--accent); }
+
+  /* Icons */
+  .icon-overlay { position: absolute; font-size: 1.2rem; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🚀 Project Planner</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Calculate a Deadline 5 business days from Start.<br>
+      <strong>WORKDAY</strong> skips Weekends (Sat/Sun) and Holidays.
+    </p>
+
+    <div style="text-align:center; margin-bottom:10px; font-weight:bold;">OCTOBER 2025</div>
+    
+    <div class="cal-grid" id="calendar">
+      <div class="day-header">Sun</div><div class="day-header">Mon</div>
+      <div class="day-header">Tue</div><div class="day-header">Wed</div>
+      <div class="day-header">Thu</div><div class="day-header">Fri</div>
+      <div class="day-header">Sat</div>
+      </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ Add 5 Workdays</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">WORKDAY</span>(start_date, days, [holidays])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Start Date:</strong> Project start (Oct 1).</li>
+          <li><strong>2. Days:</strong> Business days to add (5).</li>
+          <li><strong>3. Holidays:</strong> Optional list of dates to skip.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Oct 1st + 5 Working Days (Skip Holiday Oct 8)</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">WORKDAY</span>( <span class="col">"Oct 1"</span>, <span class="val">5</span>, <span class="str">"Oct 8"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Deadline:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Custom Weekends</div>
+          <div class="mistake-desc">
+            Standard <code>WORKDAY</code> assumes Sat/Sun weekends. If your work week is different (e.g., Fri/Sat off), use <strong>WORKDAY.INTL</strong> instead.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Negative Days</div>
+          <div class="mistake-desc">
+            You can use negative numbers (e.g., -5) to count <strong>backwards</strong> in time, finding a start date from a deadline.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("WORKDAY Function", "../../");
+
+  // Config: Oct 2025 starts on a Wednesday (1st)
+  // Calendar Grid: Sun(28) Mon(29) Tue(30) Wed(1) Thu(2) Fri(3) Sat(4) ...
+  // We'll simulate a partial month view.
+  // Start: Oct 1 (Wed)
+  // Holiday: Oct 8 (Wed)
+  // Weekend: Sat/Sun
+  
+  const calendar = document.getElementById('calendar');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // Map index to Date properties
+  // Indices 0-6 are headers. Real cells start at 7.
+  // Let's build a simpler array for the cells.
+  // 0-2 (Prev month), 3 (Oct 1 Wed)... 
+  // Let's just hardcode a visual grid for clarity.
+  // Week 1: [Sep28, Sep29, Sep30, Oct1, Oct2, Oct3, Oct4]
+  // Week 2: [Oct5, Oct6, Oct7, Oct8, Oct9, Oct10, Oct11]
+  // Week 3: [Oct12, Oct13, Oct14, Oct15, Oct16, Oct17, Oct18]
+
+  const daysData = [
+    { d:28, m:'Sep', type:'prev' }, { d:29, m:'Sep', type:'prev' }, { d:30, m:'Sep', type:'prev' }, 
+    { d:1, m:'Oct', type:'start' }, { d:2, m:'Oct', type:'work' }, { d:3, m:'Oct', type:'work' }, { d:4, m:'Oct', type:'wknd' },
+    
+    { d:5, m:'Oct', type:'wknd' }, { d:6, m:'Oct', type:'work' }, { d:7, m:'Oct', type:'work' }, 
+    { d:8, m:'Oct', type:'hol' }, { d:9, m:'Oct', type:'work' }, { d:10, m:'Oct', type:'work' }, { d:11, m:'Oct', type:'wknd' }
+  ];
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initCal() {
+    // Keep headers, clear rest
+    const headers = Array.from(document.querySelectorAll('.day-header'));
+    calendar.innerHTML = '';
+    headers.forEach(h => calendar.appendChild(h));
+
+    daysData.forEach((day, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
+      cell.id = `day-${i}`;
+      cell.textContent = day.d;
+      
+      if (day.type === 'wknd') {
+          cell.classList.add('is-weekend');
+      } else if (day.type === 'hol') {
+          cell.classList.add('is-holiday');
+          cell.innerHTML += `<div class="icon-overlay">🏖️</div>`;
+      } else if (day.type === 'start') {
+          cell.classList.add('is-start');
+          cell.innerHTML += `<div class="icon-overlay">🚩</div>`;
+      } else if (day.type === 'prev') {
+          cell.style.opacity = '0.2';
+      }
+      
+      calendar.appendChild(cell);
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    initCal(); // Rebuild clean
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runWorkday() {
+    document.getElementById('line2').classList.add('active');
+    
+    // Start at Index 3 (Oct 1)
+    let currIdx = 3; 
+    let daysAdded = 0;
+    const target = 5;
+
+    App.updateText(`Starting at Oct 1. Goal: Add 5 working days.`);
+    await App.speak(`Starting project on October 1st. We need 5 working days.`);
+    
+    if(shouldStop) return;
+
+    // Loop steps
+    // 1. Move to next day
+    // 2. Check if valid
+    // 3. If valid, increment counter
+    
+    while (daysAdded < target) {
+        if(shouldStop) return;
+        
+        currIdx++; // Move next
+        const dayObj = daysData[currIdx];
+        const el = document.getElementById(`day-${currIdx}`);
+        
+        // Highlight current scan
+        el.style.borderColor = "#fff"; 
+        
+        await new Promise(r => setTimeout(r, 600));
+
+        if (dayObj.type === 'wknd') {
+            App.updateText(`Oct ${dayObj.d} is a Weekend. Skipping.`);
+            // await App.speak("Weekend. Skip."); 
+        } 
+        else if (dayObj.type === 'hol') {
+            App.updateText(`Oct ${dayObj.d} is a Holiday. Skipping.`);
+            await App.speak("Holiday. Skip.");
+        } 
+        else {
+            // Valid Workday
+            daysAdded++;
+            el.classList.add('is-path');
+            App.updateText(`Oct ${dayObj.d} is a Workday. Count: ${daysAdded}`);
+            // await App.speak(`Day ${daysAdded}.`);
+        }
+        
+        // Reset border
+        el.style.borderColor = "transparent";
+    }
+
+    // Landed
+    const finalObj = daysData[currIdx];
+    const finalEl = document.getElementById(`day-${currIdx}`);
+    finalEl.classList.remove('is-path');
+    finalEl.classList.add('is-end');
+    finalEl.innerHTML += `<div class="icon-overlay">🏁</div>`;
+
+    App.updateText(`Done! Deadline is Oct ${finalObj.d}.`);
+    await App.speak(`We landed on October ${finalObj.d}. That is the deadline.`);
+    
+    totalBubble.textContent = `Oct ${finalObj.d}`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runWorkday();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initCal();
+
+</script>
+</body>
+</html>

@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: TOCOL & TOROW</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --cell-bg: #0f172a;
+    --highlight: #facc15;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .flat-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 450px; position: relative;
+    overflow: hidden;
+  }
+
+  /* Grids */
+  .grid-wrapper {
+    display: grid; gap: 5px; padding: 10px;
+    background: rgba(0,0,0,0.2); border-radius: 8px;
+    transition: all 0.5s;
+  }
+  .grid-label {
+    text-align: center; font-size: 0.8rem; color: var(--text-dim); margin-bottom: 5px;
+    font-weight: bold; text-transform: uppercase;
+  }
+
+  /* Cells */
+  .data-cell {
+    width: 45px; height: 45px; background: var(--cell-bg);
+    border: 1px solid var(--border); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; color: #fff; font-family: monospace;
+    position: relative; z-index: 1;
+  }
+  
+  /* Animation Ghost */
+  .ghost-cell {
+    position: absolute; width: 45px; height: 45px;
+    background: var(--accent); color: #000; border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-family: monospace;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    z-index: 10; transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* Scan Line (Visual Guide) */
+  .scan-line {
+    position: absolute; height: 2px; background: var(--highlight);
+    box-shadow: 0 0 10px var(--highlight); opacity: 0;
+    transition: all 0.2s; z-index: 5;
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📏 The Grid Flattener</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Reshape a 2D Matrix into a 1D List.<br>
+      <strong>TOCOL:</strong> Stacks data vertically.<br>
+      <strong>TOROW:</strong> Lays data out horizontally.
+    </p>
+
+    <div class="flat-stage" id="stage">
+      
+      <div>
+        <div class="grid-label">Input (3x3)</div>
+        <div class="grid-wrapper" id="sourceGrid" style="grid-template-columns: repeat(3, 45px);">
+          </div>
+      </div>
+
+      <div style="font-size:2rem; color:var(--text-dim);">⬇</div>
+
+      <div>
+        <div class="grid-label">Result Array</div>
+        <div class="grid-wrapper" id="targetGrid" style="opacity:0.3">
+          </div>
+      </div>
+
+      <div class="scan-line" id="scanLine"></div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnToCol">⬇ TOCOL (Row Scan)</button>
+        <button class="action" id="btnToColScan">⬇ TOCOL (Col Scan)</button>
+        <button class="action" id="btnToRow">➡ TOROW</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-col">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">TOCOL</span>(array, [ignore], [scan_by_col])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Array:</strong> The range to flatten.</li>
+          <li><strong>2. Ignore:</strong> 0=Keep All, 1=No Blanks, 2=No Errors.</li>
+          <li><strong>3. Scan By Col:</strong> FALSE (Row-by-Row, Default), TRUE (Col-by-Col).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-row" style="display:none;">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">TOROW</span>(array, [ignore], [scan_by_col])
+        </div>
+        <ul class="arg-list">
+          <li><strong>Action:</strong> Transforms array into a single horizontal row.</li>
+          <li><strong>Args:</strong> Same options as TOCOL.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Flatten array</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">TOCOL</span>( <span class="val" id="codeArr">A1:C3</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Shape:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Power Tip</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🧹 Ignoring Blanks</div>
+          <div class="mistake-desc">
+            Use the 2nd argument to clean data instantly. <br>
+            <code>=TOCOL(A1:C10, 1)</code> removes empty cells and collapses the list perfectly.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("TOCOL & TOROW", "../../");
+
+  const sourceGrid = document.getElementById('sourceGrid');
+  const targetGrid = document.getElementById('targetGrid');
+  const scanLine = document.getElementById('scanLine');
+  const totalBubble = document.getElementById('totalBubble');
+  const stage = document.getElementById('stage');
+  
+  // Data: 3x3 Matrix
+  const rowCount = 3;
+  const colCount = 3;
+  const data = ["A","B","C", "D","E","F", "G","H","I"]; // Row-major
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear ghosts
+    document.querySelectorAll('.ghost-cell').forEach(g => g.remove());
+    targetGrid.style.opacity = '0.3';
+    targetGrid.innerHTML = '';
+    scanLine.style.opacity = '0';
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // Helper: Build Source
+  function initSource() {
+    sourceGrid.innerHTML = '';
+    for(let i=0; i<data.length; i++) {
+        const div = document.createElement('div');
+        div.className = 'data-cell';
+        div.textContent = data[i];
+        div.id = `src-${i}`;
+        sourceGrid.appendChild(div);
+    }
+  }
+
+  function updateUI(fn, args) {
+    if (fn === 'TOROW') {
+        document.getElementById('syntax-row').style.display = 'block';
+        document.getElementById('syntax-col').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Flatten to Row</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">TOROW</span>( <span class="val">A1:C3</span> )`;
+    } else {
+        document.getElementById('syntax-row').style.display = 'none';
+        document.getElementById('syntax-col').style.display = 'block';
+        
+        let argStr = "";
+        if (args.scanCol) {
+            document.getElementById('line1').innerHTML = `<span class="cmt">-- Flatten Column by Column</span>`;
+            argStr = `, , <span class="bool">TRUE</span>`;
+        } else {
+            document.getElementById('line1').innerHTML = `<span class="cmt">-- Flatten Row by Row (Default)</span>`;
+            argStr = "";
+        }
+        document.getElementById('line2').innerHTML = `=<span class="fn">TOCOL</span>( <span class="val">A1:C3</span>${argStr} )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runFlat(mode, scanByCol) {
+    updateUI(mode, { scanCol: scanByCol });
+    
+    let desc = "";
+    if(mode === 'TOROW') desc = "Horizontal List";
+    else if(scanByCol) desc = "Vertical List (Col Scan)";
+    else desc = "Vertical List (Row Scan)";
+
+    App.updateText(`Flattening to ${desc}...`);
+    await App.speak(`Converting the grid to a ${desc}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Setup Target Grid
+    targetGrid.innerHTML = '';
+    targetGrid.style.opacity = '1';
+    
+    if (mode === 'TOROW') {
+        // 1 Row, 9 Cols
+        targetGrid.style.gridTemplateColumns = `repeat(${data.length}, 45px)`;
+        targetGrid.style.gridTemplateRows = `45px`;
+    } else {
+        // 9 Rows, 1 Col
+        targetGrid.style.gridTemplateColumns = `45px`;
+        targetGrid.style.gridTemplateRows = `repeat(${data.length}, 45px)`;
+    }
+
+    // Create placeholders
+    const targets = [];
+    for(let i=0; i<data.length; i++) {
+        const p = document.createElement('div');
+        p.style.width="45px"; p.style.height="45px";
+        targetGrid.appendChild(p);
+        targets.push(p);
+    }
+
+    await new Promise(r => setTimeout(r, 500));
+
+    // 2. Determine Order
+    let orderIndices = []; // indices into 'data' array
+    
+    if (scanByCol) {
+        // Col 1 (0,3,6), Col 2 (1,4,7), Col 3 (2,5,8)
+        for(let c=0; c<colCount; c++) {
+            for(let r=0; r<rowCount; r++) {
+                orderIndices.push(r * colCount + c);
+            }
+        }
+    } else {
+        // Row 1 (0,1,2), Row 2 (3,4,5)... (Default)
+        for(let i=0; i<data.length; i++) orderIndices.push(i);
+    }
+
+    // 3. Animate Move
+    for (let i=0; i<orderIndices.length; i++) {
+        if(shouldStop) return;
+        
+        const srcIdx = orderIndices[i];
+        const val = data[srcIdx];
+        
+        const srcEl = document.getElementById(`src-${srcIdx}`);
+        const trgEl = targets[i]; // Target fills sequentially 0..8
+        
+        // Highlight Scan Line on Source Row/Col (Optional polish)
+        
+        // Create Ghost
+        const ghost = document.createElement('div');
+        ghost.className = 'ghost-cell';
+        ghost.textContent = val;
+        
+        const sRect = srcEl.getBoundingClientRect();
+        const stageRect = stage.getBoundingClientRect();
+        
+        ghost.style.left = (sRect.left - stageRect.left) + "px";
+        ghost.style.top = (sRect.top - stageRect.top) + "px";
+        stage.appendChild(ghost);
+        
+        // Force reflow
+        void ghost.offsetWidth;
+        
+        // Move to Target
+        const tRect = trgEl.getBoundingClientRect();
+        ghost.style.left = (tRect.left - stageRect.left) + "px";
+        ghost.style.top = (tRect.top - stageRect.top) + "px";
+        
+        // Cleanup
+        setTimeout(() => {
+            trgEl.className = 'data-cell';
+            trgEl.style.background = "var(--accent)";
+            trgEl.style.color = "#000";
+            trgEl.textContent = val;
+            ghost.remove();
+        }, 600);
+
+        await new Promise(r => setTimeout(r, 150));
+    }
+
+    await new Promise(r => setTimeout(r, 600));
+
+    App.updateText("Done! Array Flattened.");
+    totalBubble.textContent = mode === 'TOROW' ? "1 Row" : "1 Column";
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnToCol').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // TOCOL Default (Row scan)
+    await runFlat('TOCOL', false);
+    isRunning = false;
+  });
+
+  document.getElementById('btnToColScan').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // TOCOL (Col scan)
+    await runFlat('TOCOL', true);
+    isRunning = false;
+  });
+
+  document.getElementById('btnToRow').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // TOROW (Default Row scan)
+    await runFlat('TOROW', false);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initSource();
+
+</script>
+</body>
+</html>

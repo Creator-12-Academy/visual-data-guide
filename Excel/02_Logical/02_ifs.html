@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: IFS Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Grade Badges */
+  .grade-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 50%;
+    font-weight: bold; color: #fff;
+    transform: scale(0); transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .grade-A { background: #22c55e; box-shadow: 0 0 10px #22c55e; }
+  .grade-B { background: #3b82f6; box-shadow: 0 0 10px #3b82f6; }
+  .grade-C { background: #f59e0b; box-shadow: 0 0 10px #f59e0b; }
+  .grade-F { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+
+  .show-badge { transform: scale(1); }
+
+  /* Syntax Highlighting specific to IFS steps */
+  .active-step { 
+    background: rgba(255, 255, 255, 0.15); 
+    border-radius: 4px; 
+    box-shadow: 0 0 0 2px var(--accent);
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔀 Multi-Condition (IFS)</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Assign a Grade based on the Score.<br>
+      <strong>IFS</strong> checks conditions <em>in order</em> (1, 2, 3...) and stops at the first match.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1rem;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ Assign Grades</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">IFS</span>(test1, val1, [test2, val2], ...)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Test 1:</strong> First check (e.g., Score > 89).</li>
+          <li><strong>2. Value 1:</strong> Result if Test 1 is True ("A").</li>
+          <li><strong>3. ... :</strong> Repeat for other conditions.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Grading Logic</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">IFS</span>(<br>
+          &nbsp;&nbsp;<span id="c1">B2>89, "A"</span>,<br> 
+          &nbsp;&nbsp;<span id="c2">B2>79, "B"</span>,<br> 
+          &nbsp;&nbsp;<span id="c3">B2>69, "C"</span>,<br> 
+          &nbsp;&nbsp;<span id="c4">TRUE, "F"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Grade:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Order Matters!</div>
+          <div class="mistake-desc">IFS stops at the <strong>first</strong> TRUE. If you check ">50" before ">90", a score of 95 will get the ">50" result.</div>
+          <div class="mistake-fix">✅ Fix: Start with the hardest condition first.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 The "Catch-All"</div>
+          <div class="mistake-desc">IFS returns #N/A if <em>none</em> of the conditions are met.</div>
+          <div class="mistake-fix">✅ Fix: Use <strong>TRUE</strong> as your final condition to catch everything else (like "Else").</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("IFS Function", "../../");
+
+  const data = [
+    { name: "Alice", score: 95 }, // Matches 1st (A)
+    { name: "Bob",   score: 82 }, // Matches 2nd (B)
+    { name: "Charlie", score: 40 } // Matches Last (F)
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1fr;">
+        <div>Student</div> <div>Score</div> <div>Grade</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1fr;">
+          <div>${d.name}</div>
+          <div class="cell-num" id="score-${i}"><b>${d.score}</b></div>
+          <div id="grade-${i}" style="display:flex; align-items:center; justify-content:center;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear code highlights
+    ['c1','c2','c3','c4'].forEach(id => document.getElementById(id).classList.remove('active-step'));
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+    }, 100);
+  }
+
+  // --- LOGIC: RUN IFS ---
+  async function runIFS() {
+    
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const scoreVal = data[i].score;
+      const gradeCell = document.getElementById(`grade-${i}`);
+      
+      row.classList.add('row-highlight');
+      App.updateText(`Checking ${data[i].name} (Score: ${scoreVal})...`);
+      await App.speak(`Lets grade ${data[i].name}. The score is ${scoreVal}.`);
+
+      // CHECK 1: > 89
+      document.getElementById('c1').classList.add('active-step');
+      await new Promise(r => setTimeout(r, 400));
+      
+      if (scoreVal > 89) {
+        await finishRow(i, "A", "grade-A", "c1");
+        continue; // Skip to next row
+      }
+      document.getElementById('c1').classList.remove('active-step');
+
+      // CHECK 2: > 79
+      document.getElementById('c2').classList.add('active-step');
+      await new Promise(r => setTimeout(r, 400));
+      
+      if (scoreVal > 79) {
+        await finishRow(i, "B", "grade-B", "c2");
+        continue;
+      }
+      document.getElementById('c2').classList.remove('active-step');
+
+      // CHECK 3: > 69
+      document.getElementById('c3').classList.add('active-step');
+      await new Promise(r => setTimeout(r, 400));
+      
+      if (scoreVal > 69) {
+        await finishRow(i, "C", "grade-C", "c3");
+        continue;
+      }
+      document.getElementById('c3').classList.remove('active-step');
+
+      // CATCH ALL: F
+      document.getElementById('c4').classList.add('active-step');
+      await finishRow(i, "F", "grade-F", "c4");
+    }
+
+    App.updateText("All done!");
+    await App.speak("Grading complete.");
+  }
+
+  async function finishRow(idx, grade, cssClass, codeId) {
+    if(shouldStop) return;
+    
+    App.updateText(`Matched! Grade is ${grade}.`);
+    
+    const cell = document.getElementById(`grade-${idx}`);
+    cell.innerHTML = `<div class="grade-badge ${cssClass} show-badge">${grade}</div>`;
+    
+    totalBubble.textContent = grade;
+    totalBubble.className = `total-bubble show`;
+    // Extract color from class for bubble bg
+    if(grade === 'A') totalBubble.style.background = "#22c55e";
+    if(grade === 'B') totalBubble.style.background = "#3b82f6";
+    if(grade === 'C') totalBubble.style.background = "#f59e0b";
+    if(grade === 'F') totalBubble.style.background = "#ef4444";
+
+    if(idx === 0) await App.speak(`Matched. The grade is ${grade}.`);
+    else await new Promise(r => setTimeout(r, 500));
+
+    // Cleanup for next loop
+    document.getElementById(codeId).classList.remove('active-step');
+    document.getElementById(`row-${idx}`).classList.remove('row-highlight');
+    totalBubble.classList.remove('show');
+  }
+
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runIFS();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

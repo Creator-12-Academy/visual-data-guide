@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: SEQUENCE Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --spill-blue: rgba(56, 189, 248, 0.15);
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .seq-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 400px; position: relative;
+    overflow: hidden;
+  }
+
+  /* The Grid Container */
+  .grid-container {
+    display: grid; gap: 4px; padding: 10px;
+    background: var(--bg-body); border: 2px dashed var(--border);
+    border-radius: 8px; transition: all 0.3s;
+    min-width: 100px; min-height: 100px;
+  }
+  
+  /* Outline for Spill Range */
+  .spill-active {
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+  }
+
+  /* Individual Cells */
+  .seq-cell {
+    width: 50px; height: 50px; background: #0f172a;
+    border: 1px solid var(--border); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; color: #fff; font-family: monospace; font-size: 1.1rem;
+    opacity: 0; transform: scale(0.5); transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+  .seq-cell.show { opacity: 1; transform: scale(1); }
+  .seq-cell.highlight { background: var(--accent); color: #000; }
+
+  /* Parameters Display */
+  .param-tags {
+    display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+  }
+  .tag {
+    background: rgba(0,0,0,0.3); padding: 5px 10px; border-radius: 4px;
+    font-size: 0.8rem; font-family: monospace; color: var(--text-dim);
+    border: 1px solid transparent;
+  }
+  .tag span { color: var(--accent); font-weight: bold; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔢 The Number Fabricator</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Generate a list or grid of numbers instantly.<br>
+      <strong>SEQUENCE</strong> creates an array that "spills" into neighboring cells automatically.
+    </p>
+
+    <div class="seq-stage">
+      
+      <div class="param-tags">
+        <div class="tag">Rows: <span id="dspRow">-</span></div>
+        <div class="tag">Cols: <span id="dspCol">-</span></div>
+        <div class="tag">Start: <span id="dspStart">-</span></div>
+        <div class="tag">Step: <span id="dspStep">-</span></div>
+      </div>
+
+      <div class="grid-container" id="grid">
+        <span style="color:var(--text-dim); font-size:0.8rem; grid-column:1/-1; text-align:center; padding:30px;">
+          (Waiting for Formula...)
+        </span>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnList">📜 List (1 to 10)</button>
+        <button class="action" id="btnGrid">📅 Grid (5x7)</button>
+        <button class="action" id="btnOdd">⚡ Odd Numbers (Step 2)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">SEQUENCE</span>(rows, [columns], [start], [step])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Rows:</strong> How many rows down?</li>
+          <li><strong>2. Columns:</strong> (Optional) How many columns across?</li>
+          <li><strong>3. Start:</strong> (Optional) Starting number (Default 1).</li>
+          <li><strong>4. Step:</strong> (Optional) Increment amount (Default 1).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Generate dynamic array</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">SEQUENCE</span>( <span class="val" id="codeRow">10</span>, <span class="val" id="codeCol">1</span>, <span class="val" id="codeStart">1</span>, <span class="val" id="codeStep">1</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Spill Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ The "Spill" Error</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 #SPILL! Error</div>
+          <div class="mistake-desc">
+            This formula needs empty space to expand. If there is <strong>any</strong> data in the way (even a single character), Excel returns #SPILL!. Clear the path to fix it.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">💡 One Formula</div>
+          <div class="mistake-desc">
+            You only type this formula in the <strong>top-left cell</strong>. You cannot delete individual cells in the spill range; you must delete the original formula.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("SEQUENCE Function", "../../");
+
+  const grid = document.getElementById('grid');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // UI Elements
+  const dspRow = document.getElementById('dspRow');
+  const dspCol = document.getElementById('dspCol');
+  const dspStart = document.getElementById('dspStart');
+  const dspStep = document.getElementById('dspStep');
+  
+  const codeRow = document.getElementById('codeRow');
+  const codeCol = document.getElementById('codeCol');
+  const codeStart = document.getElementById('codeStart');
+  const codeStep = document.getElementById('codeStep');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    grid.innerHTML = '<span style="color:var(--text-dim); font-size:0.8rem; grid-column:1/-1; text-align:center; padding:30px;">(Waiting for Formula...)</span>';
+    grid.classList.remove('spill-active');
+    grid.style.gridTemplateColumns = "none";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(r, c, s, st) {
+    dspRow.textContent = r;
+    dspCol.textContent = c;
+    dspStart.textContent = s;
+    dspStep.textContent = st;
+    
+    codeRow.textContent = r;
+    codeCol.textContent = c;
+    codeStart.textContent = s;
+    codeStep.textContent = st;
+    
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runSequence(rows, cols, start, step, desc) {
+    updateUI(rows, cols, start, step);
+    App.updateText(`Generating: ${desc}...`);
+    await App.speak(`Generating a sequence for ${desc}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Setup Grid
+    grid.innerHTML = ''; // Clear
+    grid.style.gridTemplateColumns = `repeat(${cols}, 50px)`; // Set columns
+    grid.classList.add('spill-active'); // Show border
+
+    // 2. Loop & Animate
+    let currentVal = start;
+    const totalCells = rows * cols;
+    
+    // We iterate Row by Row (Standard Sequence behavior: fills across, then down)
+    for (let i = 0; i < totalCells; i++) {
+        if(shouldStop) return;
+
+        const cell = document.createElement('div');
+        cell.className = 'seq-cell';
+        cell.textContent = currentVal;
+        grid.appendChild(cell);
+        
+        // Pop In Effect
+        setTimeout(() => {
+            cell.classList.add('show');
+        }, 50);
+
+        // Prepare next value
+        currentVal += step;
+        
+        // Dynamic speed based on total size
+        const delay = totalCells > 20 ? 30 : 100;
+        await new Promise(r => setTimeout(r, delay));
+    }
+
+    App.updateText(`Done! Generated ${totalCells} numbers.`);
+    await App.speak(`Finished. We generated ${totalCells} numbers.`);
+    
+    totalBubble.textContent = "Array Spilled";
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnList').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 10 Rows, 1 Col, Start 1, Step 1
+    await runSequence(10, 1, 1, 1, "Vertical List");
+    isRunning = false;
+  });
+
+  document.getElementById('btnGrid').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 5 Rows, 7 Cols (Calendar), Start 1, Step 1
+    await runSequence(5, 7, 1, 1, "Calendar Grid");
+    isRunning = false;
+  });
+
+  document.getElementById('btnOdd').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 5 Rows, 1 Col, Start 1, Step 2
+    await runSequence(5, 1, 1, 2, "Odd Numbers");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

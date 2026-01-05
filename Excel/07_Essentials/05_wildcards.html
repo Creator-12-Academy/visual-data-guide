@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: Wildcards</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --match-green: #4ade80;
+    --dim-opacity: 0.2;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .search-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.5rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 400px; position: relative;
+    overflow: hidden;
+  }
+
+  /* Search Bar */
+  .search-input-box {
+    display: flex; align-items: center; gap: 10px;
+    background: #0f172a; padding: 10px 20px; border-radius: 50px;
+    border: 2px solid var(--accent); width: 80%; max-width: 400px;
+    box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
+  }
+  .search-icon { font-size: 1.2rem; }
+  .pattern-text { 
+    font-family: monospace; font-size: 1.2rem; font-weight: bold; color: #fff;
+    flex: 1; border: none; background: transparent; outline: none;
+  }
+
+  /* File Grid */
+  .file-grid {
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 15px;
+    width: 100%; transition: all 0.5s;
+  }
+
+  /* File Card */
+  .file-card {
+    background: #334155; border: 1px solid var(--border);
+    padding: 10px 15px; border-radius: 6px; min-width: 100px; text-align: center;
+    font-family: monospace; font-size: 0.9rem; position: relative;
+    transition: all 0.3s; cursor: default;
+  }
+  .file-icon { font-size: 1.5rem; display: block; margin-bottom: 5px; }
+  
+  /* States */
+  .file-match {
+    background: rgba(74, 222, 128, 0.2); border-color: var(--match-green);
+    color: var(--match-green); transform: scale(1.1);
+    box-shadow: 0 0 15px rgba(74, 222, 128, 0.3); z-index: 10;
+  }
+  .file-dim { opacity: var(--dim-opacity); transform: scale(0.9); }
+
+  /* Info Tag */
+  .match-count {
+    font-size: 0.9rem; color: var(--text-dim); margin-top: 10px;
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🃏 Wildcard Search</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find text patterns using placeholders.<br>
+      <strong>* (Asterisk):</strong> Matches any number of characters.<br>
+      <strong>? (Question Mark):</strong> Matches exactly ONE character.
+    </p>
+
+    <div class="search-stage">
+      
+      <div class="search-input-box">
+        <span class="search-icon">🔍</span>
+        <div class="pattern-text" id="displayPattern">*</div>
+      </div>
+
+      <div class="file-grid" id="grid">
+        <div class="file-card" data-val="Apple"><span class="file-icon">🍎</span>Apple</div>
+        <div class="file-card" data-val="Apply"><span class="file-icon">📝</span>Apply</div>
+        <div class="file-card" data-val="Ape"><span class="file-icon">🦍</span>Ape</div>
+        <div class="file-card" data-val="Banana"><span class="file-icon">🍌</span>Banana</div>
+        <div class="file-card" data-val="Band"><span class="file-icon">🎸</span>Band</div>
+        <div class="file-card" data-val="Bear"><span class="file-icon">🐻</span>Bear</div>
+        <div class="file-card" data-val="Pear"><span class="file-icon">🍐</span>Pear</div>
+        <div class="file-card" data-val="Help"><span class="file-icon">🆘</span>Help</div>
+      </div>
+
+      <div class="match-count" id="matchCount">Matches: All</div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnAsterisk">Start With "Ap*"</button>
+        <button class="action" id="btnContains">Contains "*ea*"</button>
+        <button class="action" id="btnQuestion">3-Letter "Ap?"</button>
+        <button class="action" id="btnEnd">Ends With "*p"</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          "Text" & "*"
+        </div>
+        <ul class="arg-list">
+          <li><strong>* (Asterisk):</strong> Represents zero or more characters.</li>
+          <li><strong>Ex:</strong> "A*" finds "Apple", "Ant", "A".</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" style="margin-top:1rem;">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          "T" & "?" & "st"
+        </div>
+        <ul class="arg-list">
+          <li><strong>? (Question):</strong> Represents exactly ONE character.</li>
+          <li><strong>Ex:</strong> "T?st" finds "Test", "Tast", but NOT "Toast".</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea" style="margin-top:1rem;">
+        <div class="codeLine" id="line1"><span class="cmt">-- Count matching cells</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">COUNTIF</span>( <span class="val">A1:A8</span>, <span class="str" id="codePattern">"*"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Count:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Literal Search</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Finding actual * or ?</div>
+          <div class="mistake-desc">
+            If you need to search for a literal asterisk symbol (not a wildcard), put a tilde before it: <code>~*</code>. Same for question mark: <code>~?</code>.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("Wildcards", "../../");
+
+  const displayPattern = document.getElementById('displayPattern');
+  const grid = document.getElementById('grid');
+  const matchCount = document.getElementById('matchCount');
+  const totalBubble = document.getElementById('totalBubble');
+  const codePattern = document.getElementById('codePattern');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Cards
+    document.querySelectorAll('.file-card').forEach(c => {
+        c.classList.remove('file-match', 'file-dim');
+    });
+    
+    displayPattern.textContent = "*";
+    codePattern.textContent = '"*"';
+    matchCount.textContent = "Matches: All";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // Convert Excel Wildcard to Regex
+  function excelToRegex(pattern) {
+    // Escape special regex chars except * and ?
+    let regexStr = pattern.replace(/([.+^$[\]\\(){}|-])/g, "\\$1");
+    // Convert * to .*
+    regexStr = regexStr.replace(/\*/g, ".*");
+    // Convert ? to .
+    regexStr = regexStr.replace(/\?/g, ".");
+    return new RegExp(`^${regexStr}$`, "i"); // Case insensitive, full match
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runFilter(pattern, desc) {
+    displayPattern.textContent = pattern;
+    codePattern.textContent = `"${pattern}"`;
+    document.getElementById('line2').classList.add('active');
+    
+    App.updateText(`Searching for pattern: "${pattern}"...`);
+    await App.speak(`Filtering for pattern ${pattern.replace(/\*/g, "star").replace(/\?/g, "question mark")}.`);
+    
+    if(shouldStop) return;
+
+    // Reset styles first
+    document.querySelectorAll('.file-card').forEach(c => c.className = 'file-card');
+    
+    await new Promise(r => setTimeout(r, 500));
+
+    // Apply Filter
+    const regex = excelToRegex(pattern);
+    const cards = document.querySelectorAll('.file-card');
+    let count = 0;
+
+    for (let card of cards) {
+        if(shouldStop) return;
+        
+        const val = card.getAttribute('data-val');
+        
+        if (regex.test(val)) {
+            card.classList.add('file-match');
+            count++;
+        } else {
+            card.classList.add('file-dim');
+        }
+        
+        await new Promise(r => setTimeout(r, 100)); // Cascade effect
+    }
+
+    matchCount.textContent = `Matches: ${count}`;
+    App.updateText(`Found ${count} matches for "${pattern}".`);
+    await App.speak(`Found ${count} matches.`);
+    
+    totalBubble.textContent = count;
+    totalBubble.style.background = "var(--match-green)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnAsterisk').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "Ap*" -> Apple, Apply, Ape
+    await runFilter("Ap*", "Starts with Ap");
+    isRunning = false;
+  });
+
+  document.getElementById('btnContains').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "*ea*" -> Bear, Pear
+    await runFilter("*ea*", "Contains ea");
+    isRunning = false;
+  });
+
+  document.getElementById('btnQuestion').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "Ap?" -> Ape (Apple is Ap???, Apply is Ap???) - Wait
+    // "Ap?" means Ap + exactly 1 char. 
+    // Apple (5 chars) no. Ape (3 chars) Yes.
+    await runFilter("Ap?", "Ap plus one letter");
+    isRunning = false;
+  });
+
+  document.getElementById('btnEnd').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "*p" -> Help, Ape? No Ape ends e.
+    // Help ends p. 
+    await runFilter("*p", "Ends with p");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

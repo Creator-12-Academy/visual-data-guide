@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: Range Operators</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --range1-color: rgba(239, 68, 68, 0.4); /* Red tint */
+    --range1-border: #ef4444;
+    --range2-color: rgba(59, 130, 246, 0.4); /* Blue tint */
+    --range2-border: #3b82f6;
+    --intersect-color: #facc15; /* Yellow overlap */
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .range-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 400px; position: relative;
+    overflow: hidden;
+  }
+
+  /* The Grid */
+  .excel-grid {
+    display: grid; grid-template-columns: 30px repeat(5, 50px); gap: 2px;
+    background: #0f172a; padding: 10px; border-radius: 4px;
+    border: 1px solid var(--border); position: relative;
+  }
+
+  /* Headers */
+  .cell-head {
+    background: #334155; color: var(--text-dim); font-size: 0.7rem; font-weight: bold;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Data Cells */
+  .cell {
+    width: 50px; height: 50px; background: #1e293b; border: 1px solid #334155;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.8rem; color: #fff; cursor: default; transition: all 0.3s;
+    position: relative; z-index: 1;
+  }
+
+  /* Selection Layers (Pseudo-classes or Overlays) */
+  .sel-1 { background: var(--range1-color) !important; border: 2px solid var(--range1-border) !important; }
+  .sel-2 { background: var(--range2-color) !important; border: 2px solid var(--range2-border) !important; }
+  
+  /* Overlap State */
+  .sel-overlap {
+    background: var(--intersect-color) !important; color: #000 !important; font-weight: bold;
+    box-shadow: 0 0 15px var(--intersect-color); z-index: 10;
+    transform: scale(1.1); border-color: #fff !important;
+  }
+
+  /* Legend */
+  .legend-box {
+    display: flex; gap: 20px; font-size: 0.8rem; color: var(--text-dim);
+  }
+  .leg-item { display: flex; align-items: center; gap: 5px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🔲 Range Operators</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Define which cells to include.<br>
+      Excel has three operators: <strong>Range (:)</strong>, <strong>Union (,)</strong>, and <strong>Intersection (Space)</strong>.
+    </p>
+
+    <div class="range-stage">
+      
+      <div class="excel-grid" id="grid">
+        <div class="cell-head"></div>
+        <div class="cell-head">A</div><div class="cell-head">B</div><div class="cell-head">C</div>
+        <div class="cell-head">D</div><div class="cell-head">E</div>
+
+        </div>
+
+      <div class="legend-box">
+        <div class="leg-item"><div class="dot" style="background:var(--range1-border)"></div> Range 1 (B2:D4)</div>
+        <div class="leg-item"><div class="dot" style="background:var(--range2-border)"></div> Range 2 (C3:E5)</div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRange">Range (:)</button>
+        <button class="action" id="btnUnion">Union (,)</button>
+        <button class="action" id="btnIntersect">Intersect (Space)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="synRange">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =SUM(Start:End)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Symbol:</strong> Colon (<code>:</code>).</li>
+          <li><strong>Meaning:</strong> All cells between the start and end points, inclusive.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="synUnion" style="display:none;">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =SUM(Range1, Range2)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Symbol:</strong> Comma (<code>,</code>).</li>
+          <li><strong>Meaning:</strong> Combines multiple ranges. Includes BOTH areas.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="synIntersect" style="display:none;">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =SUM(Range1 Range2)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Symbol:</strong> Space character (<code> </code>).</li>
+          <li><strong>Meaning:</strong> Only cells shared by BOTH ranges (The Overlap).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select an operator...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Count:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ The Null Error</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 #NULL!</div>
+          <div class="mistake-desc">
+            This error appears if you use the <strong>Intersection Operator (Space)</strong> on two ranges that do NOT overlap at all (e.g., <code>A1 A5</code>). Excel finds 0 overlapping cells.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("Range Operators", "../../");
+
+  const grid = document.getElementById('grid');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // Define Ranges (0-based indices for Row, Col)
+  // Range 1: B2:D4 -> Rows 1-3, Cols 1-3
+  const r1 = { rStart:1, rEnd:3, cStart:1, cEnd:3 };
+  
+  // Range 2: C3:E5 -> Rows 2-4, Cols 2-4
+  const r2 = { rStart:2, rEnd:4, cStart:2, cEnd:4 };
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  // Initialize Grid (5x5)
+  function initGrid() {
+    for(let r=0; r<5; r++) {
+        // Row Header
+        const rowHead = document.createElement('div');
+        rowHead.className = 'cell-head';
+        rowHead.textContent = r+1;
+        grid.appendChild(rowHead);
+
+        // Cells
+        for(let c=0; c<5; c++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.id = `c-${r}-${c}`;
+            cell.textContent = "1"; // Value for SUM
+            grid.appendChild(cell);
+        }
+    }
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Clear styles
+    document.querySelectorAll('.cell').forEach(c => {
+        c.className = 'cell';
+    });
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(mode) {
+    ['synRange', 'synUnion', 'synIntersect'].forEach(id => document.getElementById(id).style.display = 'none');
+    
+    if (mode === 'RANGE') {
+        document.getElementById('synRange').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Standard Range</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">SUM</span>( <span class="val">B2:D4</span> )`;
+    } else if (mode === 'UNION') {
+        document.getElementById('synUnion').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Union (Both)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">SUM</span>( <span class="val">B2:D4</span>, <span class="val">C3:E5</span> )`;
+    } else {
+        document.getElementById('synIntersect').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Intersection (Overlap)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">SUM</span>( <span class="val">B2:D4</span> <span class="val">C3:E5</span> )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // Check if cell is in range
+  function inRange(r, c, def) {
+    return (r >= def.rStart && r <= def.rEnd && c >= def.cStart && c <= def.cEnd);
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runOp(mode) {
+    updateUI(mode);
+    App.updateText(`Visualizing ${mode} operator...`);
+    
+    if(shouldStop) return;
+
+    let cellCount = 0;
+
+    // Scan Grid
+    for(let r=0; r<5; r++) {
+        for(let c=0; c<5; c++) {
+            const el = document.getElementById(`c-${r}-${c}`);
+            const inR1 = inRange(r, c, r1);
+            const inR2 = inRange(r, c, r2);
+            
+            // Default styling
+            el.className = 'cell';
+
+            if (mode === 'RANGE') {
+                // Just show Range 1
+                if (inR1) {
+                    el.classList.add('sel-1');
+                    cellCount++;
+                }
+            } 
+            else if (mode === 'UNION') {
+                // Show both. Overlap logic?
+                // In Excel SUM(R1, R2), if overlap exists, those cells are counted TWICE.
+                // Visually we just highlight both.
+                if (inR1 && inR2) {
+                    el.classList.add('sel-1', 'sel-2'); // Mix
+                    cellCount += 2; // Counted twice in formula!
+                } else if (inR1) {
+                    el.classList.add('sel-1');
+                    cellCount++;
+                } else if (inR2) {
+                    el.classList.add('sel-2');
+                    cellCount++;
+                }
+            } 
+            else if (mode === 'INTERSECT') {
+                // Show ranges dim, highlight overlap bright
+                if (inR1 && inR2) {
+                    el.classList.add('sel-overlap');
+                    cellCount++;
+                } else if (inR1) {
+                    el.classList.add('sel-1');
+                    el.style.opacity = '0.3';
+                } else if (inR2) {
+                    el.classList.add('sel-2');
+                    el.style.opacity = '0.3';
+                }
+            }
+            
+            // Stagger animation slightly
+            if(inR1 || inR2) await new Promise(r => setTimeout(r, 50));
+        }
+    }
+
+    let msg = "";
+    if(mode === 'UNION') msg = "Note: Union sums overlapping cells twice!";
+    if(mode === 'INTERSECT') msg = "Only overlapping cells are calculated.";
+    
+    App.updateText(`Result: Sum of ${cellCount}. ${msg}`);
+    await App.speak(`Calculated sum is ${cellCount}.`);
+    
+    totalBubble.textContent = cellCount;
+    totalBubble.style.background = mode==='INTERSECT' ? "var(--intersect-color)" : "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRange').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runOp('RANGE');
+    isRunning = false;
+  });
+
+  document.getElementById('btnUnion').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runOp('UNION');
+    isRunning = false;
+  });
+
+  document.getElementById('btnIntersect').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runOp('INTERSECT');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initGrid();
+
+</script>
+</body>
+</html>

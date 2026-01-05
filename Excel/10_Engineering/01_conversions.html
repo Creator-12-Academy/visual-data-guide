@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: BIN2DEC & DEC2BIN</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --bit-on: #4ade80;    /* Green */
+    --bit-off: #475569;   /* Gray */
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .bit-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 350px; position: relative;
+    overflow: hidden;
+  }
+
+  /* Bit Switch Row */
+  .byte-container {
+    display: flex; gap: 8px; justify-content: center; width: 100%;
+    overflow-x: auto; padding-bottom: 10px;
+  }
+
+  .bit-module {
+    display: flex; flex-direction: column; align-items: center; gap: 5px;
+  }
+
+  /* The Switch */
+  .bit-switch {
+    width: 40px; height: 60px; background: var(--bit-off);
+    border: 2px solid var(--border); border-radius: 6px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    padding: 4px; cursor: pointer; transition: all 0.3s;
+    position: relative; box-shadow: inset 0 2px 5px rgba(0,0,0,0.5);
+  }
+  
+  .switch-knob {
+    width: 100%; height: 24px; background: #94a3b8; border-radius: 4px;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  /* Active State (1) */
+  .active-bit { background: rgba(74, 222, 128, 0.2); border-color: var(--bit-on); box-shadow: 0 0 15px rgba(74, 222, 128, 0.2); }
+  .active-bit .switch-knob { background: var(--bit-on); transform: translateY(24px); }
+
+  /* Labels */
+  .bit-val { font-size: 0.7rem; color: var(--text-dim); font-family: monospace; }
+  .bit-display { font-size: 1.2rem; font-weight: bold; margin-top: 5px; font-family: monospace; }
+
+  /* Math Breakdown */
+  .math-box {
+    background: rgba(0,0,0,0.3); padding: 15px; border-radius: 8px;
+    font-family: monospace; font-size: 0.9rem; color: var(--accent);
+    width: 100%; text-align: center; min-height: 30px;
+  }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>010 The Bit Switcher</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Translate between Machine Code (Binary) and Human Numbers (Decimal).<br>
+      Each bit represents a power of 2. Toggle the switches to see the math.
+    </p>
+
+    <div class="bit-stage">
+      
+      <div class="byte-container" id="byteRow">
+        </div>
+
+      <div class="math-box" id="calcDisplay">0</div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnBin">🔢 BIN2DEC("1010")</button>
+        <button class="action" id="btnDec">💾 DEC2BIN(255)</button>
+        <button class="action" id="btnRand">🎲 Random Byte</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-bin">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">BIN2DEC</span>(number)
+        </div>
+        <ul class="arg-list">
+          <li><strong>Input:</strong> A text string of 0s and 1s (e.g., "1101").</li>
+          <li><strong>Max:</strong> 10 bits (up to 511 decimal).</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-dec" style="display:none; margin-top:1rem;">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">DEC2BIN</span>(number, [places])
+        </div>
+        <ul class="arg-list">
+          <li><strong>Input:</strong> An integer (-512 to 511).</li>
+          <li><strong>Places:</strong> (Optional) Pad with leading zeros (e.g., 8 digits).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea" style="margin-top:1rem;">
+        <div class="codeLine" id="line1"><span class="cmt">-- Convert Binary to Decimal</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">BIN2DEC</span>( <span class="str" id="codeVal">"00000000"</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Limits</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 10-Bit Limit</div>
+          <div class="mistake-desc">
+            Standard Excel Engineering functions are limited to 10 bits (-512 to 511). For larger numbers, you need custom formulas or VBA.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("BIN2DEC & DEC2BIN", "../../");
+
+  const byteRow = document.getElementById('byteRow');
+  const calcDisplay = document.getElementById('calcDisplay');
+  const totalBubble = document.getElementById('totalBubble');
+  const codeVal = document.getElementById('codeVal');
+  
+  // Power of 2 labels
+  const powers = [128, 64, 32, 16, 8, 4, 2, 1];
+  let bits = [0,0,0,0,0,0,0,0]; // State array
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  // Initialize UI
+  function initSwitches() {
+    byteRow.innerHTML = '';
+    powers.forEach((p, i) => {
+        const mod = document.createElement('div');
+        mod.className = 'bit-module';
+        mod.innerHTML = `
+            <div class="bit-val">${p}</div>
+            <div class="bit-switch" id="sw-${i}" onclick="toggleBit(${i})">
+                <div class="switch-knob"></div>
+            </div>
+            <div class="bit-display" id="disp-${i}">0</div>
+        `;
+        byteRow.appendChild(mod);
+    });
+    updateCalc();
+  }
+
+  // Toggle Logic (Clicking a switch)
+  window.toggleBit = function(idx) {
+    if(isRunning) return; // Lock during anim
+    
+    // Flip state
+    bits[idx] = bits[idx] === 0 ? 1 : 0;
+    
+    // Update Visuals
+    updateVisuals(idx);
+    updateCalc();
+    
+    // Update Code & Bubble
+    const binStr = bits.join("");
+    const decVal = parseInt(binStr, 2);
+    
+    updateCodeUI(binStr, decVal, 'BIN2DEC');
+  };
+
+  function updateVisuals(idx) {
+    const el = document.getElementById(`sw-${idx}`);
+    const disp = document.getElementById(`disp-${idx}`);
+    
+    if (bits[idx] === 1) {
+        el.classList.add('active-bit');
+        disp.textContent = "1";
+        disp.style.color = "var(--bit-on)";
+    } else {
+        el.classList.remove('active-bit');
+        disp.textContent = "0";
+        disp.style.color = "var(--text-dim)";
+    }
+  }
+
+  function updateCalc() {
+    // Generate string: "1*128 + 0*64..."
+    let eq = [];
+    let sum = 0;
+    powers.forEach((p, i) => {
+        if(bits[i]===1) {
+            eq.push(`<span style="color:var(--bit-on)">${p}</span>`);
+            sum += p;
+        } else {
+            eq.push(`<span style="color:#666; font-size:0.8em">0</span>`);
+        }
+    });
+    
+    if(sum === 0) calcDisplay.textContent = "0";
+    else calcDisplay.innerHTML = eq.join(" + ") + " = " + sum;
+  }
+
+  function updateCodeUI(binStr, decVal, mode) {
+    if (mode === 'BIN2DEC') {
+        document.getElementById('syntax-bin').style.display = 'block';
+        document.getElementById('syntax-dec').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Binary to Decimal</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">BIN2DEC</span>( <span class="str">"${binStr}"</span> )`;
+        totalBubble.textContent = decVal;
+    } else {
+        document.getElementById('syntax-bin').style.display = 'none';
+        document.getElementById('syntax-dec').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Decimal to Binary</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">DEC2BIN</span>( <span class="val">${decVal}</span>, 8 )`;
+        totalBubble.textContent = binStr;
+    }
+    
+    document.getElementById('line2').classList.add('active');
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    bits = [0,0,0,0,0,0,0,0];
+    powers.forEach((p, i) => updateVisuals(i));
+    updateCalc();
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC ENGINE (Animation) ---
+  async function runAnim(targetVal, mode, desc) {
+    // 1. Determine Target Bits
+    // If DEC2BIN, parse targetVal. If BIN2DEC, parse int(targetVal, 2).
+    let targetInt = 0;
+    let targetBinStr = "";
+    
+    if (mode === 'DEC2BIN') {
+        targetInt = targetVal;
+        targetBinStr = targetInt.toString(2).padStart(8, '0');
+    } else {
+        // Input is bin string e.g. "1010"
+        targetBinStr = targetVal.padStart(8, '0'); // pad visual
+        targetInt = parseInt(targetBinStr, 2);
+    }
+
+    // Update Code UI first
+    updateCodeUI(targetBinStr, targetInt, mode);
+    
+    App.updateText(`Converting: ${desc}...`);
+    await App.speak(`Converting ${desc}.`);
+    
+    if(shouldStop) return;
+
+    // 2. Animate Switches sequentially
+    // Convert target string to array
+    const targetBits = targetBinStr.split('').map(Number);
+    
+    for(let i=0; i<8; i++) {
+        if(shouldStop) return;
+        
+        // Update state
+        bits[i] = targetBits[i];
+        updateVisuals(i);
+        
+        // Sfx or small delay
+        await new Promise(r => setTimeout(r, 100));
+    }
+    
+    updateCalc();
+    
+    App.updateText("Conversion Complete.");
+    await App.speak("Conversion complete.");
+}
+
+  // --- BUTTONS ---
+  document.getElementById('btnBin').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // "1010" -> 10
+    await runAnim("1010", "BIN2DEC", "Binary 1010 to Decimal");
+    isRunning = false;
+  });
+
+  document.getElementById('btnDec').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 255 -> "11111111"
+    await runAnim(255, "DEC2BIN", "Decimal 255 to Binary");
+    isRunning = false;
+  });
+
+  document.getElementById('btnRand').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    const rand = Math.floor(Math.random() * 256);
+    await runAnim(rand, "DEC2BIN", `Random Decimal ${rand}`);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initSwitches();
+
+</script>
+</body>
+</html>

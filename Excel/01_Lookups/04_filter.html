@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: FILTER Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Spill Animation */
+  .spill-cell {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px dashed var(--accent);
+    color: var(--accent);
+    font-weight: bold;
+    opacity: 0;
+    transform: translateY(-10px);
+    animation: spillIn 0.5s forwards;
+  }
+
+  @keyframes spillIn {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Filter Status Badges */
+  .badge-check {
+    display: inline-block; padding: 2px 6px; border-radius: 4px;
+    font-size: 0.7rem; font-weight: bold;
+    background: #4ade80; color: #000;
+  }
+  .badge-fail {
+    display: inline-block; padding: 2px 6px; border-radius: 4px;
+    font-size: 0.7rem; font-weight: bold;
+    background: #ef4444; color: #fff;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🌊 Dynamic Filtering</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Get a list of all products in a specific category.<br>
+      <strong>FILTER</strong> returns multiple rows at once (Spill Array).
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 2rem;"></div>
+
+    <div style="border-top: 1px solid var(--border); padding-top: 1rem;">
+      <div style="font-size:0.8rem; color:var(--text-dim); margin-bottom:0.5rem;">Result (Spill Range):</div>
+      <div id="resultTable"></div>
+    </div>
+
+    <div class="calculation-box" id="calcBox" style="margin-top: 1.5rem;">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnFruit">🍎 Filter "Fruit"</button>
+        <button class="action" id="btnVeg">🥦 Filter "Veg"</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">FILTER</span>(array, include, [if_empty])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Array:</strong> The range you want to filter (Source Data).</li>
+          <li><strong>2. Include:</strong> The condition (e.g., Range = "Fruit").</li>
+          <li><strong>3. If Empty:</strong> Text to show if no matches found.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Filter list for a category</span></div>
+        <div class="codeLine" id="line2">=<span class="fn">FILTER</span>( A2:B6, B2:B6=<span class="str" id="codeVal">"Fruit"</span>, <span class="str">"None"</span> )</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Items Found:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 #SPILL! Error</div>
+          <div class="mistake-desc">If there are any values blocking the result area, Excel returns #SPILL!. The path must be clear.</div>
+          <div class="mistake-fix">✅ Fix: Clear cells below the formula.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 #CALC! Error</div>
+          <div class="mistake-desc">Occurs if no matches are found and you didn't provide the 3rd argument ([if_empty]).</div>
+          <div class="mistake-fix">✅ Fix: Always add ", "No Data"" at the end.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("FILTER Array", "../../");
+
+  const data = [
+    { name: "Apple", type: "Fruit" },
+    { name: "Carrot", type: "Veg" },
+    { name: "Banana", type: "Fruit" },
+    { name: "Potato", type: "Veg" },
+    { name: "Grape", type: "Fruit" }
+  ];
+
+  const table = document.getElementById('dataTable');
+  const resultTable = document.getElementById('resultTable');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1.5fr 1fr 1fr;">
+        <div>Name</div> <div>Type</div> <div>Check</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1.5fr 1fr 1fr;">
+          <div>${d.name}</div>
+          <div id="type-${i}">${d.type}</div>
+          <div id="status-${i}" style="font-size:0.8rem;">-</div>
+        </div>
+      `;
+    });
+
+    resultTable.innerHTML = `<div style="color:var(--text-dim); font-style:italic; padding:0.5rem;">(Select a filter above)</div>`;
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      document.getElementById('codeVal').textContent = '"Fruit"';
+      totalBubble.textContent = "-";
+      totalBubble.classList.remove('show');
+      
+      // Clear Styles
+      document.querySelectorAll('.row-highlight').forEach(r => r.classList.remove('row-highlight'));
+      document.querySelectorAll('.table-row').forEach(r => r.style.opacity = '1');
+    }, 100);
+  }
+
+  function highlight(id) {
+    document.querySelectorAll('.codeLine').forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  // --- MAIN LOGIC ---
+  async function runFilter(target) {
+    // Update Code
+    document.getElementById('codeVal').textContent = `"${target}"`;
+    highlight('line2');
+    
+    App.updateText(`Scanning list for type: <b>${target}</b>...`);
+    await App.speak(`Okay, let's filter the list to show only ${target}s.`);
+    if(shouldStop) return;
+
+    // Prep Result Container
+    resultTable.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1.5fr 1fr;">
+        <div>Name</div> <div>Type</div>
+      </div>
+    `;
+
+    let count = 0;
+
+    // SCAN LOOP
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const status = document.getElementById(`status-${i}`);
+      const typeCell = document.getElementById(`type-${i}`);
+      
+      row.classList.add('row-highlight');
+      
+      // Visual Delay
+      await new Promise(r => setTimeout(r, App.voiceEnabled ? 150 : 100));
+
+      if (data[i].type === target) {
+        // MATCH
+        count++;
+        status.innerHTML = `<span class="badge-check">KEEP</span>`;
+        typeCell.style.color = "#4ade80";
+        typeCell.style.fontWeight = "bold";
+        
+        // Add to Result (Spill Effect)
+        const newRow = document.createElement('div');
+        newRow.className = 'table-row spill-cell';
+        newRow.style.gridTemplateColumns = "1.5fr 1fr";
+        newRow.style.animationDelay = `${count * 0.1}s`;
+        newRow.innerHTML = `<div>${data[i].name}</div> <div>${data[i].type}</div>`;
+        resultTable.appendChild(newRow);
+
+        App.updateText(`Row ${i+1}: Found ${data[i].name}. Adding to list.`);
+        // Only speak first few to save time
+        if (count <= 2) await App.speak(`Found ${data[i].name}. Keeping it.`);
+        
+      } else {
+        // NO MATCH
+        status.innerHTML = `<span class="badge-fail">SKIP</span>`;
+        row.style.opacity = "0.3";
+      }
+      
+      row.classList.remove('row-highlight');
+    }
+
+    totalBubble.textContent = count;
+    totalBubble.style.background = count > 0 ? "var(--accent)" : "#facc15";
+    totalBubble.classList.add('show');
+    
+    if (count > 0) {
+        App.updateText(`Done! Spilled ${count} rows.`);
+        await App.speak(`Finished. The formula spilled ${count} rows into the grid.`);
+    } else {
+        App.updateText(`No matches found. Returning "None".`);
+        await App.speak(`No matches found. The formula returns the fallback text.`);
+        resultTable.innerHTML += `<div style="padding:1rem; color:#facc15;">None</div>`;
+    }
+
+    highlight(null);
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnFruit').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runFilter("Fruit");
+    isRunning = false;
+  });
+
+  document.getElementById('btnVeg').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runFilter("Veg");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

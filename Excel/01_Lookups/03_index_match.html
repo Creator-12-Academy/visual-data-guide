@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: INDEX & MATCH</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Connector Line for Animation */
+  .connector-line {
+    position: absolute; height: 2px; background: var(--accent);
+    transform-origin: left center; opacity: 0; z-index: 20;
+    box-shadow: 0 0 8px var(--accent); transition: all 0.3s;
+  }
+  
+  /* Highlight specific to INDEX/MATCH steps */
+  .step-1-highlight { border: 2px dashed #facc15; background: rgba(250, 204, 21, 0.1); } /* Match (Yellow) */
+  .step-2-highlight { border: 2px solid #4ade80; background: rgba(74, 222, 128, 0.1); }   /* Index (Green) */
+
+  /* Syntax Box */
+  .syntax-box {
+    background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; font-size: 0.85rem;
+  }
+  .arg-list { list-style: none; padding: 0; margin: 0; color: var(--text-dim); }
+  .arg-list li { margin-bottom: 0.3rem; }
+  .arg-list strong { color: #fff; }
+
+  /* Result Box */
+  .result-box {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(34, 197, 94, 0.1); border: 1px solid var(--accent);
+    padding: 1rem; border-radius: 0.5rem; margin: 1.5rem 0;
+  }
+
+  /* Common Mistakes */
+  .mistakes-container { margin-top: 1rem; display: grid; gap: 0.8rem; padding-bottom: 1rem; }
+  .mistake-card {
+    background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444;
+    padding: 0.8rem; border-radius: 0 0.5rem 0.5rem 0;
+  }
+  .mistake-title { color: #ef4444; font-weight: bold; font-size: 0.85rem; margin-bottom: 0.3rem; }
+  .mistake-desc { color: var(--text-dim); font-size: 0.8rem; line-height: 1.4; }
+  .mistake-fix { margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px dashed rgba(239, 68, 68, 0.3); color: var(--accent); font-size: 0.8rem; font-weight: bold; }
+
+  /* Scrollable Right Panel */
+  .scroll-content { overflow-y: auto; flex: 1; padding-right: 5px; }
+  .scroll-content::-webkit-scrollbar { width: 4px; }
+  .scroll-content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🧩 The Power Pair</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find the Price for "Product C".<br>
+      <strong>MATCH:</strong> Finds the row number (GPS).<br>
+      <strong>INDEX:</strong> Retrieves the value at that number (Grabber).
+    </p>
+
+    <div id="dataTable" style="position:relative;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnStep1">1️⃣ Run MATCH</button>
+        <button class="action" id="btnStep2">2️⃣ Run INDEX</button>
+        <button class="action" id="btnCombined">🔗 Combine</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">INDEX</span>(return_range, <span class="fn">MATCH</span>(lookup_val, lookup_range, 0))
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Return Range:</strong> The column containing the answers (Prices).</li>
+          <li><strong>2. Match Value:</strong> What you are looking for ("Product C").</li>
+          <li><strong>3. Lookup Range:</strong> Where to search (Product Names).</li>
+          <li><strong>4. 0:</strong> Exact Match (Crucial!).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Step 1: Find Position</span></div>
+        <div class="codeLine" id="line2">=<span class="fn">MATCH</span>( "Product C", B2:B5, 0 )</div>
+        <br>
+        <div class="codeLine" id="line3"><span class="cmt">-- Step 2: Get Value at Position</span></div>
+        <div class="codeLine" id="line4">=<span class="fn">INDEX</span>( C2:C5, <span class="val" id="indexVal">3</span> )</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Result:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 0 0 0.5rem; border-top:1px solid var(--border); padding-top:1.5rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Mismatched Heights</div>
+          <div class="mistake-desc">If your Index range is A2:A100 but your Match range is B2:B101, the results will be misaligned.</div>
+          <div class="mistake-fix">✅ Fix: Ensure both ranges start and end at the same row.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Missing "0" in MATCH</div>
+          <div class="mistake-desc">MATCH defaults to "Approximate" (1). If data isn't sorted, this returns wrong data.</div>
+          <div class="mistake-fix">✅ Fix: Always use 0 for exact match.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<div id="connector" class="connector-line"></div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("INDEX / MATCH", "../../");
+
+  // Data: ID (A), Product (B), Price (C)
+  // Notice Price is to the RIGHT. ID is LEFT.
+  const data = [
+    { id: 101, prod: "Product A", price: 10 },
+    { id: 102, prod: "Product B", price: 20 },
+    { id: 103, prod: "Product C", price: 15 }, // Target
+    { id: 104, prod: "Product D", price: 30 }
+  ];
+  const targetVal = "Product C";
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  const connector = document.getElementById('connector');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 0.5fr 1fr 1.5fr 1fr;">
+        <div>#</div> <div>ID</div> <div>Product</div> <div>Price</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 0.5fr 1fr 1.5fr 1fr;">
+          <div style="color:var(--text-dim); font-size:0.8rem;">${i+1}</div>
+          <div class="cell-num">${d.id}</div>
+          <div id="prod-${i}"><b>${d.prod}</b></div>
+          <div id="price-${i}" class="cell-num">$${d.price}</div>
+        </div>
+      `;
+    });
+  }
+
+  function drawLine(startEl, endEl) {
+    const r1 = startEl.getBoundingClientRect();
+    const r2 = endEl.getBoundingClientRect();
+    
+    const x1 = r1.left + (r1.width / 2);
+    const y1 = r1.top + (r1.height / 2);
+    const x2 = r2.left + (r2.width / 2);
+    const y2 = r2.top + (r2.height / 2);
+
+    const length = Math.sqrt((x2-x1)**2 + (y2-y1)**2);
+    const angle = Math.atan2(y2 - y1, x2 - x1) * 180 / Math.PI;
+
+    connector.style.width = `${length}px`;
+    connector.style.left = `${x1}px`;
+    connector.style.top = `${y1}px`;
+    connector.style.transform = `rotate(${angle}deg)`;
+    connector.style.opacity = "1";
+  }
+  
+  function hideLine() { connector.style.opacity = "0"; }
+
+  function highlight(id) {
+    const lines = document.querySelectorAll('.codeLine');
+    lines.forEach(l => l.classList.remove('active'));
+    if(id) document.getElementById(id).classList.add('active');
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    hideLine();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      highlight(null);
+      // Reset styles
+      document.querySelectorAll('.table-row > div').forEach(d => {
+        d.classList.remove('step-1-highlight', 'step-2-highlight');
+      });
+    }, 100);
+  }
+
+  // --- LOGIC: RUN MATCH ---
+  async function runMatch(target) {
+    highlight('line2');
+    App.updateText(`MATCH: Scanning Product column for "${target}"...`);
+    await App.speak(`I am starting the MATCH function. I need to find the row number for ${target}.`);
+    if(shouldStop) return -1;
+
+    let foundIdx = -1;
+
+    for(let i=0; i<data.length; i++) {
+        if(shouldStop) return -1;
+        
+        const cell = document.getElementById(`prod-${i}`);
+        cell.classList.add('step-1-highlight');
+        
+        await new Promise(r => setTimeout(r, App.voiceEnabled ? 150 : 100));
+        
+        if (data[i].prod === target) {
+            foundIdx = i;
+            cell.style.borderColor = "#facc15"; // Keep highlight
+            App.updateText(`MATCH: Found at Row ${i+1}. Returning number ${i+1}.`);
+            await App.speak(`Found it at row ${i+1}. MATCH returns the number ${i+1}.`);
+            
+            // Show intermediate bubble
+            totalBubble.textContent = i+1;
+            totalBubble.style.background = "#facc15";
+            totalBubble.style.color = "#000";
+            totalBubble.classList.add('show');
+            break;
+        }
+        cell.classList.remove('step-1-highlight');
+    }
+    return foundIdx;
+  }
+
+  // --- LOGIC: RUN INDEX ---
+  async function runIndex(rowIdx) {
+    if (rowIdx === -1) return;
+    highlight('line4');
+    document.getElementById('indexVal').textContent = rowIdx + 1; // Update code view
+
+    App.updateText(`INDEX: Go to Row ${rowIdx + 1} in Price Column...`);
+    await App.speak(`Now, INDEX takes that number. It goes down to row ${rowIdx+1} in the Price column.`);
+    
+    if(shouldStop) return;
+
+    const targetCell = document.getElementById(`price-${rowIdx}`);
+    targetCell.classList.add('step-2-highlight');
+
+    await new Promise(r => setTimeout(r, 800));
+
+    const result = data[rowIdx].price;
+    App.updateText(`INDEX Result: $${result}`);
+    await App.speak(`It grabs the value. The price is ${result}.`);
+
+    totalBubble.textContent = `$${result}`;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+  }
+
+
+  // --- BUTTONS ---
+
+  document.getElementById('btnStep1').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 150));
+    await runMatch(targetVal);
+    isRunning = false;
+  });
+
+  document.getElementById('btnStep2').addEventListener('click', async () => {
+    // Only works if step 1 done or we fake it
+    if(isRunning) return; isRunning = true;
+    
+    // If bubble is empty or not a number, we simulate finding row 3
+    const bubbleContent = totalBubble.textContent;
+    const idx = (bubbleContent !== "-" && !isNaN(bubbleContent)) ? parseInt(bubbleContent) - 1 : 2;
+    
+    await runIndex(idx);
+    isRunning = false;
+  });
+
+  document.getElementById('btnCombined').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 150));
+
+    // 1. Match
+    const idx = await runMatch(targetVal);
+    if(shouldStop) return;
+
+    await new Promise(r => setTimeout(r, 500));
+
+    // 2. Index
+    await runIndex(idx);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+
+</script>
+</body>
+</html>

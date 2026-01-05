@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: EOMONTH & EDATE</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Calendar Stage */
+  .cal-stage {
+    display: flex; align-items: center; justify-content: center; gap: 20px;
+    padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 220px; position: relative;
+  }
+
+  /* Calendar Leaf */
+  .calendar-leaf {
+    width: 100px; background: #fff; color: #000;
+    border-radius: 8px; overflow: hidden;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    position: relative; transition: all 0.5s;
+  }
+  .cal-head {
+    background: #ef4444; color: #fff; font-weight: bold;
+    text-transform: uppercase; font-size: 0.8rem; padding: 5px 0; text-align: center;
+  }
+  .cal-body {
+    padding: 10px 0; text-align: center; display: flex; flex-direction: column;
+  }
+  .cal-num { font-size: 2.5rem; font-weight: 900; line-height: 1; }
+  .cal-yr { font-size: 0.8rem; color: #666; font-weight: bold; margin-top: 5px; }
+
+  /* Arrow Animation */
+  .jump-arrow {
+    font-size: 2rem; color: var(--text-dim); opacity: 0;
+    transition: all 0.5s; transform: translateX(-20px);
+  }
+  .arrow-active { opacity: 1; transform: translateX(0); color: var(--accent); }
+
+  /* Target State */
+  .cal-target { opacity: 0.3; transform: scale(0.9); }
+  .cal-landed { opacity: 1; transform: scale(1.1); box-shadow: 0 0 20px var(--accent); }
+
+  /* Badge for Logic */
+  .logic-badge {
+    position: absolute; bottom: -30px; left: 50%; transform: translateX(-50%);
+    background: #334155; color: #fff; padding: 4px 10px; border-radius: 12px;
+    font-size: 0.75rem; white-space: nowrap; opacity: 0; transition: 0.3s;
+  }
+  .show-badge { bottom: -15px; opacity: 1; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🗓️ Month Jumper</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Jump 1 Month from <strong>Jan 31</strong>.<br>
+      <strong>EOMONTH:</strong> Goes to the very last day.<br>
+      <strong>EDATE:</strong> Tries to keep the same day (clamps if needed).
+    </p>
+
+    <div class="cal-stage">
+      
+      <div class="calendar-leaf">
+        <div class="cal-head">JAN</div>
+        <div class="cal-body">
+          <div class="cal-num">31</div>
+          <div class="cal-yr">2025</div>
+        </div>
+      </div>
+
+      <div class="jump-arrow" id="arrow">➔</div>
+
+      <div class="calendar-leaf cal-target" id="targetCal">
+        <div class="cal-head" id="resMonth">FEB</div>
+        <div class="cal-body">
+          <div class="cal-num" id="resDay">?</div>
+          <div class="cal-yr" id="resYear">2025</div>
+        </div>
+        <div class="logic-badge" id="logicBadge">Logic Info</div>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnEo">End of Month (EOMONTH)</button>
+        <button class="action" id="btnEdate">Same Day (EDATE)</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      
+      <div class="syntax-box" id="syntax-eo">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">EOMONTH</span>(start_date, months)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Start Date:</strong> The reference date.</li>
+          <li><strong>2. Months:</strong> Months to add/subtract (0 = Current Month).</li>
+          <li><strong>Result:</strong> Always the <span style="color:#facc15;">Last Day</span> of that month.</li>
+        </ul>
+      </div>
+
+      <div class="syntax-box" id="syntax-edate" style="display:none;">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">EDATE</span>(start_date, months)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Start Date:</strong> The reference date.</li>
+          <li><strong>2. Months:</strong> Months to add/subtract.</li>
+          <li><strong>Result:</strong> Same day number (e.g. 15th to 15th).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Select a function...</span></div>
+        <div class="codeLine" id="line2">...</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Calculated Date:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">💡 First Day of Next Month?</div>
+          <div class="mistake-desc">
+            Excel doesn't have a "First Day" function. Use this trick: <br>
+            <code>=EOMONTH(A1, 0) + 1</code> <br>
+            (Go to end of current month, then add 1 day).
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">📅 Short Months</div>
+          <div class="mistake-desc">
+            <code>EDATE("Jan 31", 1)</code> cannot return "Feb 31". It clamps to <strong>Feb 28</strong> (or 29 in leap years). It handles the math for you.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("EOMONTH & EDATE", "../../");
+
+  // Fixed Start: Jan 31, 2025
+  const startY = 2025;
+  const startM = 0; // Jan (0-based for JS)
+  const startD = 31;
+
+  const targetCal = document.getElementById('targetCal');
+  const arrow = document.getElementById('arrow');
+  const resMonth = document.getElementById('resMonth');
+  const resDay = document.getElementById('resDay');
+  const resYear = document.getElementById('resYear');
+  const logicBadge = document.getElementById('logicBadge');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset Visuals
+    targetCal.className = 'calendar-leaf cal-target';
+    arrow.className = 'jump-arrow';
+    logicBadge.classList.remove('show-badge');
+    resDay.textContent = "?";
+    resMonth.textContent = "FEB"; // Reset default
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(fn) {
+    if (fn === 'EOMONTH') {
+        document.getElementById('syntax-eo').style.display = 'block';
+        document.getElementById('syntax-edate').style.display = 'none';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- End of next month (+1)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">EOMONTH</span>( <span class="col">Jan 31</span>, <span class="val">1</span> )`;
+    } else {
+        document.getElementById('syntax-eo').style.display = 'none';
+        document.getElementById('syntax-edate').style.display = 'block';
+        document.getElementById('line1').innerHTML = `<span class="cmt">-- Exact date next month (+1)</span>`;
+        document.getElementById('line2').innerHTML = `=<span class="fn">EDATE</span>( <span class="col">Jan 31</span>, <span class="val">1</span> )`;
+    }
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runDateCalc(fn) {
+    updateUI(fn);
+    App.updateText(`Calculating ${fn} for Jan 31 + 1 Month...`);
+    await App.speak(`Let's jump forward one month.`);
+    
+    if(shouldStop) return;
+
+    // 1. Animate Arrow
+    arrow.classList.add('arrow-active');
+    await new Promise(r => setTimeout(r, 600));
+
+    // 2. Determine Result
+    let resultDate;
+    let badgeText = "";
+    
+    if (fn === 'EOMONTH') {
+        // EOMONTH: Go to next month (Feb), find last day
+        // JS: Day 0 of March = Last Day of Feb
+        resultDate = new Date(startY, startM + 2, 0); // Month + 2 because 0 is Jan, we want end of Feb
+        badgeText = "Snapped to End of Month";
+    } else {
+        // EDATE: Try to land on Feb 31.
+        // Logic: Calculate max days in Feb. Clamp if 31 > Max.
+        const nextMonth = startM + 1; // Feb
+        const maxDaysInFeb = new Date(startY, nextMonth + 1, 0).getDate(); // 28 in 2025
+        
+        let targetDay = startD;
+        if (targetDay > maxDaysInFeb) {
+            targetDay = maxDaysInFeb; // Clamp to 28
+            badgeText = "Clamped! Feb has no 31st.";
+        } else {
+            badgeText = "Same Day Kept";
+        }
+        
+        resultDate = new Date(startY, nextMonth, targetDay);
+    }
+
+    // 3. Render Result
+    const fMonth = resultDate.toLocaleString('default', { month: 'short' }).toUpperCase();
+    const fDay = resultDate.getDate();
+    const fYear = resultDate.getFullYear();
+    const fullStr = resultDate.toLocaleDateString();
+
+    resMonth.textContent = fMonth;
+    resDay.textContent = fDay;
+    resYear.textContent = fYear;
+    logicBadge.textContent = badgeText;
+
+    targetCal.classList.add('cal-landed');
+    logicBadge.classList.add('show-badge');
+
+    // Feedback
+    if (fn === 'EDATE' && fDay !== 31) {
+        App.updateText(`Feb only has 28 days. Clamped to Feb 28.`);
+        await App.speak(`February only has 28 days, so we stop there.`);
+    } else {
+        App.updateText(`Result: ${fullStr}`);
+        await App.speak(`The result is ${fullStr}.`);
+    }
+
+    totalBubble.textContent = fullStr;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+}
+
+  // --- BUTTONS ---
+  document.getElementById('btnEo').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runDateCalc('EOMONTH');
+    isRunning = false;
+  });
+
+  document.getElementById('btnEdate').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runDateCalc('EDATE');
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

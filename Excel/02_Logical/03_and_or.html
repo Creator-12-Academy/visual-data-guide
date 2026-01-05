@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: AND / OR / NOT</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Logic Badges */
+  .badge-true {
+    display: inline-block; padding: 2px 6px; border-radius: 4px;
+    font-size: 0.75rem; font-weight: bold; background: #4ade80; color: #000;
+    box-shadow: 0 0 5px rgba(74, 222, 128, 0.4);
+  }
+  .badge-false {
+    display: inline-block; padding: 2px 6px; border-radius: 4px;
+    font-size: 0.75rem; font-weight: bold; background: #ef4444; color: #fff;
+    opacity: 0.8;
+  }
+
+  /* Condition Check Boxes */
+  .check-box {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border: 1px solid var(--border);
+    margin: 0 2px; border-radius: 3px; font-size: 0.8rem;
+    transition: all 0.2s;
+  }
+  .check-pass { background: #4ade80; color: #000; border-color: #4ade80; }
+  .check-fail { background: #ef4444; color: #fff; border-color: #ef4444; }
+  .check-wait { background: #334155; }
+
+  /* Row Highlight */
+  .eval-row {
+    background: rgba(255,255,255,0.05);
+    border-left: 3px solid #facc15;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>⛓️ Logic Gates</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Evaluate candidates based on strict (AND) or flexible (OR) rules.<br>
+      Watch how Excel combines multiple True/False questions.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1rem;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnAnd">🔒 AND (Strict)</button>
+        <button class="action" id="btnOr">🔓 OR (Flexible)</button>
+        <button class="action" id="btnNot">🚫 NOT (Invert)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn" id="fnName">AND</span>(logic1, [logic2], ...)
+        </div>
+        <ul class="arg-list" id="argList">
+          <li><strong>1. Logic 1:</strong> First condition (e.g., Score > 80).</li>
+          <li><strong>2. Logic 2:</strong> Second condition (e.g., Exp > 2).</li>
+          <li><strong>Result:</strong> Returns TRUE or FALSE.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Strict Hiring: Score > 80 AND Exp > 2</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">AND</span>( <span class="col">B2>80</span>, <span class="col">C2>2</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Decision:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 AND inside IF</div>
+          <div class="mistake-desc">You cannot write <code>IF(A1>5 AND B1<10)</code>. <br>You MUST write <code>IF( AND(A1>5, B1<10), ... )</code>.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 OR Logic</div>
+          <div class="mistake-desc">OR returns TRUE if <em>at least one</em> condition is met. It only returns FALSE if <em>all</em> fail.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("AND / OR / NOT", "../../");
+
+  const data = [
+    { name: "Alex", score: 95, exp: 5, banned: false }, // Super Star
+    { name: "Ben",  score: 70, exp: 1, banned: false }, // Fails All
+    { name: "Cara", score: 85, exp: 1, banned: true },  // High Score, Low Exp
+    { name: "Dan",  score: 60, exp: 4, banned: false }  // Low Score, High Exp
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 1fr 1.5fr;">
+        <div>Name</div> <div>Score</div> <div>Exp</div> <div>Checks</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 1fr 1.5fr;">
+          <div>${d.name}</div>
+          <div class="cell-num">${d.score}</div>
+          <div class="cell-num">${d.exp}y</div>
+          <div id="check-${i}" style="display:flex; align-items:center;">-</div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.classList.remove('show');
+      totalBubble.textContent = "-";
+    }, 100);
+  }
+
+  function updateCode(mode) {
+    if (mode === 'AND') {
+      document.getElementById('fnName').textContent = "AND";
+      document.getElementById('line1').innerHTML = `<span class="cmt">-- Strict: Score > 80 AND Exp > 2</span>`;
+      document.getElementById('line2').innerHTML = `=<span class="fn">AND</span>( B2>80, C2>2 )`;
+    } else if (mode === 'OR') {
+      document.getElementById('fnName').textContent = "OR";
+      document.getElementById('line1').innerHTML = `<span class="cmt">-- Flexible: Score > 80 OR Exp > 2</span>`;
+      document.getElementById('line2').innerHTML = `=<span class="fn">OR</span>( B2>80, C2>2 )`;
+    } else {
+      document.getElementById('fnName').textContent = "NOT";
+      document.getElementById('line1').innerHTML = `<span class="cmt">-- Check if NOT Banned</span>`;
+      document.getElementById('line2').innerHTML = `=<span class="fn">NOT</span>( D2="Yes" )`;
+    }
+  }
+
+  // --- LOGIC: AND ---
+  async function runAnd() {
+    updateCode('AND');
+    App.updateText("AND: Both conditions must be TRUE.");
+    await App.speak("In AND logic, everyone must pass all tests. If you fail one, you are out.");
+    
+    if(shouldStop) return;
+
+    for(let i=0; i<data.length; i++) {
+        if(shouldStop) return;
+        const row = document.getElementById(`row-${i}`);
+        const checkArea = document.getElementById(`check-${i}`);
+        
+        row.classList.add('eval-row');
+        checkArea.innerHTML = `<span class="check-box check-wait">1</span> <span class="check-box check-wait">2</span>`;
+        
+        // CHECK 1: Score > 80
+        await new Promise(r => setTimeout(r, 400));
+        const c1 = data[i].score > 80;
+        checkArea.children[0].className = `check-box ${c1 ? 'check-pass' : 'check-fail'}`;
+        
+        if (!c1) {
+            // Short Circuit
+            App.updateText(`${data[i].name}: Failed Score. Result: FALSE.`);
+            totalBubble.textContent = "FALSE";
+            totalBubble.style.background = "#ef4444";
+            totalBubble.classList.add('show');
+            await new Promise(r => setTimeout(r, 500));
+        } else {
+            // CHECK 2: Exp > 2
+            await new Promise(r => setTimeout(r, 400));
+            const c2 = data[i].exp > 2;
+            checkArea.children[1].className = `check-box ${c2 ? 'check-pass' : 'check-fail'}`;
+            
+            const result = c1 && c2;
+            App.updateText(`${data[i].name}: ${result ? 'Passed Both!' : 'Failed Exp.'} Result: ${result}`);
+            
+            totalBubble.textContent = result ? "TRUE" : "FALSE";
+            totalBubble.style.background = result ? "#4ade80" : "#ef4444";
+            totalBubble.classList.add('show');
+            await new Promise(r => setTimeout(r, 500));
+        }
+        
+        totalBubble.classList.remove('show');
+        row.classList.remove('eval-row');
+    }
+    App.updateText("Done.");
+  }
+
+  // --- LOGIC: OR ---
+  async function runOr() {
+    updateCode('OR');
+    App.updateText("OR: At least ONE condition must be TRUE.");
+    await App.speak("For OR logic, you only need one win. If you pass the first test, you don't even need to check the second.");
+    
+    if(shouldStop) return;
+
+    for(let i=0; i<data.length; i++) {
+        if(shouldStop) return;
+        const row = document.getElementById(`row-${i}`);
+        const checkArea = document.getElementById(`check-${i}`);
+        
+        row.classList.add('eval-row');
+        checkArea.innerHTML = `<span class="check-box check-wait">1</span> <span class="check-box check-wait">2</span>`;
+        
+        // CHECK 1: Score > 80
+        await new Promise(r => setTimeout(r, 400));
+        const c1 = data[i].score > 80;
+        checkArea.children[0].className = `check-box ${c1 ? 'check-pass' : 'check-fail'}`;
+        
+        if (c1) {
+            // Short Circuit Success
+            App.updateText(`${data[i].name}: Passed Score! (Stop checking). Result: TRUE.`);
+            totalBubble.textContent = "TRUE";
+            totalBubble.style.background = "#4ade80";
+            totalBubble.classList.add('show');
+            checkArea.children[1].style.opacity = "0.3"; // Skipped
+            await new Promise(r => setTimeout(r, 500));
+        } else {
+            // CHECK 2: Exp > 2
+            await new Promise(r => setTimeout(r, 400));
+            const c2 = data[i].exp > 2;
+            checkArea.children[1].className = `check-box ${c2 ? 'check-pass' : 'check-fail'}`;
+            
+            const result = c1 || c2;
+            App.updateText(`${data[i].name}: ${result ? 'Passed Exp!' : 'Failed Both.'} Result: ${result}`);
+            
+            totalBubble.textContent = result ? "TRUE" : "FALSE";
+            totalBubble.style.background = result ? "#4ade80" : "#ef4444";
+            totalBubble.classList.add('show');
+            await new Promise(r => setTimeout(r, 500));
+        }
+        
+        totalBubble.classList.remove('show');
+        row.classList.remove('eval-row');
+    }
+    App.updateText("Done.");
+  }
+
+  // --- LOGIC: NOT ---
+  async function runNot() {
+    updateCode('NOT');
+    App.updateText("NOT: Inverts the result. (TRUE becomes FALSE)");
+    await App.speak("NOT is simple. It flips the answer. If you are Banned, the result is FALSE. If you are NOT Banned, the result is TRUE.");
+    
+    if(shouldStop) return;
+
+    for(let i=0; i<data.length; i++) {
+        if(shouldStop) return;
+        const row = document.getElementById(`row-${i}`);
+        const checkArea = document.getElementById(`check-${i}`);
+        const isBanned = data[i].banned;
+        
+        row.classList.add('eval-row');
+        
+        App.updateText(`Is ${data[i].name} Banned? ${isBanned ? "YES" : "NO"}`);
+        await new Promise(r => setTimeout(r, 400));
+        
+        // Visual Flip
+        const result = !isBanned;
+        const color = result ? "#4ade80" : "#ef4444";
+        const icon = result ? "✅ Allowed" : "🚫 Banned";
+        
+        checkArea.innerHTML = `<span class="badge-true" style="background:${color}; color:${result?'#000':'#fff'}">${icon}</span>`;
+        
+        totalBubble.textContent = result ? "TRUE" : "FALSE";
+        totalBubble.style.background = color;
+        totalBubble.classList.add('show');
+        
+        await new Promise(r => setTimeout(r, 600));
+        
+        totalBubble.classList.remove('show');
+        row.classList.remove('eval-row');
+    }
+    App.updateText("Done.");
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnAnd').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runAnd();
+    isRunning = false;
+  });
+
+  document.getElementById('btnOr').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runOr();
+    isRunning = false;
+  });
+
+  document.getElementById('btnNot').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runNot();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: TRIM Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* String Container */
+  .string-stage {
+    display: flex; justify-content: center; align-items: center;
+    min-height: 100px; background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border); border-radius: 8px;
+    margin-bottom: 2rem; padding: 20px; overflow-x: auto;
+  }
+
+  /* Character Blocks */
+  .char-block {
+    display: flex; flex-direction: column; align-items: center;
+    margin: 0 1px; transition: all 0.5s ease-in-out;
+    width: 30px; /* Fixed width for letters */
+  }
+  
+  .char-val {
+    width: 30px; height: 40px; background: #334155;
+    color: #fff; font-weight: bold; font-family: monospace; font-size: 1.2rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 4px; border: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+  }
+
+  /* Space Specifics */
+  .char-space .char-val {
+    background: rgba(255,255,255,0.1); color: transparent;
+    border: 1px dashed rgba(255,255,255,0.3);
+  }
+  .char-space .char-val::after {
+    content: '·'; color: #64748b; font-size: 1.5rem; /* Visual dot for space */
+  }
+
+  /* Bad Space (To be removed) */
+  .space-bad .char-val {
+    background: rgba(239, 68, 68, 0.2); /* Red tint */
+    border-color: #ef4444;
+  }
+  
+  /* Animation: Crush */
+  .crushed {
+    width: 0px; margin: 0; opacity: 0; transform: scale(0);
+  }
+
+  /* Indices */
+  .char-idx { font-size: 0.6rem; color: var(--text-dim); margin-top: 4px; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🧹 The Space Cleaner</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Clean up messy user input.<br>
+      <strong>TRIM</strong> removes all extra spaces from text except for single spaces between words.
+    </p>
+
+    <div class="string-stage" id="stage">
+      </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">▶️ Run TRIM</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">TRIM</span>(text)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Text:</strong> The text string to clean.</li>
+          <li><strong>Action:</strong> Removes leading/trailing spaces. Reduces internal spaces to one.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Clean up "  Data   Science  "</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">TRIM</span>( <span class="col">A1</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Final Length:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Non-Breaking Spaces</div>
+          <div class="mistake-desc">
+            TRIM removes standard spaces (ASCII 32). It does <strong>NOT</strong> remove Non-Breaking Spaces (<code>&nbsp;</code> or ASCII 160) often found in web data.
+          </div>
+          <div class="mistake-fix">✅ Fix: Use <code>=SUBSTITUTE(A1, CHAR(160), " ")</code> inside TRIM.</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Line Breaks</div>
+          <div class="mistake-desc">
+            TRIM does not remove line breaks. Use the <strong>CLEAN</strong> function to remove non-printable characters.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("TRIM Function", "../../");
+
+  // Input: "  Data   Science  "
+  // Indices: 0,1 (Lead), 2-5 (Data), 6-8 (Mid), 9-15 (Science), 16-17 (Trail)
+  const inputString = "  Data   Science  ";
+  const stage = document.getElementById('stage');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initString() {
+    stage.innerHTML = '';
+    const chars = inputString.split('');
+    
+    chars.forEach((char, i) => {
+      const block = document.createElement('div');
+      // Classification
+      if (char === ' ') {
+        block.className = 'char-block char-space';
+        block.innerHTML = `<div class="char-val"></div><div class="char-idx">${i+1}</div>`;
+      } else {
+        block.className = 'char-block';
+        block.innerHTML = `<div class="char-val">${char}</div><div class="char-idx">${i+1}</div>`;
+      }
+      block.id = `char-${i}`;
+      stage.appendChild(block);
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initString();
+      App.updateText("Ready...");
+      totalBubble.textContent = "-";
+      totalBubble.classList.remove('show');
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  // --- LOGIC: RUN TRIM ---
+  async function runTrim() {
+    document.getElementById('line2').classList.add('active');
+    App.updateText("Scanning for extra spaces...");
+    await App.speak("Let's clean this up. I'll remove spaces from the start, end, and squash the middle ones.");
+    
+    if(shouldStop) return;
+
+    const chars = inputString.split('');
+    let keptCount = 0;
+    
+    // Logic to determine fate of each char
+    // Simple logic:
+    // Leading: Index 0, 1 -> Remove
+    // Trailing: Index 16, 17 -> Remove
+    // Internal: Index 6, 7, 8 -> Keep 6 (single space), Remove 7, 8
+    
+    // We'll iterate and animate
+    let firstWordFound = false;
+    let inSpaceBlock = false;
+
+    // 1. Mark Bad Spaces
+    for (let i = 0; i < chars.length; i++) {
+        const char = chars[i];
+        const el = document.getElementById(`char-${i}`);
+        
+        if (char !== ' ') {
+            // It's a letter
+            firstWordFound = true;
+            inSpaceBlock = false;
+            keptCount++;
+        } else {
+            // It's a space
+            let isBad = false;
+            
+            if (!firstWordFound) {
+                // Leading Space
+                isBad = true;
+            } else if (inSpaceBlock) {
+                // Consecutive Internal Space
+                isBad = true;
+            } else {
+                // First space after a word (Keep this one, unless trailing)
+                // Check if remaining string is only spaces
+                const remaining = chars.slice(i).join('');
+                if (remaining.trim().length === 0) {
+                    isBad = true; // Trailing Space
+                } else {
+                    inSpaceBlock = true; // Valid single space
+                    keptCount++;
+                }
+            }
+
+            if (isBad) {
+                el.classList.add('space-bad');
+            }
+        }
+    }
+
+    App.updateText("Marked extra spaces in Red.");
+    await new Promise(r => setTimeout(r, 1000));
+
+    // 2. Remove Them
+    App.updateText("Removing...");
+    await App.speak("Removing the bad spaces now.");
+    
+    const badEls = document.querySelectorAll('.space-bad');
+    badEls.forEach(el => el.classList.add('crushed'));
+    
+    await new Promise(r => setTimeout(r, 800));
+
+    // Finish
+    const finalStr = inputString.trim().replace(/\s+/g, ' '); // Logic equivalent
+    App.updateText(`Done! Result: "${finalStr}" (Length: ${finalStr.length})`);
+    await App.speak(`Cleaned. The new length is ${finalStr.length}.`);
+    
+    totalBubble.textContent = finalStr.length;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runTrim();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initString();
+
+</script>
+</body>
+</html>

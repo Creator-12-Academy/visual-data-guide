@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: IRR Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --pos-green: #4ade80;
+    --neg-red: #f87171;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .irr-stage {
+    display: flex; flex-direction: column; align-items: center; gap: 2rem;
+    padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 300px; position: relative;
+  }
+
+  /* The Balance Scale */
+  .scale-container {
+    position: relative; width: 100%; max-width: 500px; height: 150px;
+    margin-top: 20px;
+  }
+  
+  .beam {
+    width: 100%; height: 8px; background: #94a3b8; border-radius: 4px;
+    position: absolute; top: 50%; transform-origin: center;
+    transition: transform 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .fulcrum {
+    width: 0; height: 0; 
+    border-left: 20px solid transparent; border-right: 20px solid transparent;
+    border-bottom: 40px solid var(--accent);
+    position: absolute; top: 54px; left: 50%; transform: translateX(-50%);
+  }
+
+  /* Weights */
+  .weight-pan {
+    position: absolute; top: -10px; width: 80px; text-align: center;
+    transition: all 0.5s;
+  }
+  .pan-left { left: 0; }
+  .pan-right { right: 0; }
+
+  .weight-box {
+    width: 60px; height: 60px; border-radius: 8px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: 0.9rem; color: #fff;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3); position: relative;
+  }
+  .w-invest { background: var(--neg-red); }
+  .w-return { background: var(--pos-green); color: #000; }
+
+  /* Cash Flow List */
+  .flow-list {
+    display: flex; gap: 10px; justify-content: center; margin-bottom: 20px;
+  }
+  .flow-item {
+    background: var(--bg-card); border: 1px solid var(--border);
+    padding: 5px 10px; border-radius: 4px; font-family: monospace;
+    font-size: 0.9rem;
+  }
+
+  /* Rate Display */
+  .rate-readout {
+    position: absolute; bottom: 20px; font-size: 2.5rem; font-weight: 900;
+    color: var(--accent); opacity: 0; transition: opacity 0.5s;
+  }
+
+  /* Animation Classes */
+  .balanced { transform: rotate(0deg); }
+  .tipped-left { transform: rotate(-15deg); } /* Loss */
+  .tipped-right { transform: rotate(15deg); } /* Profit (before discounting) */
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>⚖️ The Break-Even Balance</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find the Return Rate (IRR) of a project.<br>
+      IRR is the interest rate where the <strong>Initial Investment</strong> perfectly balances the <strong>Future Returns</strong> (NPV = 0).
+    </p>
+
+    <div class="irr-stage">
+      
+      <div class="flow-list" id="flowList">
+        </div>
+
+      <div class="scale-container">
+        <div class="beam tipped-left" id="beam">
+          <div class="weight-pan pan-left">
+            <div class="weight-box w-invest" id="boxInvest">-100</div>
+            <div style="font-size:0.7rem; margin-top:5px; color:var(--text-dim);">COST</div>
+          </div>
+          <div class="weight-pan pan-right">
+            <div class="weight-box w-return" id="boxReturn">Returns</div>
+            <div style="font-size:0.7rem; margin-top:5px; color:var(--text-dim);">VALUE</div>
+          </div>
+        </div>
+        <div class="fulcrum"></div>
+      </div>
+
+      <div class="rate-readout" id="irrDisplay">0.0%</div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnSteady">Steady (Returns 10%)</button>
+        <button class="action" id="btnBig">🚀 Big Win (Returns 85%)</button>
+        <button class="action" id="btnLoss">📉 Loss (Negative IRR)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">IRR</span>(values, [guess])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Values:</strong> A range of cash flows (e.g., B2:B5). Must include at least one negative (cost) and one positive (profit).</li>
+          <li><strong>2. Guess:</strong> (Optional) A starting estimate (default 10%).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Calculate Internal Rate of Return</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">IRR</span>( <span class="val" id="codeRange">C2:F2</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Project IRR:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Missing Initial Cost</div>
+          <div class="mistake-desc">
+            IRR needs a <strong>negative number</strong> first to represent the investment. If all numbers are positive, it returns a #NUM! error because you can't calculate a return on nothing.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">📅 Regular Intervals</div>
+          <div class="mistake-desc">
+            <code>IRR</code> assumes cash flows happen at regular intervals (yearly/monthly). If dates are irregular (e.g., Jan 1, Feb 15, Dec 10), use <strong>XIRR</strong> instead.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("IRR Function", "../../");
+
+  const beam = document.getElementById('beam');
+  const boxInvest = document.getElementById('boxInvest');
+  const boxReturn = document.getElementById('boxReturn');
+  const flowList = document.getElementById('flowList');
+  const irrDisplay = document.getElementById('irrDisplay');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    // Reset visuals
+    beam.className = 'beam tipped-left'; // Start tipped to cost
+    flowList.innerHTML = '';
+    irrDisplay.style.opacity = '0';
+    boxInvest.textContent = "-100";
+    boxReturn.textContent = "Returns";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runIrr(initial, flows, targetIRR, desc) {
+    // 1. Setup UI
+    flowList.innerHTML = `<div class="flow-item" style="color:var(--neg-red)">${initial}</div>`;
+    flows.forEach(f => {
+        flowList.innerHTML += `<div class="flow-item" style="color:var(--pos-green)">+${f}</div>`;
+    });
+    
+    boxInvest.textContent = initial;
+    document.getElementById('line2').classList.add('active');
+
+    App.updateText(`Analyzing Project: ${desc}...`);
+    await App.speak(`Let's find the rate of return for ${desc}.`);
+    
+    if(shouldStop) return;
+
+    // 2. Sum Returns (Visual)
+    const totalReturn = flows.reduce((a,b)=>a+b, 0);
+    boxReturn.textContent = `+${totalReturn}`;
+    
+    App.updateText(`Total Cash Returns: ${totalReturn}. Is it enough?`);
+    await new Promise(r => setTimeout(r, 800));
+
+    // 3. Animate Balance Finding
+    // If total returns > cost, beam tips right momentarily before balancing
+    if (totalReturn > Math.abs(initial)) {
+        beam.className = 'beam tipped-right'; // Tip to profit side
+    } else {
+        beam.className = 'beam tipped-left'; // Stay on loss side
+    }
+    
+    await new Promise(r => setTimeout(r, 800));
+
+    // 4. Find Equilibrium (Show IRR)
+    App.updateText("Finding the Balance Rate (IRR)...");
+    
+    // Count up animation
+    irrDisplay.style.opacity = '1';
+    const startVal = -10;
+    const endVal = targetIRR * 100;
+    const steps = 30;
+    
+    for(let i=0; i<=steps; i++) {
+        const current = startVal + ((endVal - startVal) * (i/steps));
+        irrDisplay.textContent = current.toFixed(1) + "%";
+        // Color code
+        irrDisplay.style.color = current > 0 ? "var(--pos-green)" : "var(--neg-red)";
+        await new Promise(r => setTimeout(r, 30));
+    }
+    
+    // Final Snap
+    beam.className = 'beam balanced'; // Level out at IRR
+    irrDisplay.textContent = (targetIRR * 100).toFixed(1) + "%";
+    
+    App.updateText(`Equilibrium found at ${(targetIRR*100).toFixed(1)}%.`);
+    await App.speak(`The Internal Rate of Return is ${(targetIRR*100).toFixed(1)} percent.`);
+    
+    totalBubble.textContent = (targetIRR * 100).toFixed(1) + "%";
+    totalBubble.style.background = targetIRR > 0 ? "var(--pos-green)" : "var(--neg-red)";
+    totalBubble.style.color = targetIRR > 0 ? "#000" : "#fff";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnSteady').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // -100, 40, 40, 40 -> IRR ~9.7%
+    await runIrr(-100, [40, 40, 40], 0.097, "Steady Returns");
+    isRunning = false;
+  });
+
+  document.getElementById('btnBig').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // -100, 10, 10, 200 -> IRR ~35%?
+    // Let's assume a simpler big win: -100, 0, 0, 300.
+    // 300 = 100 * (1+r)^3 => 3 = (1+r)^3 => 1.44 = 1+r => 44%
+    // Let's do: -100, 20, 20, 200.
+    await runIrr(-100, [20, 20, 200], 0.354, "Big Exit");
+    isRunning = false;
+  });
+
+  document.getElementById('btnLoss').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // -100, 20, 20, 20. Total 60. Loss.
+    // IRR will be negative.
+    await runIrr(-100, [20, 20, 20], -0.26, "Failing Project");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: OFFSET Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Grid Layout for Coordinate Map */
+  .grid-container {
+    display: grid;
+    grid-template-columns: 40px repeat(3, 1fr);
+    gap: 4px;
+    margin-bottom: 1.5rem;
+  }
+
+  .grid-cell {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    height: 50px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.9rem; position: relative;
+    transition: all 0.3s;
+  }
+
+  /* Header Cells */
+  .col-header { font-weight: bold; color: var(--accent); border:none; background: transparent; align-items: end; padding-bottom:5px; }
+  .row-header { font-weight: bold; color: var(--accent); border:none; background: transparent; justify-content: end; padding-right:10px; }
+
+  /* Special States */
+  .anchor-point {
+    background: rgba(250, 204, 21, 0.2);
+    border: 2px dashed #facc15;
+    color: #facc15; font-weight: bold;
+  }
+  .anchor-point::after { content: '⚓'; position: absolute; top:-10px; left:-10px; font-size: 1.2rem; }
+
+  .target-cell {
+    background: var(--accent);
+    color: #000; font-weight: bold;
+    box-shadow: 0 0 15px rgba(34, 197, 94, 0.4);
+    transform: scale(1.1); z-index: 10;
+  }
+
+  /* Path Tracing */
+  .path-trace {
+    position: absolute; background: rgba(255, 255, 255, 0.1);
+    pointer-events: none; transition: all 0.5s;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>📍 Dynamic Navigation</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Move from the <strong>Anchor (A1)</strong> to a target cell.<br>
+      <strong>OFFSET</strong> moves: <em>Down</em> (Rows) and <em>Right</em> (Cols).
+    </p>
+
+    <div id="gridMount" class="grid-container"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnMove1">↘️ Row 2, Col 2</button>
+        <button class="action" id="btnMove2">⬇️ Row 3, Col 0</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">OFFSET</span>(reference, rows, cols, [height], [width])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Reference:</strong> Starting point (Anchor).</li>
+          <li><strong>2. Rows:</strong> How many rows to move down (+).</li>
+          <li><strong>3. Cols:</strong> How many columns to move right (+).</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Start at A1, Move to target</span></div>
+        <div class="codeLine" id="line2">=<span class="fn">OFFSET</span>( <span class="col" id="refVal">A1</span>, <span class="val" id="rowVal">0</span>, <span class="val" id="colVal">0</span> )</div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Value Found:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Volatile Function</div>
+          <div class="mistake-desc">OFFSET recalculates <em>every time</em> any cell changes. On large sheets, this causes lag.</div>
+          <div class="mistake-fix">✅ Fix: Use INDEX instead (it's non-volatile).</div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Moving Off-Grid</div>
+          <div class="mistake-desc">If you move Left or Up too far (negative numbers), you might go off the sheet edge (#REF!).</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("OFFSET Function", "../../");
+
+  // Grid Data (3x3 + Headers)
+  const rows = 3;
+  const cols = 3;
+  const data = [
+    ["Start", "10", "20"], // Row 1 (Index 0)
+    ["30", "Target A", "50"], // Row 2 (Index 1)
+    ["60", "70", "Target B"]  // Row 3 (Index 2)
+  ];
+
+  const gridMount = document.getElementById('gridMount');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initGrid() {
+    gridMount.innerHTML = '';
+    
+    // Headers
+    gridMount.innerHTML += `<div></div>`; // Top-Left corner empty
+    ['A','B','C'].forEach(c => gridMount.innerHTML += `<div class="col-header">${c}</div>`);
+
+    // Rows
+    for(let r=0; r<rows; r++) {
+      gridMount.innerHTML += `<div class="row-header">${r+1}</div>`;
+      for(let c=0; c<cols; c++) {
+        const id = `cell-${r}-${c}`;
+        const isAnchor = (r===0 && c===0);
+        let classes = 'grid-cell';
+        if(isAnchor) classes += ' anchor-point';
+        
+        gridMount.innerHTML += `<div id="${id}" class="${classes}">${data[r][c]}</div>`;
+      }
+    }
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    document.getElementById('line2').innerHTML = '=<span class="fn">OFFSET</span>( <span class="col">A1</span>, <span class="val">0</span>, <span class="val">0</span> )';
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initGrid();
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  // --- LOGIC: RUN OFFSET ---
+  async function runOffset(moveRows, moveCols) {
+    // 1. Update UI
+    document.getElementById('rowVal').textContent = moveRows;
+    document.getElementById('colVal').textContent = moveCols;
+    document.getElementById('line2').innerHTML = 
+        `=<span class="fn">OFFSET</span>( <span class="col">A1</span>, <span class="val">${moveRows}</span>, <span class="val">${moveCols}</span> )`;
+
+    App.updateText(`Starting at <b>A1</b>...`);
+    await App.speak(`We start at the anchor point, cell A1.`);
+    
+    if(shouldStop) return;
+
+    // 2. Animate Rows (Down)
+    let currentR = 0;
+    let currentC = 0;
+
+    if (moveRows > 0) {
+        App.updateText(`Moving <b>Down ${moveRows}</b> rows...`);
+        await App.speak(`Move down ${moveRows} rows.`);
+        
+        for(let i=0; i<moveRows; i++) {
+            if(shouldStop) return;
+            const currentCell = document.getElementById(`cell-${currentR}-${currentC}`);
+            currentCell.style.borderBottom = "3px solid #facc15"; // Trace
+            
+            await new Promise(r => setTimeout(r, 400));
+            currentR++;
+            
+            const nextCell = document.getElementById(`cell-${currentR}-${currentC}`);
+            nextCell.style.background = "rgba(250, 204, 21, 0.1)";
+        }
+    }
+
+    // 3. Animate Cols (Right)
+    if (moveCols > 0) {
+        App.updateText(`Moving <b>Right ${moveCols}</b> columns...`);
+        await App.speak(`Now, move right ${moveCols} columns.`);
+        
+        for(let i=0; i<moveCols; i++) {
+            if(shouldStop) return;
+            const currentCell = document.getElementById(`cell-${currentR}-${currentC}`);
+            currentCell.style.borderRight = "3px solid #facc15"; 
+            
+            await new Promise(r => setTimeout(r, 400));
+            currentC++;
+            
+            const nextCell = document.getElementById(`cell-${currentR}-${currentC}`);
+            nextCell.style.background = "rgba(250, 204, 21, 0.1)";
+        }
+    }
+
+    // 4. Arrive
+    const finalCell = document.getElementById(`cell-${currentR}-${currentC}`);
+    finalCell.classList.add('target-cell');
+    
+    const result = data[currentR][currentC];
+    
+    App.updateText(`Arrived at Row ${currentR+1}, Col ${currentC+1}. Value: <b>${result}</b>`);
+    await App.speak(`We have arrived. The value here is ${result}.`);
+
+    totalBubble.textContent = result;
+    totalBubble.style.background = "var(--accent)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnMove1').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // Target A is at Row 2, Col 2 (Index 1, 1) relative to 0,0
+    // Actually, A1 is 0,0. Target A is at 1,1 (Row 2, Col B)
+    // "Target A" in data is at index [1][1]. So move 1, 1.
+    // Wait, let's check data array.
+    // Row 2 (Index 1) is ["30", "Target A", "50"]. "Target A" is col index 1.
+    // So OFFSET(A1, 1, 1). 
+    // Button says "Row 2, Col 2". That means absolute coords. 
+    // The formula needs relative moves. A1 is R1C1. To get to R2C2, we move 1 Down, 1 Right.
+    await runOffset(1, 1);
+    isRunning = false;
+  });
+
+  document.getElementById('btnMove2').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // Target B is at data[2][2]. (Row 3, Col 3).
+    // Let's do a different one. Row 3, Col 1 (Index 2, 0). Value "60".
+    // Move: 2 Down, 0 Right.
+    await runOffset(2, 0);
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initGrid();
+</script>
+</body>
+</html>

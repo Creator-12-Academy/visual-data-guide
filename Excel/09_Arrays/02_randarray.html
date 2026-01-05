@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: RANDARRAY Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* --- DARK SLATE THEME --- */
+  :root { 
+    --accent: #38bdf8;   /* Sky Blue */
+    --bg-body: #1e293b;  /* Slate 800 */
+    --bg-card: #334155;  /* Slate 700 */
+    --text-main: #f8fafc; /* Slate 50 */
+    --text-dim: #cbd5e1;  /* Slate 300 */
+    --border: #475569;    /* Slate 600 */
+    --matrix-green: #4ade80;
+  }
+
+  body { background-color: var(--bg-body); color: var(--text-main); }
+
+  /* Visualization Stage */
+  .rand-stage {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 2rem; padding: 2rem; margin-bottom: 2rem;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    border-radius: 8px; min-height: 400px; position: relative;
+    overflow: hidden;
+  }
+
+  /* The Grid */
+  .grid-container {
+    display: grid; gap: 4px; padding: 10px;
+    background: var(--bg-body); border: 2px dashed var(--border);
+    border-radius: 8px; transition: all 0.3s;
+    min-width: 100px; min-height: 100px;
+  }
+  
+  .spill-active {
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+  }
+
+  /* Individual Cells */
+  .rand-cell {
+    width: 60px; height: 40px; background: #0f172a;
+    border: 1px solid var(--border); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; color: var(--matrix-green); 
+    font-family: monospace; font-size: 0.9rem;
+    opacity: 0; transform: translateY(-10px);
+    transition: all 0.3s;
+  }
+  .rand-cell.show { opacity: 1; transform: translateY(0); }
+
+  /* Configuration Panel */
+  .config-row {
+    display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;
+    background: rgba(0,0,0,0.2); padding: 10px 20px; border-radius: 20px;
+  }
+  .config-item { font-size: 0.8rem; color: var(--text-dim); font-family: monospace; }
+  .config-item span { color: #fff; font-weight: bold; }
+
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>🎲 Random Generator</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Generate a grid of random numbers.<br>
+      <strong>RANDARRAY</strong> is dynamic: hit F9 (or change any cell) and all numbers regenerate.
+    </p>
+
+    <div class="rand-stage">
+      
+      <div class="config-row">
+        <div class="config-item">Rows: <span id="dspRow">-</span></div>
+        <div class="config-item">Cols: <span id="dspCol">-</span></div>
+        <div class="config-item">Min: <span id="dspMin">-</span></div>
+        <div class="config-item">Max: <span id="dspMax">-</span></div>
+        <div class="config-item">Int: <span id="dspInt">-</span></div>
+      </div>
+
+      <div class="grid-container" id="grid">
+        <span style="color:var(--text-dim); font-size:0.8rem; grid-column:1/-1; text-align:center; padding:30px;">
+          (Waiting for Formula...)
+        </span>
+      </div>
+
+    </div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnInt">🔢 Integers (1-100)</button>
+        <button class="action" id="btnDec">📊 Decimals (0-1)</button>
+        <button class="action" id="btnBool">⚖️ Binary (0/1)</button>
+      </div>
+      <button class="action" id="btnReset" style="margin-top:0.8rem; width:100%">🔄 Reset</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: var(--accent); margin-bottom: 0.5rem;">
+          =<span class="fn">RANDARRAY</span>([rows], [cols], [min], [max], [integer])
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Rows/Cols:</strong> Grid size.</li>
+          <li><strong>2. Min/Max:</strong> Range of values.</li>
+          <li><strong>3. Integer:</strong> TRUE for whole numbers, FALSE for decimals.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Generate Random Grid</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">RANDARRAY</span>( <span class="val" id="cRow">5</span>, <span class="val" id="cCol">3</span>, <span class="val" id="cMin">1</span>, <span class="val" id="cMax">100</span>, <span class="val" id="cInt">TRUE</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Status:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Volatile Function</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🔄 Constantly Changing</div>
+          <div class="mistake-desc">
+            Like <code>TODAY()</code>, this function recalculates every time <strong>any</strong> change is made to the sheet. 
+            <br><strong>Tip:</strong> Copy and "Paste Values" if you want to lock the random numbers.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("RANDARRAY Function", "../../");
+
+  const grid = document.getElementById('grid');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  // UI Display
+  const dspRow = document.getElementById('dspRow');
+  const dspCol = document.getElementById('dspCol');
+  const dspMin = document.getElementById('dspMin');
+  const dspMax = document.getElementById('dspMax');
+  const dspInt = document.getElementById('dspInt');
+
+  // Code
+  const cRow = document.getElementById('cRow');
+  const cCol = document.getElementById('cCol');
+  const cMin = document.getElementById('cMin');
+  const cMax = document.getElementById('cMax');
+  const cInt = document.getElementById('cInt');
+
+  let isRunning = false;
+  let shouldStop = false;
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    grid.innerHTML = '<span style="color:var(--text-dim); font-size:0.8rem; grid-column:1/-1; text-align:center; padding:30px;">(Waiting for Formula...)</span>';
+    grid.classList.remove('spill-active');
+    grid.style.gridTemplateColumns = "none";
+    
+    totalBubble.textContent = "-";
+    totalBubble.classList.remove('show');
+    document.getElementById('line2').classList.remove('active');
+
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      App.updateText("Ready...");
+    }, 100);
+  }
+
+  function updateUI(r, c, min, max, int) {
+    dspRow.textContent = r;
+    dspCol.textContent = c;
+    dspMin.textContent = min;
+    dspMax.textContent = max;
+    dspInt.textContent = int ? "TRUE" : "FALSE";
+    
+    cRow.textContent = r;
+    cCol.textContent = c;
+    cMin.textContent = min;
+    cMax.textContent = max;
+    cInt.textContent = int ? "TRUE" : "FALSE";
+    
+    document.getElementById('line2').classList.add('active');
+  }
+
+  // --- LOGIC ENGINE ---
+  async function runRand(rows, cols, min, max, isInt, desc) {
+    updateUI(rows, cols, min, max, isInt);
+    App.updateText(`Generating ${desc}...`);
+    await App.speak(`Generating random numbers for ${desc}.`);
+    
+    if(shouldStop) return;
+
+    // 1. Setup Grid
+    grid.innerHTML = '';
+    grid.style.gridTemplateColumns = `repeat(${cols}, 60px)`;
+    grid.classList.add('spill-active');
+
+    // 2. Populate
+    const totalCells = rows * cols;
+    const delay = totalCells > 25 ? 30 : 80;
+
+    for (let i = 0; i < totalCells; i++) {
+        if(shouldStop) return;
+
+        const cell = document.createElement('div');
+        cell.className = 'rand-cell';
+        
+        // Generate Value
+        let val;
+        if (isInt) {
+            val = Math.floor(Math.random() * (max - min + 1)) + min;
+        } else {
+            val = (Math.random() * (max - min) + min).toFixed(2);
+        }
+        
+        cell.textContent = val;
+        grid.appendChild(cell);
+        
+        // Animation
+        setTimeout(() => cell.classList.add('show'), 50);
+        
+        await new Promise(r => setTimeout(r, delay));
+    }
+
+    App.updateText(`Done! Generated ${totalCells} values.`);
+    await App.speak(`Finished.`);
+    
+    totalBubble.textContent = "Calculated";
+    totalBubble.style.background = "var(--matrix-green)";
+    totalBubble.style.color = "#000";
+    totalBubble.classList.add('show');
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnInt').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 5 rows, 4 cols, 1-100, Integer
+    await runRand(5, 4, 1, 100, true, "Integers");
+    isRunning = false;
+  });
+
+  document.getElementById('btnDec').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 5 rows, 3 cols, 0-1, Decimal
+    await runRand(5, 3, 0, 1, false, "Decimals");
+    isRunning = false;
+  });
+
+  document.getElementById('btnBool').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    // 8 rows, 1 col, 0-1, Integer (Binary)
+    await runRand(8, 1, 0, 1, true, "Binary Sequence");
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+
+</script>
+</body>
+</html>

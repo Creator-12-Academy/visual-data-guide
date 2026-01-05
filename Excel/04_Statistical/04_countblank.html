@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0" />
+<title>Excel: COUNTBLANK Function</title>
+<link rel="stylesheet" href="../../assets/style.css">
+<style>
+  /* Local Accent Override */
+  :root { --accent: var(--accent-excel); }
+
+  /* Ghost Animation for Empty Cells */
+  .ghost-icon {
+    font-size: 1.5rem; opacity: 0; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    position: absolute; right: 10px;
+  }
+  .found-ghost { opacity: 1; transform: scale(1.2) translateY(-2px); }
+
+  /* Cell States */
+  .cell-empty {
+    background: rgba(255,255,255,0.05); border: 2px dashed var(--accent);
+    color: var(--accent); font-weight: bold;
+  }
+  .cell-filled { opacity: 0.4; }
+  .cell-tricky { 
+    border: 2px solid #facc15; background: rgba(250, 204, 21, 0.1); 
+    color: #facc15; font-weight: bold;
+  }
+
+  /* Search Light Effect */
+  .scan-beam {
+    position: absolute; width: 100%; height: 2px; background: var(--accent);
+    box-shadow: 0 0 15px var(--accent); top: 50%; opacity: 0;
+  }
+</style>
+</head>
+<body>
+
+<header></header>
+
+<div class="pageWrapper">
+
+  <section class="card">
+    <div class="lesson-header">
+      <h2>👻 Hunting for Blanks</h2>
+      <div id="controls-mount" class="settings-row"></div>
+    </div>
+
+    <p style="font-size:0.9rem; color:var(--text-dim); margin-bottom: 1rem;">
+      <strong>Goal:</strong> Find cells that are completely empty.<br>
+      <strong>COUNTBLANK</strong> ignores numbers, text, and errors. It only counts the void.
+    </p>
+
+    <div id="dataTable" style="position:relative; margin-bottom: 1rem;"></div>
+
+    <div class="calculation-box" id="calcBox">Ready...</div>
+    <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    
+    <div class="control-panel">
+      <div class="action-btns">
+        <button class="action primary" id="btnRun">🔦 Scan for Blanks</button>
+        <button class="action" id="btnReset">🔄 Reset</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>💻 Formula Structure</h2>
+    
+    <div class="scroll-content">
+      <div class="syntax-box">
+        <div style="font-family: monospace; color: #fff; margin-bottom: 0.5rem;">
+          =<span class="fn">COUNTBLANK</span>(range)
+        </div>
+        <ul class="arg-list">
+          <li><strong>1. Range:</strong> The group of cells to check.</li>
+          <li><strong>Logic:</strong> Counts cells containing <code>null</code> or formulas returning <code>""</code>.</li>
+        </ul>
+      </div>
+
+      <div id="codeDisplay" class="codeArea">
+        <div class="codeLine" id="line1"><span class="cmt">-- Find gaps in data</span></div>
+        <div class="codeLine" id="line2">
+          =<span class="fn">COUNTBLANK</span>( <span class="col">A2:A6</span> )
+        </div>
+      </div>
+
+      <div class="result-box">
+        <span style="color:var(--text-dim); font-size:0.9rem; font-weight:bold;">Blanks Found:</span>
+        <div class="total-bubble" id="totalBubble">-</div>
+      </div>
+
+      <h3 style="font-size:0.9rem; color:#fff; margin: 1rem 0 0.5rem; border-top:1px solid var(--border); padding-top:1rem;">⚠️ Common Pitfalls</h3>
+      <div class="mistakes-container">
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 The "Space" Trap</div>
+          <div class="mistake-desc">
+            A cell with a space <code>" "</code> is <strong>NOT</strong> blank. It contains text. COUNTBLANK will ignore it.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">🚫 Zero is Value</div>
+          <div class="mistake-desc">
+            A cell containing <code>0</code> is a number, not a blank. It will be ignored.
+          </div>
+        </div>
+        <div class="mistake-card">
+          <div class="mistake-title">✅ Empty Strings Count</div>
+          <div class="mistake-desc">
+            Formulas that return an empty string like <code>=IF(A1>10, "Yes", "")</code> ARE counted by COUNTBLANK.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer></footer>
+
+<script src="../../assets/app.js"></script>
+
+<script>
+  App.initLayout("COUNTBLANK Function", "../../");
+
+  const data = [
+    { label: "Cell A2", val: "Data", type: "text" },
+    { label: "Cell A3", val: "",     type: "blank" }, // Target
+    { label: "Cell A4", val: 0,      type: "zero" },
+    { label: "Cell A5", val: " ",    type: "space" }, // Tricky
+    { label: "Cell A6", val: "",     type: "blank" }  // Target
+  ];
+
+  const table = document.getElementById('dataTable');
+  const totalBubble = document.getElementById('totalBubble');
+  
+  let isRunning = false;
+  let shouldStop = false;
+
+  function initTable() {
+    table.innerHTML = `
+      <div class="table-row header" style="grid-template-columns: 1fr 1fr 0.5fr;">
+        <div>Cell</div> <div>Content</div> <div>Status</div>
+      </div>
+    `;
+    data.forEach((d, i) => {
+      let displayVal = d.val;
+      let style = "";
+      
+      // Visual tweaks for special values
+      if (d.type === 'blank') { displayVal = "(Empty)"; style = "color:#666; font-style:italic;"; }
+      if (d.type === 'space') { displayVal = '" " (Space)'; style = "color:#facc15;"; }
+      
+      table.innerHTML += `
+        <div class="table-row" id="row-${i}" style="grid-template-columns: 1fr 1fr 0.5fr; position:relative;">
+          <div>${d.label}</div>
+          <div style="${style}"><b>${displayVal}</b></div>
+          <div class="ghost-icon" id="ghost-${i}">👻</div>
+          <div class="scan-beam" id="beam-${i}"></div>
+        </div>
+      `;
+    });
+  }
+
+  function reset() {
+    shouldStop = true;
+    window.speechSynthesis.cancel();
+    if(document.getElementById('progressFill')) { 
+        document.getElementById('progressFill').style.transition = 'none'; 
+        document.getElementById('progressFill').style.width = '0%'; 
+    }
+    
+    setTimeout(() => {
+      shouldStop = false; isRunning = false;
+      initTable();
+      App.updateText("Ready...");
+      totalBubble.textContent = "-";
+      totalBubble.classList.remove('show');
+      document.getElementById('line2').classList.remove('active');
+    }, 100);
+  }
+
+  // --- LOGIC: COUNTBLANK ---
+  async function runCountBlank() {
+    document.getElementById('line2').classList.add('active');
+    App.updateText("Scanning for empty cells...");
+    await App.speak("I am hunting for ghosts. Only truly empty cells will count.");
+    
+    if(shouldStop) return;
+
+    let count = 0;
+
+    for (let i = 0; i < data.length; i++) {
+      if(shouldStop) return;
+      
+      const row = document.getElementById(`row-${i}`);
+      const ghost = document.getElementById(`ghost-${i}`);
+      const beam = document.getElementById(`beam-${i}`);
+      const item = data[i];
+      
+      // 1. Scan Effect
+      row.classList.add('row-highlight');
+      beam.style.opacity = 1;
+      await new Promise(r => setTimeout(r, 400));
+      beam.style.opacity = 0;
+
+      // 2. Logic Check
+      if (item.type === 'blank') {
+          // FOUND
+          App.updateText(`Row ${i+2}: It's empty! Counting it.`);
+          await App.speak("Found one! It is totally empty.");
+          
+          row.classList.add('cell-empty');
+          ghost.classList.add('found-ghost');
+          count++;
+          totalBubble.textContent = count;
+          totalBubble.style.background = "#334155"; // Neutral count color
+          totalBubble.classList.add('show');
+          
+      } else if (item.type === 'space') {
+          // TRICKY SPACE
+          App.updateText(`Row ${i+2}: Wait... that's a space! Not blank.`);
+          await App.speak("Hold on. That looks empty, but it is actually a space character. I cannot count it.");
+          
+          row.classList.add('cell-tricky');
+          await new Promise(r => setTimeout(r, 600)); // Pause for emphasis
+          
+      } else if (item.type === 'zero') {
+          // ZERO
+          App.updateText(`Row ${i+2}: Found 0. That's a number, not a blank.`);
+          row.classList.add('cell-filled');
+      } else {
+          // TEXT
+          App.updateText(`Row ${i+2}: Found data. Skipping.`);
+          row.classList.add('cell-filled');
+      }
+      
+      await new Promise(r => setTimeout(r, 400));
+      row.classList.remove('row-highlight');
+    }
+
+    // Finish
+    App.updateText(`Scan Complete. Found ${count} blank cells.`);
+    await App.speak(`Scan complete. I found ${count} blank cells.`);
+    
+    totalBubble.textContent = count;
+    totalBubble.style.background = "var(--accent)";
+    
+    document.getElementById('line2').classList.remove('active');
+  }
+
+  // --- BUTTONS ---
+  document.getElementById('btnRun').addEventListener('click', async () => {
+    if(isRunning) return; isRunning = true; reset();
+    await new Promise(r => setTimeout(r, 100));
+    await runCountBlank();
+    isRunning = false;
+  });
+
+  document.getElementById('btnReset').addEventListener('click', reset);
+  initTable();
+</script>
+</body>
+</html>
